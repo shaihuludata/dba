@@ -1,9 +1,10 @@
 import json
 from pon_device import Olt, Ont
 
+
 class ModelScheduler:
     def __init__(self, net_filename, algorithm):
-        net = json.load('net_filename')
+        net = json.load(net_filename)
         print(net)
         olt_desc = net['OLT']
         self.olt = Olt(olt_desc)
@@ -15,16 +16,31 @@ class ModelScheduler:
         self.schedule = dict()
 
     def renew_schedule(self):
-        new_events = dict()
-
-        self.schedule.update(new_events)
+        new_events = self.interrogate_devices()
+        for ev in new_events:
+            if ev[0] not in self.schedule:
+                self.schedule.update(new_events)
+            else:
+                self.schedule
         return True
 
     def proceed_schedule(self, cur_time):
+        self.time = cur_time
         for time in self.schedule:
             if time <= cur_time:
+                self.proceed_events(self.schedule[time])
                 self.schedule.pop(time)
         return True
+
+    def interrogate_devices(self):
+        events = list()
+        #event = self.olt.calculate_transmission()
+        event = self.time + 40, '123'
+        events.append(event)
+        return events
+
+    def proceed_events(self, events):
+        print(events)
 
 def main():
     sched = ModelScheduler('./network.json', 'basic_NSC')
