@@ -15,7 +15,7 @@ class Olt(PonDevice):
         bwmap = 'bwmap_structure'
         return bwmap
 
-    def calculate_next_transmission(self, time):
+    def calculate_next_transmission(self, time, new_requests):
         data = 'some data to send on next cycle'
         return data
 

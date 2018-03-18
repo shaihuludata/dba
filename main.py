@@ -17,6 +17,7 @@ class ModelScheduler:
         self.dba_algorithm = algorithm
         self.schedule = dict()
         self.renew_schedule(0)
+        self.current_requests = list()
 
     def renew_schedule(self, cur_time):
         self.time = cur_time
@@ -40,7 +41,7 @@ class ModelScheduler:
 
     def interrogate_devices(self):
         events = list()
-        next_cycle = self.olt.calculate_next_transmission(self.time)
+        next_cycle = self.olt.calculate_next_transmission(self.time, self.current_requests)
         event = self.time, [next_cycle]
         events.append(event)
         return events
