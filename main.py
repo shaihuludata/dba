@@ -2,6 +2,15 @@ import json
 from pon_device import Olt, Ont
 
 
+class Schedule:
+    def __init__(self):
+        times = list()
+        events = dict()
+
+    def upd_event(self, ev):
+        print('here some code will be')
+
+
 class ModelScheduler:
     def __init__(self, net_filename, algorithm):
         net = json.load(open(net_filename))
