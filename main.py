@@ -1,29 +1,19 @@
 import json
 from pon_device import Olt, Ont
-
-
-class Schedule:
-    def __init__(self):
-        times = list()
-        events = dict()
-
-    def upd_event(self, ev):
-        print('here some code will be')
-
+from schedule_functions import upd_schedule, del_event_from_schedule
+from time import sleep
 
 class ModelScheduler:
     def __init__(self, net_filename, algorithm):
         net = json.load(open(net_filename))
         print(net)
-        desc = net['OLT']
-        devid = 0
-        self.olt = Olt(desc, id=devid)
         self.onts = list()
 
         for dev in net:
-            if 'ONT' in dev:
-                devid = devid + 1
-                self.onts.append(Ont(net[dev], devid))
+            if 'OLT' in dev:
+                self.olt = Olt(name=dev)#, id=devid)
+            elif 'ONT' in dev:
+                self.onts.append(Ont(name=dev))#, devid))
         self.devices = [self.olt]
         self.devices.extend(self.onts)
 
@@ -36,13 +26,8 @@ class ModelScheduler:
     def renew_schedule(self, cur_time):
         self.time = cur_time
         new_events = self.interrogate_devices()
-        for ev in new_events:
-            if ev not in self.schedule:
-                self.schedule.update(new_events)
-            elif ev in self.schedule and self.schedule[ev] != new_events[ev]:
-                self.schedule[ev].extend(new_events[ev])
-            else:
-                print('Планируемое событие уже есть в базе')
+        #for ev in new_events:
+        self.schedule = upd_schedule(self.schedule, new_events)
         return True
 
     def proceed_schedule(self, cur_time):
@@ -60,30 +45,29 @@ class ModelScheduler:
         return True
 
     def interrogate_devices(self):
-        events = dict()
+        new_events = dict()
         for dev in self.devices:
-            next_cycle = dev.calculate_next_transmission(self.time, self.current_requests)
-            evtime = self.time + 100
-            event = {evtime: [str(dev.id) + ' ' + next_cycle]}
-            if evtime not in self.schedule:
-                self.schedule.update(event)
-            elif evtime in self.schedule and self.schedule[evtime] != event[evtime]:
-                self.schedule[evtime].extend(event[evtime])
-        return events
+            event = dev.plan_next_act(self.time,
+                                           self.current_requests)
+            #event = {evtime: [str(dev.id) + ' ' + next_cycle]}
+            new_events = upd_schedule(new_events, event)
+        return new_events
 
     def proceed_events(self, events):
-        print(' ')
+        print(events)
 
 
 def main():
     sched = ModelScheduler('./network.json', 'basic_NSC')
-    time_horisont = 300
+    time_horisont = 500
     timestep = 125
     timesteps = time_horisont // timestep
     for step in range(timesteps):
         cur_time = step*timestep
+        print('time: {}'.format(cur_time))
         sched.proceed_schedule(cur_time)
         sched.renew_schedule(cur_time)
+        sleep(1)
 
 
 if __name__ == '__main__':
