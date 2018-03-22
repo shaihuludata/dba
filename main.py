@@ -20,7 +20,6 @@ class ModelScheduler:
         self.dba_algorithm = algorithm
         self.schedule = dict()
         self.current_requests = list()
-        self.renew_schedule(0)
         self.time = 0
 
     def renew_schedule(self, cur_time):
@@ -38,23 +37,23 @@ class ModelScheduler:
                 times.append(time)
 
         for t in range(len(times)):
-            print(self.schedule)
-            self.proceed_events(self.schedule[min(times)])
-            self.schedule.pop(min(times))
-            times.remove(min(times))
+            time = min(times)
+            self.proceed_events(self.schedule[time])
+            self.schedule.pop(time)
+            times.remove(time)
         return True
 
     def interrogate_devices(self):
         new_events = dict()
         for dev in self.devices:
-            event = dev.plan_next_act(self.time,
-                                           self.current_requests)
+            event = dev.plan_next_act(self.time, self.current_requests)
             #event = {evtime: [str(dev.id) + ' ' + next_cycle]}
             new_events = upd_schedule(new_events, event)
         return new_events
 
     def proceed_events(self, events):
-        print(events)
+        for ev in events:
+            ev()
 
 
 def main():
@@ -65,6 +64,7 @@ def main():
     for step in range(timesteps):
         cur_time = step*timestep
         print('time: {}'.format(cur_time))
+        print(sched.schedule)
         sched.proceed_schedule(cur_time)
         sched.renew_schedule(cur_time)
         sleep(1)
