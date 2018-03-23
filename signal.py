@@ -9,7 +9,3 @@ class Signal:
 
     def emit(self):
         return True
-
-    def split(self, ratio):
-        self.physics['power'] = self.physics * ratio
-        return self
