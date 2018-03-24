@@ -5,35 +5,37 @@
     "maximum_ont_amount": "32",
     "transmitter_power": "1",
     "transmitter_wavelength": "1550",
-    "0": "Splitter1::0"
+    "ports": {"0": "Splitter1::0"}
   },
   "ONT1":
   {
-    "1": "Splitter1::1",
+    "ports": {"1": "Splitter1::1"},
     "Alloc": ["even::even", "even::even"]
   },
   "ONT2":
   {
-    "2": "Splitter1::2",
+    "ports": {"2": "Splitter1::2"},
     "Alloc": ["even::even", "even::even"]
   },
   "ONT3":
   {
-    "3": "Splitter1::3",
+    "ports": {"3": "Splitter1::3"},
     "Alloc": ["even::even", "even::even"]
   },
   "ONT4":
   {
-    "4": "Splitter1::4",
+    "ports": {"4": "Splitter1::4"},
     "Alloc": ["even::even", "even::even"]
   },
   "Splitter1":
   {
     "type": "1:4",
-    "0": "OLT::0",
-    "1": "ONT1::1",
-    "2": "ONT2::2",
-    "3": "ONT3::3",
-    "4": "ONT4::4"
+    "ports": {
+      "0": "OLT::0",
+      "1": "ONT1::1",
+      "2": "ONT2::2",
+      "3": "ONT3::3",
+      "4": "ONT4::4"
+    }
   }
 }

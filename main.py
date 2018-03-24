@@ -44,7 +44,7 @@ class ModelScheduler:
             time = min(times)
             for event in self.schedule[time]:
                 local_device, local_port, sig = event()
-                remote_point = self.net[local_device][local_port]
+                remote_point = self.net[local_device]['ports'][str(local_port)]
                 remote_device, remote_port = remote_point.split("::")
                 dev = self.devices[remote_device]
                 new_port_sigs = dev.recv_signal(int(remote_port), sig)

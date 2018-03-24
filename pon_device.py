@@ -7,7 +7,7 @@ alloc_structure = OrderedDict(sorted(c_alloc.items(), key=lambda t: t[1]))
 
 class PonDevice:
 
-    def __init__(self, name, config):#, id):
+    def __init__(self, name, config):
         self.state = 'Standby'
         self.name = name
         self.config = config
