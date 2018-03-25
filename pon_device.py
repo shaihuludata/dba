@@ -5,6 +5,7 @@ from signal import Signal
 c_alloc = {'Alloc-ID': 1, 'Flags': 2, 'StartTime': 3, 'StopTime': 4, 'CRC': 5}
 alloc_structure = OrderedDict(sorted(c_alloc.items(), key=lambda t: t[1]))
 
+
 class PonDevice:
 
     def __init__(self, name, config):
@@ -21,10 +22,16 @@ class PonDevice:
         #data = 'nothing to send'
         #return {0: [data]}
 
-    def send_signal(self, port=0):
+    def s_start(self, sig: Signal, port=0):
         pass
 
-    def recv_signal(self, port:int, sig:Signal):
+    def r_start(self, sig: Signal, port: int):
+        pass
+
+    def s_end(self, port=0):
+        pass
+
+    def r_end(self):
         pass
 
 class Olt(PonDevice):
@@ -58,7 +65,7 @@ class Olt(PonDevice):
             bwmap.append('empty_bwmap_structure')
         return bwmap
 
-    def send_signal(self, port=0):
+    def s_start(self, sig, port=0):
         local_port = port
         print('sending GTC and bwmap', self.data_to_send, 'to {}'.format(local_port))
         sig = Signal(self.data_to_send)
@@ -68,6 +75,7 @@ class Olt(PonDevice):
 
     def recv_signal(self, port:int, sig:Signal):
         return
+
 
 class Ont(PonDevice):
 

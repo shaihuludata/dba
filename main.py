@@ -4,6 +4,7 @@ from passive_optics import Splitter
 from schedule_functions import upd_schedule, del_event_from_schedule
 from time import sleep
 
+
 class ModelScheduler:
     def __init__(self, net, algorithm):
         self.net = net
