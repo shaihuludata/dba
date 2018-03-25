@@ -42,7 +42,7 @@ class Olt(PonDevice):
         planned_time = planned_time_step * self.cycle_duration
         bwmap = self.make_bwmap(self.requests)
         self.data_to_send = bwmap
-        return {planned_time: [self.send_signal]}
+        return {planned_time: [self.s_start], planned_time + self.cycle_duration: [self.s_end]}
 
     def make_bwmap(self, requests):
         bwmap = list()
