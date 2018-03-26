@@ -10,21 +10,29 @@
   "ONT1":
   {
     "ports": {"1": "Splitter1::1"},
+    "transmitter_power": "1",
+    "transmitter_wavelength": "1310",
     "Alloc": ["even::even", "even::even"]
   },
   "ONT2":
   {
     "ports": {"2": "Splitter1::2"},
+    "transmitter_power": "1",
+    "transmitter_wavelength": "1310",
     "Alloc": ["even::even", "even::even"]
   },
   "ONT3":
   {
     "ports": {"3": "Splitter1::3"},
+    "transmitter_power": "1",
+    "transmitter_wavelength": "1310",
     "Alloc": ["even::even", "even::even"]
   },
   "ONT4":
   {
     "ports": {"4": "Splitter1::4"},
+    "transmitter_power": "1",
+    "transmitter_wavelength": "1310",
     "Alloc": ["even::even", "even::even"]
   },
   "Splitter1":
