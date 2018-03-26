@@ -95,7 +95,8 @@ class ModelScheduler:
                     for port in port_sig_dict:
                         sig = port_sig_dict[port]['sig']
                         if 'ONT' in l_dev.name or 'OLT' in l_dev.name:
-                            print('Сигнал {} принимается'.format(sig.id))
+                            #print('Сигнал {} принимается'.format(sig.id))
+                            continue
                         else:
                             new_event = {'dev': l_dev,
                                          'state': 's_start',

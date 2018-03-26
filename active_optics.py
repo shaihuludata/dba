@@ -26,7 +26,7 @@ class ActiveDevice(PonDevice):
         return (self.name, l_port, sig)
 
     def s_end(self, sig, port: int):
-        return {self.name, port, sig}
+        return (self.name, port, sig)
 
     def r_start(self, sig, port: int):
         output = {"sig": sig, "delay": self.cycle_duration}
