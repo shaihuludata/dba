@@ -9,28 +9,30 @@
   },
   "ONT1":
   {
-    "ports": {"1": "Splitter1::1"},
+    "ports": {"0": "Splitter1::1"},
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
+    "time_start": "100",
+    "time_end": "150",
     "Alloc": ["even::even", "even::even"]
   },
   "ONT2":
   {
-    "ports": {"2": "Splitter1::2"},
+    "ports": {"0": "Splitter1::2"},
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
     "Alloc": ["even::even", "even::even"]
   },
   "ONT3":
   {
-    "ports": {"3": "Splitter1::3"},
+    "ports": {"0": "Splitter1::3"},
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
     "Alloc": ["even::even", "even::even"]
   },
   "ONT4":
   {
-    "ports": {"4": "Splitter1::4"},
+    "ports": {"0": "Splitter1::4"},
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
     "Alloc": ["even::even", "even::even"]
@@ -40,10 +42,10 @@
     "type": "1:4",
     "ports": {
       "0": "OLT::0",
-      "1": "ONT1::1",
-      "2": "ONT2::2",
-      "3": "ONT3::3",
-      "4": "ONT4::4"
+      "1": "ONT1::0",
+      "2": "ONT2::0",
+      "3": "ONT3::0",
+      "4": "ONT4::0"
     }
   }
 }

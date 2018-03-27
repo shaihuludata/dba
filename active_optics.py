@@ -15,15 +15,16 @@ class ActiveDevice(PonDevice):
         self.cycle_duration = 125
         self.requests = list()
         self.data_to_send = str()
+        self.device_scheduler = dict()
 
     def plan_next_act(self, time):
         pass
         #data = 'nothing to send'
         #return {0: [data]}
 
-    def s_start(self, sig, l_port=0):
+    def s_start(self, sig, port: int):
         sig = self.eo_transform(sig)
-        return (self.name, l_port, sig)
+        return (self.name, port, sig)
 
     def s_end(self, sig, port: int):
         return (self.name, port, sig)
@@ -35,7 +36,7 @@ class ActiveDevice(PonDevice):
     def r_end(self, sig, port: int):
         sig = self.oe_transform(sig)
         output = {"sig": sig, "delay": self.cycle_duration}
-        return {}
+        return {port: output}
 
     def eo_transform(self, sig):
         optic_parameters = {'power': float(self.config['transmitter_power']),
@@ -68,6 +69,10 @@ class Olt(ActiveDevice):
         bwmap = self.make_bwmap(self.requests) #bwmap пока что пустая
         self.data_to_send = bwmap
         sig = Signal('{}:{}:{}'.format(time, self.name, planned_time), self.data_to_send)
+        if planned_time in self.device_scheduler:
+            return {}
+        else:
+            self.device_scheduler[planned_time] = sig.id
         return {planned_time:
                     [{"dev": self, "state": "s_start", "sig": sig, "port": 0}],
                 planned_time + self.cycle_duration:
@@ -102,12 +107,22 @@ class Olt(ActiveDevice):
 class Ont(ActiveDevice):
 
     def plan_next_act(self, time):
+        #эту часть надо поместить в тестирование
+        if "time_start" in self.config and "time_end" in self.config:
+            time_start = int(self.config["time_start"])
+            time_end = int(self.config["time_end"])
+            data = 'bugaga'
+            sig = Signal('{}:{}:{}'.format(time, self.name, time_start), data)
+            if time_start in self.device_scheduler:
+                return {}
+            else:
+                self.device_scheduler[time_start] = sig.id
+                return {time_start:
+                            [{"dev": self, "state": "s_start", "sig": sig, "port": 0}],
+                        time_end:
+                            [{"dev": self, "state": "s_end", "sig": sig, "port": 0}]
+                        }
         return {}
-
-    def send(self, data):
-        header = 'current header'
-        rdata = header + data
-        return rdata
 
     def request_bw(self):
         print('Sending req')

@@ -15,9 +15,11 @@ class PonDevice:
         pass
 
     def s_end(self, sig, port: int):
+        print('Not implemented')
         pass
 
     def r_end(self, sig, port: int):
+        print('Not implemented')
         pass
 
 

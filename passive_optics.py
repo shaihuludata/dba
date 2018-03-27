@@ -27,6 +27,9 @@ class Splitter(PassiveDevice):
         new_sig.physics['power'] *= ratio
         return new_sig
 
+    def s_start(self, sig, port):
+        return (self.name, port, sig)
+
     def r_start(self, sig, port:int):
         splitted_signals = dict()
         matrix_ratios = self.power_matrix[port]
@@ -38,6 +41,10 @@ class Splitter(PassiveDevice):
                 splitted_signals[out_port] = {"sig": splitted_sig, "delay": 0}
         return splitted_signals
 
-    def s_start(self, sig, port):
-        return (self.name, port, sig)
+    def s_end(self, sig, port: int):
+        output = (self.name, port, sig)#, "delay": 0}
+        return output#{port: output}
 
+    def r_end(self, sig, port: int):
+        # output = {"sig": sig, "delay": 0}
+        return self.r_start(sig, port)
