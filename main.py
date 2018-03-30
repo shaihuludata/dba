@@ -4,7 +4,7 @@ from scheduler import ModelScheduler
 
 
 def main():
-    net = json.load(open('./networks/network1.json'))
+    net = json.load(open('./networks/network2.json'))
     print('Net description: ', net)
     sched = ModelScheduler(net)
     time_horisont = 500
