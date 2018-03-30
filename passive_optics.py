@@ -12,7 +12,11 @@ class Splitter(PassiveDevice):
     def __init__(self, name, config):
         self.name = name
         self.type = config['type']
-        if self.type == '1:4':
+        if self.type == '1:2':
+            self.power_matrix = [[0, 0.25, 0.25],
+                                 [0.25, 0, 0],
+                                 [0.25, 0, 0]]
+        elif self.type == '1:4':
             self.power_matrix = [[0, 0.25, 0.25, 0.25, 0.25],
                                  [0.25, 0, 0, 0, 0],
                                  [0.25, 0, 0, 0, 0],
