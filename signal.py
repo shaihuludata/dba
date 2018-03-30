@@ -7,3 +7,9 @@ class Signal:
         self.physics['type'] = 'electric'
         self.data = data
 
+    def export(self):
+        # sig = dict()
+        # sig['name'] = self.id
+        # sig['physics'] = self.physics
+        # sig['data']
+        return self.__dict__

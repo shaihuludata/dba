@@ -1,0 +1,49 @@
+{
+  "OLT":
+  {
+    "dba_type": "static",
+    "maximum_ont_amount": "32",
+    "transmitter_power": "1",
+    "transmitter_wavelength": "1550",
+    "ports": {"0": "Splitter1::0"}
+  },
+  "ONT1":
+  {
+    "ports": {"0": "Splitter1::1"},
+    "transmitter_power": "1",
+    "transmitter_wavelength": "1310",
+    "Alloc": ["even::even", "even::even"]
+  },
+  "ONT2":
+  {
+    "ports": {"0": "Splitter1::2"},
+    "transmitter_power": "1",
+    "transmitter_wavelength": "1310",
+    "Alloc": ["even::even", "even::even"]
+  },
+  "ONT3":
+  {
+    "ports": {"0": "Splitter1::3"},
+    "transmitter_power": "1",
+    "transmitter_wavelength": "1310",
+    "Alloc": ["even::even", "even::even"]
+  },
+  "ONT4":
+  {
+    "ports": {"0": "Splitter1::4"},
+    "transmitter_power": "1",
+    "transmitter_wavelength": "1310",
+    "Alloc": ["even::even", "even::even"]
+  },
+  "Splitter1":
+  {
+    "type": "1:4",
+    "ports": {
+      "0": "OLT::0",
+      "1": "ONT1::0",
+      "2": "ONT2::0",
+      "3": "ONT3::0",
+      "4": "ONT4::0"
+    }
+  }
+}

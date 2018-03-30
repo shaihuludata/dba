@@ -12,8 +12,8 @@
     "ports": {"0": "Splitter1::1"},
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
-    "time_start": "100",
-    "time_end": "150",
+//    "time_start": "100",
+//    "time_end": "150",
     "Alloc": ["even::even", "even::even"]
   },
   "ONT2":

@@ -4,20 +4,18 @@ from scheduler import ModelScheduler
 
 
 def main():
-    net = json.load(open('./network.json'))
+    net = json.load(open('./networks/network1.json'))
     print('Net description: ', net)
-    sched = ModelScheduler(net, 'basic_NSC')
+    sched = ModelScheduler(net)
     time_horisont = 500
-    # timestep = 125
-    # timesteps = time_horisont // timestep
     cur_time = 0
-    while (cur_time < time_horisont):
-        sched.renew_schedule(cur_time)
+    while cur_time < time_horisont and len(sched.schedule) > 0:
         cur_time = min(sched.schedule)
         print('time: {}'.format(cur_time))
-        print(sched.schedule)
+        #print(sched.schedule)
         sched.proceed_schedule(cur_time)
-        sleep(1)
+        #sleep(1)
+    print('End of simulation')
 
 
 if __name__ == '__main__':
