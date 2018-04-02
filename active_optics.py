@@ -7,9 +7,12 @@ alloc_structure = OrderedDict(sorted(c_alloc.items(), key=lambda t: t[1]))
 
 
 class ActiveDevice(PonDevice):
+
     def __init__(self, name, config):
-        self.name = name
-        self.config = config
+        # self.name = name
+        # self.config = config
+        #super().__init__(self)#, name, config)
+        PonDevice.__init__(self, name, config)
         self.state = 'Standby'
         self.power_matrix = 0
         self.cycle_duration = 125
@@ -59,9 +62,6 @@ class ActiveDevice(PonDevice):
 
 
 class Olt(ActiveDevice):
-
-    # def __init__(self, name, config):
-    #     super(ActiveDevice, self).__init__()
 
     def plan_next_act(self, time):
         #if self.state == 'Transmitting':

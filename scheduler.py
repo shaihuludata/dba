@@ -114,6 +114,10 @@ class ModelScheduler:
         for observer in self.observers:
             observer.notice(self.schedule, self.time)
 
+    def make_results(self):
+        for observer in self.observers:
+            observer.make_results()
+
     # def renew_schedule(self, cur_time):
     #     self.time = cur_time
     #     new_events = self.interrogate_devices()
@@ -197,4 +201,3 @@ class ModelScheduler:
             if event is not None:
                 new_events = upd_schedule(new_events, event)
         return new_events
-

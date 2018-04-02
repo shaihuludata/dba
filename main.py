@@ -4,7 +4,7 @@ from scheduler import ModelScheduler
 
 
 def main():
-    net = json.load(open('./networks/network2.json'))
+    net = json.load(open('./networks/network3.json'))
     print('Net description: ', net)
     sched = ModelScheduler(net)
     time_horisont = 500
@@ -15,6 +15,8 @@ def main():
         #print(sched.schedule)
         sched.proceed_schedule(cur_time)
         #sleep(1)
+
+    sched.make_results()
     print('End of simulation')
 
 

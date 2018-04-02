@@ -16,7 +16,6 @@ for dtp in data_to_plot:
     #bp = ax.boxplot(dtp)#, capprops=dict(color="red"))
     ax.boxplot(dtp)
     fig.canvas.draw()
-    print(plt.isinteractive())
     time.sleep(1)
 
 #fig.savefig('fig1.png', bbox_inches='tight')

@@ -1,5 +1,9 @@
 import matplotlib
-
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib as mp
+# mp.use('agg')
+import time
 
 class Observer:
     def __init__(self):
@@ -12,28 +16,88 @@ class Observer:
 
         for time in passed_schedule:
             for event in passed_schedule[time]:
-                dev, state, sig, port = event['dev'], event['state'], event['sig'], str(event['port'])
-                point = dev.name + '::' + port
+                dev, state, sig, port = event['dev'], event['state'], event['sig'], event['port']
+                point = dev.name + '::' + str(port)
                 if point in self.observer_result:
                     time_sig = self.observer_result[point]
                 else:
                     time_sig = list()
-                time_sig.append((time, state, sig.__dict__))
+                time_sig.append({'time': time, 'state': state, 'sig': sig.__dict__})
                 self.observer_result[point] = time_sig
         return
 
+    def cook_result_for_dev(self, dev):
+        data = list()
+        for point in self.observer_result:
+            if dev in point:
+                for ev_start in self.observer_result[point]:
+                    if ev_start['state'] is 's_start':
+                        sig_id = ev_start['sig']['id']
+                        t_start = ev_start['time']
+                        for ev_end in self.observer_result[point]:
+                            if ev_end['state'] is 's_end':
+                                if ev_end['sig']['id'] == sig_id:
+                                    t_end = ev_end['time']
+                                    break
+                        if type(t_start) is int and type(t_end) is int:
+                            data.append([t_start, t_end])
+                        else:
+                            print('Сигнал {} не имеет завершающего события'.format(sig_id))
+                    #data = self.observer_result[point]
+        return data
+
+    def cook_result(self, dev_list):
+        points_data = dict() # {point: [[]]}
+        event_sequence = {'s_start': 's_end', 'r_start': 'r_end'}
+        for dev in dev_list:
+            for point in self.observer_result:
+                s_data, r_data = list(), list()
+                if dev in point:
+                    for ev_start in self.observer_result[point]:
+                        for ev_start_name in event_sequence:
+                            ev_end_name = event_sequence[ev_start_name]
+                            if ev_start['state'] is ev_start_name:
+                                sig_id = ev_start['sig']['id']
+                                t_start = ev_start['time']
+                                for ev_end in self.observer_result[point]:
+                                    if ev_end['state'] is ev_end_name:
+                                        if ev_end['sig']['id'] == sig_id:
+                                            t_end = ev_end['time']
+                                            break
+                                if type(t_start) is int:
+                                    if type(t_end) is int:
+                                        if ev_start_name == 's_start':
+                                            s_data.append([t_start, t_end])
+                                        elif ev_start_name == 'r_start':
+                                            r_data.append([t_start, t_end])
+                                    else:
+                                        print('Сигнал {} не имеет завершающего события'.format(sig_id))
+                        #data = self.observer_result[point]
+                    # upd_dict = dict()
+                    # for data in [s_data, r_data]
+                    points_data.update({point+'_send': s_data, point+'_receive': r_data})
+                    break
+            actual_dict = dict()
+            for point in points_data:
+                if len(points_data[point]) > 0:
+                    actual_dict[point] = points_data[point]
+            points_data = actual_dict
+        return points_data
+
     def make_results(self):
-        import numpy as np
-        import matplotlib.pyplot as plt
-        import matplotlib as mp
-        #mp.use('agg')
-
-        fig = plt.figure(1, figsize=(9, 6))
-        ax = fig.add_subplot(111)
-        data_to_plot = [np.array([1, 2, 3]), np.array([4, 6]), np.array([5, 10])]
-        bp = ax.boxplot(data_to_plot)#, capprops=dict(color="red"))
-
+        fig = plt.figure(1, figsize=(9, 9))
         fig.show()
-        #fig.savefig('fig1.png', bbox_inches='tight')
-        import time
+        ax = fig.add_subplot(111)
+        devs_to_watch = ['OLT', 'ONT1', 'ONT2']#, 'ONT3', 'ONT4']
+        #data_to_plot = self.cook_result_for_dev('OLT')  # [[1, 3], [4, 6], [5, 10]]
+        data_to_plot = self.cook_result(devs_to_watch)  # [[1, 3], [4, 6], [5, 10]]
+        points_to_watch = list(data_to_plot.keys())
+        #data_sorted_by_time = [list(i) for i in zip(*data_to_plot.values())]
+        data_sorted_by_time = map(list, zip(*data_to_plot.values()))
+        for dtp in data_sorted_by_time:
+            ax.boxplot(dtp)
+            fig.canvas.draw()
+        ax.set_xticklabels(points_to_watch)
+        fig.canvas.draw()
         time.sleep(10)
+        fig.savefig('fig1.png', bbox_inches='tight')
