@@ -47,7 +47,7 @@ class Observer:
         return data
 
     def cook_result(self, dev_list):
-        points_data = dict() # {point: [[]]}
+        points_data = dict()
         event_sequence = {'s_start': 's_end', 'r_start': 'r_end'}
         for dev in dev_list:
             for point in self.observer_result:
@@ -64,8 +64,8 @@ class Observer:
                                         if ev_end['sig']['id'] == sig_id:
                                             t_end = ev_end['time']
                                             break
-                                if type(t_start) is int:
-                                    if type(t_end) is int:
+                                if type(t_start) in [int, float]:
+                                    if type(t_end) in [int, float]:
                                         if ev_start_name == 's_start':
                                             s_data.append([t_start, t_end])
                                         elif ev_start_name == 'r_start':
@@ -77,18 +77,18 @@ class Observer:
                     # for data in [s_data, r_data]
                     points_data.update({point+'_send': s_data, point+'_receive': r_data})
                     break
-            actual_dict = dict()
-            for point in points_data:
-                if len(points_data[point]) > 0:
-                    actual_dict[point] = points_data[point]
-            points_data = actual_dict
+        actual_dict = dict()
+        for point in points_data:
+            if len(points_data[point]) > 0:
+                actual_dict[point] = points_data[point]
+        points_data = actual_dict
         return points_data
 
     def make_results(self):
         fig = plt.figure(1, figsize=(9, 9))
         fig.show()
         ax = fig.add_subplot(111)
-        devs_to_watch = ['OLT', 'ONT1', 'ONT2']#, 'ONT3', 'ONT4']
+        devs_to_watch = ['OLT', 'ONT1', 'ONT2', 'ONT3', 'ONT4']
         #data_to_plot = self.cook_result_for_dev('OLT')  # [[1, 3], [4, 6], [5, 10]]
         data_to_plot = self.cook_result(devs_to_watch)  # [[1, 3], [4, 6], [5, 10]]
         points_to_watch = list(data_to_plot.keys())

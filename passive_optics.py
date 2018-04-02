@@ -5,6 +5,7 @@ import math
 
 light_velocity = 2*10**8
 
+
 class PassiveDevice(PonDevice):
     def __init__(self, name, config):
         PonDevice.__init__(self, name, config)
@@ -27,8 +28,7 @@ class Splitter(PassiveDevice):
                                  [0.25, 0, 0, 0, 0],
                                  [0.25, 0, 0, 0, 0]]
         else:
-            print('Unknown Splitter type')
-            #raise Error
+            raise Exception('Unknown splitter type {}'.format(self.type))
 
     def multiply_power(self, sig, ratio):
         new_sig = copy.deepcopy(sig)
@@ -36,7 +36,7 @@ class Splitter(PassiveDevice):
         return new_sig
 
     def s_start(self, sig, port):
-        return (self.name, port, sig)
+        return self.name, port, sig
 
     def r_start(self, sig, port:int):
         transitted_signals = dict()
@@ -51,18 +51,20 @@ class Splitter(PassiveDevice):
 
     def s_end(self, sig, port: int):
         output = (self.name, port, sig)#, "delay": 0}
-        return output#{port: output}
+        return output
 
     def r_end(self, sig, port: int):
         # output = {"sig": sig, "delay": 0}
         return self.r_start(sig, port)
 
+
 class Fiber(Splitter):
+
     def __init__(self, name, config):
-        Splitter.__init__(self, name, config)
-        self.length = self.config['length']
-        self.delay = self.length / light_velocity
-        self.type = self.config["type"] #возможно это уже было в старшем класса
+        PassiveDevice.__init__(self, name, config)
+        self.type = self.config['type']
+        self.length = float(self.config['length'])
+        self.delay = 10**6 * 1000 * self.length / light_velocity
         if self.type == "G657":
             self.att = 0.22
         else:
@@ -71,29 +73,19 @@ class Fiber(Splitter):
         self.power_matrix = [[0, ratio],
                              [ratio, 0]]
 
-    def s_start(self, sig, port):
-        return (self.name, port, sig)
-
-    def r_start(self, sig, port:int):
+    def r_start(self, sig, port: int):
         transitted_signals = dict()
         matrix_ratios = self.power_matrix[port]
         for out_port in range(len(matrix_ratios)):
             ratio = matrix_ratios[out_port]
-            splitted_sig = self.multiply_power(sig, ratio)
-            splitted_sig.id += ':{}:{}'.format(self.name, out_port)
-            if splitted_sig.physics['power'] > 0:
-                transitted_signals[out_port] = {"sig": splitted_sig, "delay": 0}
+            out_sig = self.multiply_power(sig, ratio)
+            out_sig.id += ':{}:{}'.format(self.name, out_port)
+            if out_sig.physics['power'] > 0:
+                transitted_signals[out_port] = {"sig": out_sig, "delay": self.delay}
         return transitted_signals
-        print('')
-        # splitted_signals = dict()
-        # matrix_ratios = self.power_matrix[port]
-        #
-        #return {out_port: {"sig": sig, "delay": self.delay}}
 
-    def s_end(self, sig, port: int):
-        output = (self.name, port, sig)#, "delay": 0}
-        return output#{port: output}
+    # def r_end(self, sig, port: int):
+    #     #output = {"sig": sig, "delay": 0}
+    #     output = self.r_start(sig, port)
+    #     return output
 
-    def r_end(self, sig, port: int):
-        # output = {"sig": sig, "delay": 0}
-        return self.r_start(sig, port)

@@ -1,4 +1,4 @@
-from passive_optics import Splitter
+from passive_optics import Splitter, Fiber
 from active_optics import Olt, Ont
 from observers import Observer
 #schedule = {time : [event]}
@@ -99,6 +99,8 @@ class ModelScheduler:
             elif 'Splitter' in dev:
                 splitter = Splitter(name=dev, config=net[dev])
                 self.devices[dev] = splitter
+            elif 'Fiber' in dev:
+                self.devices[dev] = Fiber(name=dev, config=net[dev])
 
         self.observers = list()
         self.observers.append(Observer())
@@ -132,6 +134,8 @@ class ModelScheduler:
             state, sig = event['state'], event['sig']
             l_dev, l_port = event['dev'], event['port']
             print('{} sig, Time {} device {} {}'.format(sig.id, cur_time, l_dev.name, state))
+            # if 'Fiber' in l_dev.name:
+            #     print('')
             if state == 's_start':
                 l_device, l_port, sig = l_dev.s_start(sig, l_port)
                 r_device, r_port = self.net[l_device]['ports'][str(l_port)].split("::")
@@ -184,7 +188,8 @@ class ModelScheduler:
                                      'state': 's_end',
                                      'sig': port_sig_dict[port]['sig'],
                                      'port': port}
-                        new_events = upd_schedule(new_events, {cur_time: [new_event]})
+                        delay = port_sig_dict[port]['delay']
+                        new_events = upd_schedule(new_events, {cur_time + delay: [new_event]})
             else:
                 raise Exception('{} Non implemented'.format(state))
         self.schedule = upd_schedule(self.schedule, new_events)
