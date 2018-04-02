@@ -27,10 +27,10 @@ class ActiveDevice(PonDevice):
 
     def s_start(self, sig, port: int):
         sig = self.eo_transform(sig)
-        return (self.name, port, sig)
+        return self.name, port, sig
 
     def s_end(self, sig, port: int):
-        return (self.name, port, sig)
+        return self.name, port, sig
 
     def r_start(self, sig, port: int):
         output = {"sig": sig, "delay": self.cycle_duration}
