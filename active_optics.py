@@ -100,9 +100,6 @@ class Olt(ActiveDevice):
             bwmap.append('empty_bwmap_structure')
         return bwmap
 
-    # def r_start(self, sig, port:int):
-    #     return
-
 
 class Ont(ActiveDevice):
 
