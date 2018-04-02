@@ -84,6 +84,7 @@ class Fiber(Splitter):
             if splitted_sig.physics['power'] > 0:
                 transitted_signals[out_port] = {"sig": splitted_sig, "delay": 0}
         return transitted_signals
+        print('')
         # splitted_signals = dict()
         # matrix_ratios = self.power_matrix[port]
         #
