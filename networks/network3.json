@@ -48,7 +48,7 @@
   },
   "Fiber3":
   {
-    "length": "30",
+    "length": "5",
     "type": "G657",
     "ports": {"0": "ONT3::0", "1": "Splitter1::3"}
   },

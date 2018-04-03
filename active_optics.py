@@ -1,6 +1,7 @@
 from pon_device import PonDevice
 from collections import OrderedDict
 from signal import Signal
+import random
 
 c_alloc = {'Alloc-ID': 1, 'Flags': 2, 'StartTime': 3, 'StopTime': 4, 'CRC': 5}
 alloc_structure = OrderedDict(sorted(c_alloc.items(), key=lambda t: t[1]))
@@ -9,9 +10,6 @@ alloc_structure = OrderedDict(sorted(c_alloc.items(), key=lambda t: t[1]))
 class ActiveDevice(PonDevice):
 
     def __init__(self, name, config):
-        # self.name = name
-        # self.config = config
-        #super().__init__(self)#, name, config)
         PonDevice.__init__(self, name, config)
         self.state = 'Standby'
         self.power_matrix = 0
@@ -73,10 +71,8 @@ class Olt(ActiveDevice):
             return {}
         else:
             self.device_scheduler[planned_time] = sig.id
-        return {planned_time:
-                    [{"dev": self, "state": "s_start", "sig": sig, "port": 0}],
-                planned_time + self.cycle_duration:
-                    [{"dev": self, "state": "s_end", "sig": sig, "port": 0}]
+        return {planned_time: [{"dev": self, "state": "s_start", "sig": sig, "port": 0}],
+                planned_time + self.cycle_duration: [{"dev": self, "state": "s_end", "sig": sig, "port": 0}]
                 }
 
     def make_bwmap(self, requests):
@@ -114,15 +110,18 @@ class Ont(ActiveDevice):
                 return {}
             else:
                 self.device_scheduler[time_start] = sig.id
-                return {time_start:
-                            [{"dev": self, "state": "s_start", "sig": sig, "port": 0}],
-                        time_end:
-                            [{"dev": self, "state": "s_end", "sig": sig, "port": 0}]
+                return {time_start: [{"dev": self, "state": "s_start", "sig": sig, "port": 0}],
+                        time_end: [{"dev": self, "state": "s_end", "sig": sig, "port": 0}]
                         }
         return {}
 
     def request_bw(self):
         print('Sending req')
+
+    def r_end(self, sig, port: int):
+        sig = self.oe_transform(sig)
+        output = {"sig": sig, "delay": self.cycle_duration}
+        return {port: output}
 
     # def s_start(self, sig, port:int):
     #     return
