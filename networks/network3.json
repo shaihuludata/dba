@@ -18,6 +18,7 @@
     "ports": {"0": "Fiber1::0"},
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
+    "activation_time": 0,
     "Alloc": ["even::even", "even::even"]
   },
   "Fiber1":
@@ -31,6 +32,7 @@
     "ports": {"0": "Splitter1::2"},
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
+    "activation_time": 0.3,
     "Alloc": ["even::even", "even::even"]
   },
   "Fiber2":
@@ -44,6 +46,7 @@
     "ports": {"0": "Splitter1::3"},
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
+    "activation_time": 0.5,
     "Alloc": ["even::even", "even::even"]
   },
   "Fiber3":
@@ -57,6 +60,7 @@
     "ports": {"0": "Splitter1::4"},
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
+    "activation_time": 1,
     "Alloc": ["even::even", "even::even"]
   },
   "Fiber4":
