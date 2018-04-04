@@ -120,11 +120,6 @@ class ModelScheduler:
         for observer in self.observers:
             observer.make_results()
 
-    # def renew_schedule(self, cur_time):
-    #     self.time = cur_time
-    #     new_events = self.interrogate_devices()
-    #     return True
-
     def proceed_schedule(self, cur_time):
         self.time = cur_time
         self.notify_observers()
@@ -140,11 +135,7 @@ class ModelScheduler:
                 l_device, l_port, sig = l_dev.s_start(sig, l_port)
                 r_device, r_port = self.net[l_device]['ports'][str(l_port)].split("::")
                 r_dev = self.devices[r_device]
-
-                new_event = {'dev': r_dev,
-                             'state': 'r_start',
-                             'sig': sig,
-                             'port': int(r_port)}
+                new_event = {'dev': r_dev, 'state': 'r_start', 'sig': sig, 'port': int(r_port)}
                 new_events = upd_schedule(new_events, {cur_time: [new_event]})
             elif state == 'r_start':
                 port_sig_dict = l_dev.r_start(sig, l_port)
@@ -155,10 +146,8 @@ class ModelScheduler:
                     continue
                 else:
                     for port in port_sig_dict:
-                        new_event = {'dev': l_dev,
-                                     'state': 's_start',
-                                     'sig': port_sig_dict[port]['sig'],
-                                     'port': port}
+                        new_event = {'dev': l_dev, 'state': 's_start',
+                                     'sig': port_sig_dict[port]['sig'], 'port': port}
                         delay = port_sig_dict[port]['delay']
                         new_events = upd_schedule(new_events, {cur_time + delay: [new_event]})
             elif state == 's_end':
@@ -168,10 +157,7 @@ class ModelScheduler:
                 except:
                     raise
                 r_dev = self.devices[r_device]
-                new_event = {'dev': r_dev,
-                             'state': 'r_end',
-                             'sig': sig,
-                             'port': int(r_port)}
+                new_event = {'dev': r_dev, 'state': 'r_end', 'sig': sig, 'port': int(r_port)}
                 new_events = upd_schedule(new_events, {cur_time: [new_event]})
             elif state == 'r_end':
                 port_sig_dict = l_dev.r_end(sig, l_port)
@@ -184,10 +170,8 @@ class ModelScheduler:
                     for port in port_sig_dict:
                         # r_device, r_port = self.net[l_dev.name]['ports'][str(port)].split("::")
                         # r_dev = self.devices[r_device]
-                        new_event = {'dev': l_dev,
-                                     'state': 's_end',
-                                     'sig': port_sig_dict[port]['sig'],
-                                     'port': port}
+                        new_event = {'dev': l_dev, 'state': 's_end',
+                                     'sig': port_sig_dict[port]['sig'], 'port': port}
                         delay = port_sig_dict[port]['delay']
                         new_events = upd_schedule(new_events, {cur_time + delay: [new_event]})
             else:

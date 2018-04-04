@@ -11,7 +11,7 @@ class ActiveDevice(PonDevice):
 
     def __init__(self, name, config):
         PonDevice.__init__(self, name, config)
-        self.state = 'Standby'
+        self.state = 'Initial'
         self.power_matrix = 0
         self.cycle_duration = 125
         self.requests = list()
@@ -61,6 +61,8 @@ class ActiveDevice(PonDevice):
 
 class Olt(ActiveDevice):
 
+    serial_number_request_interval = 125
+
     def plan_next_act(self, time):
         #if self.state == 'Transmitting':
         planned_time = round(time/self.cycle_duration + 0.51) * self.cycle_duration
@@ -98,21 +100,30 @@ class Olt(ActiveDevice):
 
 
 class Ont(ActiveDevice):
+    TO1 = 0 #Serial number acquisition and ranging timer
+    TO2 = 0 #POPUP timer
+    # def __init__(self, name, config):
+    #     ActiveDevice.__init__(self, name, config)
+    #
 
     def plan_next_act(self, time):
-        #эту часть надо поместить в тестирование
-        if "time_start" in self.config and "time_end" in self.config:
-            time_start = int(self.config["time_start"])
-            time_end = int(self.config["time_end"])
-            data = 'bugaga'
-            sig = Signal('{}:{}:{}'.format(time, self.name, time_start), data)
-            if time_start in self.device_scheduler:
-                return {}
-            else:
-                self.device_scheduler[time_start] = sig.id
-                return {time_start: [{"dev": self, "state": "s_start", "sig": sig, "port": 0}],
-                        time_end: [{"dev": self, "state": "s_end", "sig": sig, "port": 0}]
-                        }
+        if self.state is 'Initial':
+            pass
+        elif self.state is 'Standby':
+            if "activation_time" in self.config:
+                time_start = self.config["activation_time"]
+                time_end = time_start + 10
+        elif self.state is 'SerialNumber':
+            pass
+        elif self.state is 'Ranging':
+            pass
+        elif self.state is 'Operation':
+            pass
+        elif self.state is 'POPUP':
+            pass
+        elif self.state is 'EmergencyStop':
+            pass
+
         return {}
 
     def request_bw(self):
