@@ -9,8 +9,8 @@ def main():
     sched = ModelScheduler(net)
     time_horisont = 400
     cur_time = 0
-    while cur_time < time_horisont and len(sched.schedule) > 0:
-        cur_time = min(sched.schedule)
+    while cur_time < time_horisont and len(sched.schedule.events) > 0:
+        cur_time = min(sched.schedule.events)
         print('time: {}'.format(cur_time))
         #print(sched.schedule)
         sched.proceed_schedule(cur_time)
