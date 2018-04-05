@@ -3,6 +3,7 @@ from active_optics import Olt, Ont
 from observers import Observer
 #schedule = {time : [event]}
 
+
 class Schedule:
     events = dict()
 
@@ -81,6 +82,7 @@ class ModelScheduler:
     def proceed_schedule(self, cur_time):
         self.time = cur_time
         self.notify_observers()
+        self.schedule.upd_schedule(self.interrogate_devices())
         current_events = self.schedule.events.pop(cur_time)
         new_sched = Schedule()
         for event in current_events:
@@ -90,6 +92,8 @@ class ModelScheduler:
             # if 'Fiber' in l_dev.name:
             #     print('')
             if state == 's_start':
+                if 'OLT' in l_dev.name:
+                    print('')
                 l_device, l_port, sig = l_dev.s_start(sig, l_port)
                 r_device, r_port = self.net[l_device]['ports'][str(l_port)].split("::")
                 r_dev = self.devices[r_device]
@@ -124,6 +128,10 @@ class ModelScheduler:
                         sig = port_sig_dict[port]['sig']
                         if sig.physics['type'] == 'electric':
                             print('Сигнал {} доставлен и принят {}'.format(sig.id, l_dev.name))
+                        new_event = {'dev': l_dev, 'state': 's_start',
+                                     'sig': port_sig_dict[port]['sig'], 'port': port}
+                        delay = port_sig_dict[port]['delay']
+                        new_sched.upd_schedule({cur_time + delay: [new_event]})
                 else:
                     for port in port_sig_dict:
                         # r_device, r_port = self.net[l_dev.name]['ports'][str(port)].split("::")
@@ -135,7 +143,6 @@ class ModelScheduler:
             else:
                 raise Exception('{} Non implemented'.format(state))
         self.schedule.upd_schedule(new_sched.events)
-        self.schedule.upd_schedule(self.interrogate_devices())
         return True
 
     def interrogate_devices(self):
