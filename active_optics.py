@@ -5,11 +5,9 @@ import random
 
 c_alloc = {'Alloc-ID': 1, 'Flags': 2, 'StartTime': 3, 'StopTime': 4, 'CRC': 5}
 alloc_structure = OrderedDict(sorted(c_alloc.items(), key=lambda t: t[1]))
-
+dumb_event = {'dev': None, 'state': 'dumb_event', 'sig': None, 'port': None}
 
 class ActiveDevice(PonDevice):
-    receiving_sig = list() #на самом деле, должна быть привязка к порту, наверное...
-
     def __init__(self, name, config):
         PonDevice.__init__(self, name, config)
         self.state = 'Offline'
@@ -18,8 +16,13 @@ class ActiveDevice(PonDevice):
         self.requests = list()
         self.data_to_send = dict()
         self.device_scheduler = dict()
+        # TODO: в следующей версии, предусмотреть вместо списка словарь порт: список сигналов
+        # либо в дальнейшем перенести мониторинг коллизий на наблюдателя контрольных точек
+        self.receiving_sig = list()
+        self.time = 0
 
     def plan_next_act(self, time):
+        self.time = time
         pass
         #data = 'nothing to send'
         #return {0: [data]}
@@ -32,7 +35,7 @@ class ActiveDevice(PonDevice):
         return self.name, port, sig
 
     def r_start(self, sig, port: int):
-        if len(self.receiving_sig) == 0:
+        if len(self.receiving_sig) > 0:
             print('{} ИНТЕРФЕРЕНЦИОННАЯ КОЛЛИЗИЯ на порту {}!!!'
                   .format(self.name, port))
         self.receiving_sig.append(sig)
@@ -67,37 +70,51 @@ class ActiveDevice(PonDevice):
 
 class Olt(ActiveDevice):
 
-    serial_number_request_interval = 250
+    serial_number_request_interval = 2500
+    serial_number_quiet_interval = 200
+
     def __init__(self, name, config):
         ActiveDevice.__init__(self, name, config)
-        self.last_time_sn_request = -250
+        self.sn_request_last_time = -2250
+        self.sn_request_quiet_interval_end = 0
+        self.ont_discovered = list()
 
     def plan_next_act(self, time):
+        self.time = time
         if self.state == 'Offline':
             self.state = 'Initial'
-            return {}
-        else:
-            planned_time = round(time/self.cycle_duration + 0.51) * self.cycle_duration
-            bwmap = self.make_bwmap(self.requests) #bwmap пока что пустая
-            self.data_to_send = {'bwmap': bwmap}
-            self.data_to_send['sn_request'] =\
-                (time - self.last_time_sn_request) >= self.serial_number_request_interval
-
-            sig = Signal('{}:{}:{}'
-                         .format(time, self.name, planned_time), self.data_to_send)
-            if planned_time in self.device_scheduler:
-                return {}
+            time = time + self.cycle_duration
+        planned_s_time = round(time / self.cycle_duration + 0.51) * self.cycle_duration
+        planned_e_time = planned_s_time + self.cycle_duration
+        sig = None
+        if self.state == 'Initial':
+            if planned_s_time not in self.device_scheduler:
+                self.data_to_send = self.make_bwmap(time, self.requests)
+                sig = Signal('{}:{}:{}'
+                             .format(planned_s_time, self.name, planned_e_time), self.data_to_send)
+                self.device_scheduler[planned_s_time] = sig.id
+                return {planned_s_time:
+                            [{"dev": self, "state": "s_start", "sig": sig, "port": 0}],
+                        planned_e_time:
+                            [{"dev": self, "state": "s_end", "sig": sig, "port": 0}]
+                        }
             else:
-                self.device_scheduler[planned_time] = sig.id
-            return {planned_time:
-                        [{"dev": self, "state": "s_start", "sig": sig, "port": 0}],
-                    planned_time + self.cycle_duration:
-                        [{"dev": self, "state": "s_end", "sig": sig, "port": 0}]
-                    }
+                return {}
 
-    def make_bwmap(self, requests):
+    def make_bwmap(self, time, requests):
         bwmap = list()
-        if self.config['dba_type'] == 'static':
+        sn_request = False
+        if (time - self.sn_request_last_time) >= self.serial_number_request_interval:
+            self.sn_request_last_time = time
+            self.sn_request_quiet_interval_end = time + self.serial_number_quiet_interval
+            sn_request = True
+            alloc_structure['Alloc-ID'] = 'to_all'
+            alloc_structure['Flags'] = 0
+            alloc_structure['StartTime'] = time
+            alloc_structure['StopTime'] = time + self.serial_number_quiet_interval
+            allocation = alloc_structure
+            bwmap.append(allocation)
+        elif self.config['dba_type'] == 'static':
             alloc_id_counter = 0
             maximum_ont_amount = self.config['maximum_ont_amount']
             for req in requests:
@@ -114,7 +131,18 @@ class Olt(ActiveDevice):
             print('Unknown dba_type {}'.format(self.config['dba_type']))
         if len(bwmap) == 0:
             bwmap.append('empty_bwmap_structure')
-        return bwmap
+        return {'bwmap': bwmap, 'sn_request': sn_request}
+
+    def r_end(self, sig, port: int):
+        for rec_sig in self.receiving_sig:
+            if rec_sig.id == sig.id:
+                self.receiving_sig.remove(rec_sig)
+                break
+        if 'sn_response' in sig.data and self.time < self.sn_request_quiet_interval_end:
+            self.ont_discovered.append(sig.data['sn_response'])
+            sig = self.oe_transform(sig)
+        #output = {"sig": sig, "delay": delay}
+        return {}#port: output}
 
 
 class Ont(ActiveDevice):
@@ -122,8 +150,20 @@ class Ont(ActiveDevice):
     TO2 = 0 #POPUP timer
     # def __init__(self, name, config):
     #     ActiveDevice.__init__(self, name, config)
+    min_onu_resp_time = 236
+
+    def __init__(self, name, config):
+        ActiveDevice.__init__(self, name, config)
+        if "activation_time" in self.config:
+            self.time_activation = self.config['activation_time'] * 1000
+            self.state = 'Offline'
+        else:
+            self.state = 'Initial'
 
     def plan_next_act(self, time):
+        self.time = time
+        if self.state is 'Offline' and time > self.time_activation:
+            self.state = 'Initial'
         if self.state is 'Initial':
             pass
         elif self.state is 'Standby':
@@ -162,13 +202,20 @@ class Ont(ActiveDevice):
     # return {port: output}
 
     def r_end(self, sig, port: int):
+        for rec_sig in self.receiving_sig:
+            if rec_sig.id == sig.id:
+                self.receiving_sig.remove(rec_sig)
+                break
         if self.state == 'Initial':
             self.state = 'Standby'
         elif self.state == 'Standby':
         # delimiter value, power level mode and pre-assigned delay)
             #тут нужно из сигнала вытащить запрос SN
-            print(sig)
-        sig = self.oe_transform(sig)
-        output = {"sig": sig, "delay": self.cycle_duration}
-        return {port: output}
-
+            if sig.data['sn_request']:
+                delay = self.min_onu_resp_time
+                resp_sig = self.oe_transform(sig)
+                resp_sig.data['sn_response'] = self.name
+                # print(sig)
+                output = {"sig": sig, "delay": delay}
+                return {port: output}
+        return {}

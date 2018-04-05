@@ -9,21 +9,22 @@ class Observer:
     def __init__(self):
         self.name = 'some kind of observer'
         self.observer_result = dict()
-        #{dev.name + '::' + port: [(time, sig.__dict__)]}
+        # {dev.name + '::' + port: [(time, sig.__dict__)]}
 
     def notice(self, schedule, cur_time):
         passed_schedule = {time: schedule[time] for time in schedule if time <= cur_time}
 
-        for time in passed_schedule:
-            for event in passed_schedule[time]:
+        for ev_time in passed_schedule:
+            for event in passed_schedule[ev_time]:
                 dev, state, sig, port = event['dev'], event['state'], event['sig'], event['port']
-                point = dev.name + '::' + str(port)
-                if point in self.observer_result:
-                    time_sig = self.observer_result[point]
-                else:
-                    time_sig = list()
-                time_sig.append({'time': time, 'state': state, 'sig': sig.__dict__})
-                self.observer_result[point] = time_sig
+                if event['state'] in ['s_start', 's_end', 'r_start', 'r_end']:
+                    point = dev.name + '::' + str(port)
+                    if point in self.observer_result:
+                        time_sig = self.observer_result[point]
+                    else:
+                        time_sig = list()
+                    time_sig.append({'time': ev_time, 'state': state, 'sig': sig.__dict__})
+                    self.observer_result[point] = time_sig
         return
 
     def cook_result_for_dev(self, dev):
@@ -85,7 +86,7 @@ class Observer:
         return points_data
 
     def make_results(self):
-        fig = plt.figure(1, figsize=(9, 9))
+        fig = plt.figure(1, figsize=(15, 15))
         fig.show()
         ax = fig.add_subplot(111)
         devs_to_watch = ['OLT', 'ONT1', 'ONT2', 'ONT3', 'ONT4']
