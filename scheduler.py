@@ -93,7 +93,9 @@ class ModelScheduler:
             #     print('')
             if state == 's_start':
                 if 'OLT' in l_dev.name:
-                    print('')
+                    pass
+                elif 'ONT' in l_dev.name:
+                    pass
                 l_device, l_port, sig = l_dev.s_start(sig, l_port)
                 r_device, r_port = self.net[l_device]['ports'][str(l_port)].split("::")
                 r_dev = self.devices[r_device]

@@ -92,13 +92,21 @@ class Observer:
         devs_to_watch = ['OLT', 'ONT1', 'ONT2', 'ONT3', 'ONT4']
         #data_to_plot = self.cook_result_for_dev('OLT')  # [[1, 3], [4, 6], [5, 10]]
         data_to_plot = self.cook_result(devs_to_watch)  # [[1, 3], [4, 6], [5, 10]]
+        number_of_events_per_point = list()
+        for i in data_to_plot.values():
+            number_of_events_per_point.append(len(i))
+        horisont_event_data = max(number_of_events_per_point)
+
+        for point in data_to_plot:
+            for i in range(horisont_event_data - len(data_to_plot[point])):
+                data_to_plot[point].append([0, 0])
         points_to_watch = list(data_to_plot.keys())
-        #data_sorted_by_time = [list(i) for i in zip(*data_to_plot.values())]
         data_sorted_by_time = map(list, zip(*data_to_plot.values()))
         for dtp in data_sorted_by_time:
             ax.boxplot(dtp)
+            ax.set_xticklabels(points_to_watch)
             fig.canvas.draw()
-        ax.set_xticklabels(points_to_watch)
+            #time.sleep(1)
         fig.canvas.draw()
         time.sleep(10)
         fig.savefig('fig1.png', bbox_inches='tight')

@@ -10,7 +10,7 @@
   },
   "Fiber0":
   {
-    "length": "1",
+    "length": "10",
     "type": "G657",
     "ports": {"0": "OLT::0", "1": "Splitter1::0"}
   },
@@ -24,7 +24,7 @@
   },
   "Fiber1":
   {
-    "length": "5",
+    "length": "2",
     "type": "G657",
     "ports": {"0": "ONT1::0", "1": "Splitter1::1"}
   },
@@ -33,12 +33,12 @@
     "ports": {"0": "Fiber2::0"},
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
-    "activation_time": 0.2,
+    "activation_time": 2,
     "Alloc": ["even::even", "even::even"]
   },
   "Fiber2":
   {
-    "length": "10",
+    "length": "4",
     "type": "G657",
     "ports": {"0": "ONT2::0", "1": "Splitter1::2"}
   },
@@ -47,12 +47,12 @@
     "ports": {"0": "Fiber3::0"},
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
-    "activation_time": 0.3,
+    "activation_time": 5,
     "Alloc": ["even::even", "even::even"]
   },
   "Fiber3":
   {
-    "length": "15",
+    "length": "6",
     "type": "G657",
     "ports": {"0": "ONT3::0", "1": "Splitter1::3"}
   },
@@ -61,12 +61,12 @@
     "ports": {"0": "Fiber4::0"},
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
-    "activation_time": 0.4,
+    "activation_time": 6,
     "Alloc": ["even::even", "even::even"]
   },
   "Fiber4":
   {
-    "length": "20",
+    "length": "8",
     "type": "G657",
     "ports": {"0": "ONT4::0", "1": "Splitter1::4"}
   },

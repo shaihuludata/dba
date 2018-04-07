@@ -5,6 +5,7 @@ class Signal:
         self.id = id
         self.physics = dict()
         self.physics['type'] = 'electric'
+        self.physics['collision'] = False
         self.data = data
 
     def export(self):

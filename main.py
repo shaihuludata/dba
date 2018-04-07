@@ -4,10 +4,10 @@ from scheduler import ModelScheduler
 
 
 def main():
-    net = json.load(open('./networks/network3.json'))
+    net = json.load(open('./networks/network4.json'))
     print('Net description: ', net)
     sched = ModelScheduler(net)
-    time_horisont = 600
+    time_horisont = 1500
     cur_time = 0
     while cur_time < time_horisont and len(sched.schedule.events) > 0:
         cur_time = min(sched.schedule.events)
