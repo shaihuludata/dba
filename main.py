@@ -15,8 +15,6 @@ def main():
         #print(sched.schedule)
         sched.proceed_schedule(cur_time)
         #sleep(1)
-        if cur_time > 10000:
-            pass
 
     sched.make_results()
     print('End of simulation')
