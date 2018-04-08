@@ -238,10 +238,12 @@ class Ont(ActiveDevice):
                     planned_e_time:
                         [{"dev": self, "state": "s_end", "sig": resp_sig, "port": 0}]
                 })
-                self.state = 'SerialNumber'
+                # Формально тут должно быть 'SerialNumber'
+                # но без потери смысла для симуляции должно быть Ranging
+                self.state = 'Ranging'
                 # print(sig)
                 # output = {"sig": sig, "delay": delay}
                 return {}# port: output}
-        elif self.state == 'SerialNumber':
+        elif self.state == 'Ranging':
             print('')
         return {}
