@@ -77,7 +77,7 @@ class Olt(ActiveDevice):
         self.serial_number_request_interval = self.config['sn_request_interval']
         self.sn_request_last_time = -2250
         self.sn_request_quiet_interval_end = 0
-        self.ont_discovered = list()
+        self.ont_discovered = dict()
         self.next_cycle_start = 0
 
     def plan_next_act(self, time):
@@ -149,7 +149,8 @@ class Olt(ActiveDevice):
                     return {}
                 break
         if 'sn_response' in sig.data and self.time < self.sn_request_quiet_interval_end:
-            self.ont_discovered.append(sig.data['sn_response'])
+            #self.ont_discovered.append(sig.data['sn_response'])
+            self.ont_discovered[sig.data['sn_response']] = None
             sig = self.oe_transform(sig)
         #output = {"sig": sig, "delay": delay}
         return {}#port: output}
