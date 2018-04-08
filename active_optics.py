@@ -121,7 +121,7 @@ class Olt(ActiveDevice):
                 alloc_structure['Alloc-ID'] = alloc_id_counter
                 alloc_structure['Flags'] = 0
                 alloc_structure['StartTime'] = alloc_id_counter * 100
-                alloc_structure['StopTime'] = alloc_id_counter * 100 + 100
+                alloc_structure['StopTime'] = alloc_id_counter * 100 + 1001
                 alloc_structure['CRC'] = 0
                 allocation = alloc_structure
                 bwmap.append(allocation)
@@ -243,5 +243,5 @@ class Ont(ActiveDevice):
                 # output = {"sig": sig, "delay": delay}
                 return {}# port: output}
         elif self.state == 'SerialNumber':
-            pass
+            print('')
         return {}
