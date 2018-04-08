@@ -1,5 +1,6 @@
 from passive_optics import Splitter, Fiber
-from active_optics import Olt, Ont
+from active_olt import Olt
+from active_ont import Ont
 from observers import Observer
 #schedule = {time : [event]}
 
