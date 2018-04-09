@@ -2,10 +2,15 @@ from active_optics import ActiveDevice
 from collections import OrderedDict
 from signal import Signal
 
-c_alloc = {'Alloc-ID': 1, 'Flags': 2, 'StartTime': 3, 'StopTime': 4, 'CRC': 5}
-alloc_structure = OrderedDict(sorted(c_alloc.items(), key=lambda t: t[1]))
 dumb_event = {'dev': None, 'state': 'dumb_event', 'sig': None, 'port': None}
 
+# class C_Alloc:
+#     def __init__(self):
+#         c_alloc = {'Alloc-ID': 1, 'Flags': 2, 'StartTime': 3, 'StopTime': 4, 'CRC': 5}
+#         self.alloc_structure = OrderedDict(sorted(c_alloc.items(), key=lambda t: t[1]))
+#
+#     def new_alloc(self):
+#         return self.alloc_structure
 
 class Olt(ActiveDevice):
     serial_number_quiet_interval = 200
@@ -13,10 +18,16 @@ class Olt(ActiveDevice):
     def __init__(self, name, config):
         ActiveDevice.__init__(self, name, config)
         self.serial_number_request_interval = self.config['sn_request_interval']
+        self.upstream_interframe_interval = 10 #in bytes
         self.sn_request_last_time = -2250
         self.sn_request_quiet_interval_end = 0
         self.ont_discovered = dict()
-        self.next_cycle_start = 0
+        self.maximum_ont_amount = int(self.config['maximum_ont_amount'])
+
+        if self.config["transmitter_type"] == "1G":
+            self.maximum_allocation_start_time = 19438
+        elif self.config["transmitter_type"] == "2G":
+            self.maximum_allocation_start_time = 38878
 
     def plan_next_act(self, time):
         self.time = time
@@ -43,7 +54,8 @@ class Olt(ActiveDevice):
         sn_request = False
         if (time - self.sn_request_last_time) >= self.serial_number_request_interval:
             self.sn_request_last_time = self.next_cycle_start
-            self.sn_request_quiet_interval_end = self.next_cycle_start + self.serial_number_quiet_interval + 236
+            self.sn_request_quiet_interval_end =\
+                self.next_cycle_start + self.serial_number_quiet_interval + 236
             sn_request = True
             # alloc_structure['Alloc-ID'] = 'to_all'
             # alloc_structure['Flags'] = 0
@@ -52,18 +64,27 @@ class Olt(ActiveDevice):
             # allocation = alloc_structure
             # bwmap.append(allocation)
         elif self.config['dba_type'] == 'static':
-            alloc_id_counter = 0
-            maximum_ont_amount = self.config['maximum_ont_amount']
+            alloc_timer = 0 #in bytes
+            max_time = self.maximum_allocation_start_time
             for ont in self.ont_discovered:
-                # allocation = OrderedDict()
-                alloc_structure['Alloc-ID'] = alloc_id_counter
-                alloc_structure['Flags'] = 0
-                alloc_structure['StartTime'] = alloc_id_counter * 100
-                alloc_structure['StopTime'] = alloc_id_counter * 100 + 1001
-                alloc_structure['CRC'] = 0
-                allocation = alloc_structure
-                bwmap.append(allocation)
-                alloc_id_counter += 1
+                for alloc in self.ont_discovered[ont]:
+                    # if self.ont_discovered[ont][alloc] is 'Ranging':
+                    if alloc_timer <= max_time:
+                        #self.ont_discovered[ont][alloc] = '{}'.format(alloc_timer)
+                        alloc_structure = {'Alloc-ID': alloc,
+                                           'Flags': 0,
+                                           'StartTime': alloc_timer,
+                                           'StopTime': None,
+                                           'CRC': None}
+                        #для статичного DBA выделяется интервал, обратно пропорциональный
+                        #self.maximum_ont_amount - количеству ONT
+                        alloc_timer += round(max_time / self.maximum_ont_amount)
+                        alloc_structure['StopTime'] = alloc_timer
+                        if len(bwmap) > 0:
+                            pass
+                        bwmap.append(alloc_structure)
+
+                alloc_timer += self.upstream_interframe_interval
         else:
             print('Unknown dba_type {}'.format(self.config['dba_type']))
         return {'bwmap': bwmap, 'sn_request': sn_request, 's_timestamp': self.next_cycle_start}
@@ -87,8 +108,11 @@ class Olt(ActiveDevice):
                 break
         if 'sn_response' in sig.data and self.time < self.sn_request_quiet_interval_end:
             #self.ont_discovered.append(sig.data['sn_response'])
-            self.ont_discovered[sig.data['sn_response']] = None
+            s_number = sig.data['sn_response']
+            self.ont_discovered[s_number] = {s_number+'_0': None}
             sig = self.oe_transform(sig)
         #output = {"sig": sig, "delay": delay}
+        else:
+            pass
         return {}#port: output}
 

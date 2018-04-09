@@ -7,6 +7,7 @@ class ActiveDevice(PonDevice):
         self.state = 'Offline'
         self.power_matrix = 0
         self.cycle_duration = 125
+        self.next_cycle_start = 0
         self.requests = list()
         self.data_to_send = dict()
         self.device_scheduler = dict()
@@ -14,6 +15,17 @@ class ActiveDevice(PonDevice):
         # либо в дальнейшем перенести мониторинг коллизий на наблюдателя контрольных точек
         self.receiving_sig = list()
         self.time = 0
+
+        if "transmitter_type" in self.config:
+            trans_type = self.config["transmitter_type"]
+            if trans_type == "1G":
+                self.transmitter_speed = 1244160000
+            elif trans_type == "2G":
+                self.transmitter_speed = 2488320000
+            else:
+                raise Exception('Transmitter type {} not specified'.format(trans_type))
+        else:
+            raise Exception('Specify transmitter type!')
 
     def plan_next_act(self, time):
         self.time = time

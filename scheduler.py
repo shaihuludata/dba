@@ -89,7 +89,8 @@ class ModelScheduler:
         for event in current_events:
             state, sig = event['state'], event['sig']
             l_dev, l_port = event['dev'], event['port']
-            print('{} sig, Time {} device {} {}'.format(sig.id, cur_time, l_dev.name, state))
+            if 'ONT' in l_dev.name or 'OLT' in l_dev.name:
+                print('{} sig, Time {} device {} {}'.format(sig.id, cur_time, l_dev.name, state))
             # if 'Fiber' in l_dev.name:
             #     print('')
             if state == 's_start':

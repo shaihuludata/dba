@@ -16,8 +16,11 @@ class Ont(ActiveDevice):
             self.time_activation = self.config['activation_time'] * 1000
             # time_start = self.config["activation_time"]
             # time_end = time_start + 10
+        if "UNI_requests" in self.config:
+            self.requests = self.config['UNI_requests']
+            pass
         self.state = 'Offline'
-        self.range_time_delta = 0
+        self.range_time_delta = list()
 
     def plan_next_act(self, time):
         self.time = time
@@ -37,6 +40,18 @@ class Ont(ActiveDevice):
             pass
         elif self.state is 'Operation':
             pass
+            # if len(self.requests) > 0:
+            #     cur_req_parameters = self.requests.pop(0)
+            #     cur_req_delay_before_send = cur_req_parameters[0]
+            #     cur_req_bytes_to_send = cur_req_parameters[1]
+            #     planned_s_time = self.time
+            #     sending_duration = 8*cur_req_bytes_to_send/self.transmitter_speed
+            #     planned_e_time = planned_s_time + sending_duration
+            #     self.data_to_send = {}
+            #     req_sig = Signal('{}:{}:{}'.format(planned_s_time, self.name, planned_e_time), self.data_to_send)
+            #     self.planned_events.update({
+            #         planned_s_time: [{"dev": self, "state": "s_start", "sig": req_sig, "port": 0}],
+            #         planned_e_time: [{"dev": self, "state": "s_end", "sig": req_sig, "port": 0}]})
         elif self.state is 'POPUP':
             pass
         elif self.state is 'EmergencyStop':
@@ -46,12 +61,20 @@ class Ont(ActiveDevice):
     def request_bw(self):
         print('Sending req')
 
+    def s_start(self, sig, port: int):
+        sig = self.eo_transform(sig)
+        self.next_cycle_start = self.time + self.cycle_duration
+        return self.name, port, sig
+
     def r_end(self, sig, port: int):
         for rec_sig in self.receiving_sig:
             if rec_sig.id == sig.id:
                 self.receiving_sig.remove(rec_sig)
                 break
-        if self.state == 'Initial':
+
+        if self.state == 'Offline':
+            pass
+        elif self.state == 'Initial':
             self.state = 'Standby'
         elif self.state == 'Standby':
         # delimiter value, power level mode and pre-assigned delay)
@@ -78,8 +101,31 @@ class Ont(ActiveDevice):
         elif self.state == 'Ranging':
             if 's_timestamp' in sig.data:
                 s_timestamp = sig.data['s_timestamp']
-                self.range_time_delta = self.time - s_timestamp
+                if len(self.range_time_delta) > 10:
+                    self.range_time_delta.pop(0)
+                self.range_time_delta.append(self.time - s_timestamp)
             self.state = 'Operation'
         elif self.state == 'Operation':
-            print('')
+            #'Alloc-ID'
+            for allocation in sig.data['bwmap']:
+                alloc_id = allocation['Alloc-ID']
+                if self.name in alloc_id:
+                    #TODO вот тут надо будет воткнуть поправку на RTT
+                    intra_cycle_s_start = round(8*1000000 * allocation['StartTime'] / self.transmitter_speed)
+                    planned_s_time = self.next_cycle_start + intra_cycle_s_start
+                    intra_cycle_e_start = round(8*1000000 * allocation['StopTime'] / self.transmitter_speed)
+                    planned_e_time = self.next_cycle_start + intra_cycle_e_start
+                    self.data_to_send = {}
+                    req_sig = Signal('{}:{}:{}'.
+                                     format(planned_s_time, self.name, planned_e_time), self.data_to_send)
+                    self.planned_events.update({
+                        planned_s_time: [{"dev": self, "state": "s_start", "sig": req_sig, "port": 0}],
+                        planned_e_time: [{"dev": self, "state": "s_end", "sig": req_sig, "port": 0}]})
+            # if len(self.requests) > 0:
+            #     cur_req_parameters = self.requests.pop(0)
+            #     cur_req_delay_before_send = cur_req_parameters[0]
+            #     cur_req_bytes_to_send = cur_req_parameters[1]
+            #     sending_duration = 8*cur_req_bytes_to_send/self.transmitter_speed
+        else:
+            raise Exception('State {} not implemented'.format(self.state))
         return {}
