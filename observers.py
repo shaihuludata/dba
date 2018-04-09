@@ -76,7 +76,7 @@ class Observer:
                         #data = self.observer_result[point]
                     # upd_dict = dict()
                     # for data in [s_data, r_data]
-                    points_data.update({point+'_send': s_data, point+'_receive': r_data})
+                    points_data.update({point+'_snd': s_data, point+'_rec': r_data})
                     break
         actual_dict = dict()
         for point in points_data:

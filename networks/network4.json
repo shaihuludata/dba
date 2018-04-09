@@ -6,6 +6,7 @@
     "transmitter_power": "1",
     "sn_request_interval": 3000,
     "transmitter_wavelength": "1550",
+    "transmitter_type": "1G",
     "ports": {"0": "Fiber0::0"}
   },
   "Fiber0":
@@ -19,8 +20,10 @@
     "ports": {"0": "Fiber1::0"},
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
+    "transmitter_type": "1G",
     "activation_time": 0,
-    "Alloc": ["even::even", "even::even"]
+    "Alloc": ["even::even", "even::even"],
+    "UNI_requests": [[100, 1000], [100, 1000], [100, 1000], [100, 1000]]
   },
   "Fiber1":
   {
@@ -33,7 +36,8 @@
     "ports": {"0": "Fiber2::0"},
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
-    "activation_time": 2,
+    "transmitter_type": "1G",
+    "activation_time": 0.1,
     "Alloc": ["even::even", "even::even"]
   },
   "Fiber2":
@@ -47,7 +51,8 @@
     "ports": {"0": "Fiber3::0"},
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
-    "activation_time": 5,
+    "transmitter_type": "1G",
+    "activation_time": 2,
     "Alloc": ["even::even", "even::even"]
   },
   "Fiber3":
@@ -61,7 +66,8 @@
     "ports": {"0": "Fiber4::0"},
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
-    "activation_time": 6,
+    "transmitter_type": "1G",
+    "activation_time": 3,
     "Alloc": ["even::even", "even::even"]
   },
   "Fiber4":

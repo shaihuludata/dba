@@ -7,6 +7,7 @@ light_velocity = 2*10**8
 
 
 class PassiveDevice(PonDevice):
+
     def __init__(self, name, config):
         PonDevice.__init__(self, name, config)
 
