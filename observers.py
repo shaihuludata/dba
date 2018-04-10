@@ -5,7 +5,7 @@ import matplotlib as mp
 # mp.use('agg')
 import time
 
-class Observer:
+class FlowObserver:
     def __init__(self):
         self.name = 'some kind of observer'
         self.observer_result = dict()

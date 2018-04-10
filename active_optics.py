@@ -1,5 +1,5 @@
 from pon_device import PonDevice
-
+from support import Counters
 
 class ActiveDevice(PonDevice):
     def __init__(self, name, config):
@@ -15,6 +15,7 @@ class ActiveDevice(PonDevice):
         # либо в дальнейшем перенести мониторинг коллизий на наблюдателя контрольных точек
         self.receiving_sig = list()
         self.time = 0
+        self.counters = Counters()
 
         if "transmitter_type" in self.config:
             trans_type = self.config["transmitter_type"]
