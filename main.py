@@ -4,10 +4,15 @@ from scheduler import ModelScheduler
 
 
 def main():
+    config = json.load(open('./dba.json'))
+    if "horisont" in config:
+        time_horisont = config["horisont"]
+    else:
+        time_horisont = 1000
+
     net = json.load(open('./networks/network4.json'))
     print('Net description: ', net)
-    sched = ModelScheduler(net)
-    time_horisont = 10000
+    sched = ModelScheduler(net, config)
     cur_time = 0
     while cur_time < time_horisont and len(sched.schedule.events) > 0:
         cur_time = min(sched.schedule.events)

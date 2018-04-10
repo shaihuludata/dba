@@ -3,6 +3,7 @@
   {
     "dba_type": "static",
     "maximum_ont_amount": "32",
+    "upstream_interframe_interval": 0,
     "transmitter_power": "1",
     "sn_request_interval": 3000,
     "transmitter_wavelength": "1550",
@@ -27,7 +28,7 @@
   },
   "Fiber1":
   {
-    "length": "2",
+    "length": "5",
     "type": "G657",
     "ports": {"0": "ONT1::0", "1": "Splitter1::1"}
   },
@@ -42,7 +43,7 @@
   },
   "Fiber2":
   {
-    "length": "4",
+    "length": "6",
     "type": "G657",
     "ports": {"0": "ONT2::0", "1": "Splitter1::2"}
   },
@@ -57,7 +58,7 @@
   },
   "Fiber3":
   {
-    "length": "6",
+    "length": "7",
     "type": "G657",
     "ports": {"0": "ONT3::0", "1": "Splitter1::3"}
   },

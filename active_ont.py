@@ -107,14 +107,15 @@ class Ont(ActiveDevice):
             self.state = 'Operation'
         elif self.state == 'Operation':
             #'Alloc-ID'
+            avg_rtt = sum(self.range_time_delta)/len(self.range_time_delta)
             for allocation in sig.data['bwmap']:
                 alloc_id = allocation['Alloc-ID']
                 if self.name in alloc_id:
                     #TODO вот тут надо будет воткнуть поправку на RTT
                     intra_cycle_s_start = round(8*1000000 * allocation['StartTime'] / self.transmitter_speed)
-                    planned_s_time = self.next_cycle_start + intra_cycle_s_start
+                    planned_s_time = self.next_cycle_start + intra_cycle_s_start + 3*self.cycle_duration
                     intra_cycle_e_start = round(8*1000000 * allocation['StopTime'] / self.transmitter_speed)
-                    planned_e_time = self.next_cycle_start + intra_cycle_e_start
+                    planned_e_time = self.next_cycle_start + intra_cycle_e_start + 3*self.cycle_duration
                     self.data_to_send = {}
                     req_sig = Signal('{}:{}:{}'.
                                      format(planned_s_time, self.name, planned_e_time), self.data_to_send)
