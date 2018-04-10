@@ -1,14 +1,14 @@
 from passive_optics import Splitter, Fiber
 from active_olt import Olt
 from active_ont import Ont
-from observers import Observer
+from observers import *
 #schedule = {time : [event]}
 
 
 class Schedule:
     events = dict()
 
-    def upd_schedule(self, new_events:dict):
+    def upd_schedule(self, new_events: dict):
         start_schedule = dict()
         start_schedule.update(self.events)
         new_time_schedule = dict()
@@ -63,7 +63,8 @@ class ModelScheduler:
                 self.devices[dev] = Fiber(name=dev, config=net[dev])
 
         self.observers = list()
-        self.observers.append(Observer())
+        self.observers.append(FlowObserver())
+        #self.observers.append(DevicesObserver(self.devices))
 
         # self.dba_algorithm = algorithm
         self.current_requests = list()
@@ -79,6 +80,13 @@ class ModelScheduler:
     def make_results(self):
         for observer in self.observers:
             observer.make_results()
+
+        for dev in self.devices:
+            for name in ['ONT', 'OLT']:
+                if name in dev:
+                    print('{}'.format(dev))
+                    device = self.devices[dev]
+                    print('{}'.format(device.counters.export_to_console()))
 
     def proceed_schedule(self, cur_time):
         self.time = cur_time

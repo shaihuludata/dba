@@ -104,6 +104,7 @@ class Olt(ActiveDevice):
             if rec_sig.id == sig.id:
                 self.receiving_sig.remove(rec_sig)
                 if rec_sig.physics['collision']:
+                    self.counters.ingress_collision += 1
                     return {}
                 break
         if 'sn_response' in sig.data and self.time < self.sn_request_quiet_interval_end:
@@ -113,6 +114,7 @@ class Olt(ActiveDevice):
             sig = self.oe_transform(sig)
         #output = {"sig": sig, "delay": delay}
         else:
+            self.counters.ingress_unicast += 1
             pass
         return {}#port: output}
 
