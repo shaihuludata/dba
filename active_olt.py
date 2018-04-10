@@ -18,11 +18,12 @@ class Olt(ActiveDevice):
     def __init__(self, name, config):
         ActiveDevice.__init__(self, name, config)
         self.serial_number_request_interval = self.config['sn_request_interval']
-        self.upstream_interframe_interval = 10 #in bytes
+        self.upstream_interframe_interval = self.config['upstream_interframe_interval'] #10 #in bytes
         self.sn_request_last_time = -2250
         self.sn_request_quiet_interval_end = 0
         self.ont_discovered = dict()
         self.maximum_ont_amount = int(self.config['maximum_ont_amount'])
+
 
         if self.config["transmitter_type"] == "1G":
             self.maximum_allocation_start_time = 19438
@@ -78,7 +79,7 @@ class Olt(ActiveDevice):
                                            'CRC': None}
                         #для статичного DBA выделяется интервал, обратно пропорциональный
                         #self.maximum_ont_amount - количеству ONT
-                        alloc_timer += round(max_time / self.maximum_ont_amount)
+                        alloc_timer += round(max_time / len(self.ont_discovered)) #self.maximum_ont_amount)
                         alloc_structure['StopTime'] = alloc_timer
                         if len(bwmap) > 0:
                             pass

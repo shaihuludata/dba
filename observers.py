@@ -5,14 +5,29 @@ import matplotlib as mp
 # mp.use('agg')
 import time
 
+
 class FlowObserver:
-    def __init__(self):
+
+    def __init__(self, time_ranges_to_show):
         self.name = 'some kind of observer'
         self.observer_result = dict()
         # {dev.name + '::' + port: [(time, sig.__dict__)]}
+        if not time_ranges_to_show:
+            self.time_ranges_to_show = [[1000, 2000]]
+        else:
+            self.time_ranges_to_show = time_ranges_to_show
+
+        self.time_horisont = 0
+        for time_range in self.time_ranges_to_show:
+            new_horizont = max(time_range)
+            if self.time_horisont < new_horizont:
+                self.time_horisont = new_horizont
 
     def notice(self, schedule, cur_time):
-        passed_schedule = {time: schedule[time] for time in schedule if time <= cur_time}
+        passed_schedule = dict()
+        for time_range in self.time_ranges_to_show:
+            passed_schedule.update({time: schedule[time] for time in schedule
+                                    if (time in range(time_range[0], time_range[1])) and (time <= cur_time)})
 
         for ev_time in passed_schedule:
             for event in passed_schedule[ev_time]:
@@ -93,13 +108,20 @@ class FlowObserver:
         #data_to_plot = self.cook_result_for_dev('OLT')  # [[1, 3], [4, 6], [5, 10]]
         data_to_plot = self.cook_result(devs_to_watch)  # [[1, 3], [4, 6], [5, 10]]
         number_of_events_per_point = list()
+        #эта переменная нужна чтобы как-то размещать пустые боксы с сохранением масштаба графика
+        #среди всех событий находится минимальная временная точка, она будет низом графика
+        min_time_moment = self.time_horisont
         for i in data_to_plot.values():
             number_of_events_per_point.append(len(i))
+            for j in i:
+                if min_time_moment > min(j):
+                    min_time_moment = min(j)
         horisont_event_data = max(number_of_events_per_point)
 
         for point in data_to_plot:
             for i in range(horisont_event_data - len(data_to_plot[point])):
-                data_to_plot[point].append([0, 0])
+                data_to_plot[point].append([min_time_moment, min_time_moment])
+
         points_to_watch = list(data_to_plot.keys())
         data_sorted_by_time = map(list, zip(*data_to_plot.values()))
         for dtp in data_sorted_by_time:

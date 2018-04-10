@@ -16,6 +16,7 @@ class ActiveDevice(PonDevice):
         self.receiving_sig = list()
         self.time = 0
         self.counters = Counters()
+        self.collision_events = list()
 
         if "transmitter_type" in self.config:
             trans_type = self.config["transmitter_type"]

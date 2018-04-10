@@ -43,10 +43,11 @@ class Schedule:
 
 
 class ModelScheduler:
-    def __init__(self, net):
+    def __init__(self, net, config):
         self.net = net
         self.onts = list()
         self.devices = dict()
+        time_horisont = config['horisont']
 
         for dev in net:
             if 'OLT' in dev:
@@ -63,7 +64,12 @@ class ModelScheduler:
                 self.devices[dev] = Fiber(name=dev, config=net[dev])
 
         self.observers = list()
-        self.observers.append(FlowObserver())
+        if 'time_ranges' in config:
+            time_ranges = config['time_ranges']
+        else:
+            time_ranges = [[0, time_horisont]]
+
+        self.observers.append(FlowObserver(time_ranges_to_show=time_ranges))
         #self.observers.append(DevicesObserver(self.devices))
 
         # self.dba_algorithm = algorithm
