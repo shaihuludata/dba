@@ -79,7 +79,7 @@ class Ont(ActiveDevice):
         elif self.state == 'Standby':
         # delimiter value, power level mode and pre-assigned delay)
             #тут нужно из сигнала вытащить запрос SN
-            if sig.data['sn_request']:
+            if 'sn_request' in sig.data:
                 delay = random.randrange(34, 36, 1) + random.randrange(0, 48, 1)
                 sig = self.oe_transform(sig)
                 planned_s_time = self.time + delay
@@ -87,14 +87,16 @@ class Ont(ActiveDevice):
                 resp_sig = Signal('{}:{}:{}'.format(planned_s_time, self.name, planned_e_time), self.data_to_send)
                 resp_sig.data['sn_response'] = self.name
                 self.planned_events.update({
-                    planned_s_time:
-                        [{"dev": self, "state": "s_start", "sig": resp_sig, "port": 0}],
-                    planned_e_time:
-                        [{"dev": self, "state": "s_end", "sig": resp_sig, "port": 0}]
+                    planned_s_time: [{"dev": self, "state": "s_start", "sig": resp_sig, "port": 0}],
+                    planned_e_time: [{"dev": self, "state": "s_end", "sig": resp_sig, "port": 0}]
                 })
                 # Формально тут должно быть 'SerialNumber'
                 # но без потери смысла для симуляции должно быть Ranging
-                self.state = 'Ranging'
+            elif 'sn_ack' in sig.data:
+                if self.name in sig.data['sn_ack']:
+                    print('Авторизация {} на OLT подтверждена'.format(self.name))
+                    sig = self.oe_transform(sig)
+                    self.state = 'Ranging'
                 # print(sig)
                 # output = {"sig": sig, "delay": delay}
                 return {}# port: output}
@@ -116,12 +118,15 @@ class Ont(ActiveDevice):
                     planned_s_time = self.next_cycle_start + intra_cycle_s_start + 3*self.cycle_duration
                     intra_cycle_e_start = round(8*1000000 * allocation['StopTime'] / self.transmitter_speed)
                     planned_e_time = self.next_cycle_start + intra_cycle_e_start + 3*self.cycle_duration
+                    #TODO: data_to_send надо будет наполнить из очередирования со стороны UNI ONT
                     self.data_to_send = {}
-                    req_sig = Signal('{}:{}:{}'.
-                                     format(planned_s_time, self.name, planned_e_time), self.data_to_send)
-                    self.planned_events.update({
-                        planned_s_time: [{"dev": self, "state": "s_start", "sig": req_sig, "port": 0}],
-                        planned_e_time: [{"dev": self, "state": "s_end", "sig": req_sig, "port": 0}]})
+                    sig_id = '{}:{}:{}'.format(planned_s_time, self.name, planned_e_time)
+                    if sig_id not in self.sending_sig:
+                        self.sending_sig.append(sig_id)
+                        req_sig = Signal(sig_id, self.data_to_send)
+                        self.planned_events.update({
+                            planned_s_time: [{"dev": self, "state": "s_start", "sig": req_sig, "port": 0}],
+                            planned_e_time: [{"dev": self, "state": "s_end", "sig": req_sig, "port": 0}]})
             # if len(self.requests) > 0:
             #     cur_req_parameters = self.requests.pop(0)
             #     cur_req_delay_before_send = cur_req_parameters[0]
@@ -130,3 +135,4 @@ class Ont(ActiveDevice):
         else:
             raise Exception('State {} not implemented'.format(self.state))
         return {}
+

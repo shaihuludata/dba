@@ -92,7 +92,8 @@ class ModelScheduler:
                 if name in dev:
                     print('{}'.format(dev))
                     device = self.devices[dev]
-                    print('{}'.format(device.counters.export_to_console()))
+                    # print('{}'.format(device.counters.export_to_console()))
+                    print(device.export_counters())
 
     def proceed_schedule(self, cur_time):
         self.time = cur_time
@@ -104,7 +105,7 @@ class ModelScheduler:
             state, sig = event['state'], event['sig']
             l_dev, l_port = event['dev'], event['port']
             if 'ONT' in l_dev.name or 'OLT' in l_dev.name:
-                print('{} sig, Time {} device {} {}'.format(sig.id, cur_time, l_dev.name, state))
+                print('Time {}, sig {}, device {} {}'.format(cur_time, sig.id, l_dev.name, state))
             # if 'Fiber' in l_dev.name:
             #     print('')
             if state == 's_start':

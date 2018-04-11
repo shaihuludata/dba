@@ -1,6 +1,8 @@
 from active_optics import ActiveDevice
 from collections import OrderedDict
 from signal import Signal
+import copy
+
 
 dumb_event = {'dev': None, 'state': 'dumb_event', 'sig': None, 'port': None}
 
@@ -19,10 +21,11 @@ class Olt(ActiveDevice):
         ActiveDevice.__init__(self, name, config)
         self.serial_number_request_interval = self.config['sn_request_interval']
         self.upstream_interframe_interval = self.config['upstream_interframe_interval'] #10 #in bytes
-        self.sn_request_last_time = -2250
+        self.sn_request_last_time = -2750
         self.sn_request_quiet_interval_end = 0
         self.ont_discovered = dict()
         self.maximum_ont_amount = int(self.config['maximum_ont_amount'])
+        self.counters.ont_discovered = int()
 
 
         if self.config["transmitter_type"] == "1G":
@@ -39,20 +42,23 @@ class Olt(ActiveDevice):
         self.next_cycle_start = planned_s_time
         planned_e_time = planned_s_time + self.cycle_duration
         sig = None
+        data_to_send = dict()
+        data_to_send.update(self.data_to_send)
         if self.state == 'Initial':
             if planned_s_time not in self.device_scheduler:
-                self.data_to_send = self.make_bwmap(time, self.requests)
-                sig = Signal('{}:{}:{}'.format(planned_s_time, self.name, planned_e_time), self.data_to_send)
+                new_bwmap = self.make_bwmap(time, self.requests)
+                data_to_send.update(new_bwmap)
+                sig_id = '{}:{}:{}'.format(planned_s_time, self.name, planned_e_time)
+                sig = Signal(sig_id, data_to_send)
                 self.device_scheduler[planned_s_time] = sig.id
+                self.data_to_send.clear()
                 return {planned_s_time: [{"dev": self, "state": "s_start", "sig": sig, "port": 0}],
-                        planned_e_time: [{"dev": self, "state": "s_end", "sig": sig, "port": 0}]
-                        }
+                        planned_e_time: [{"dev": self, "state": "s_end", "sig": sig, "port": 0}]}
             else:
                 return {}
 
     def make_bwmap(self, time, requests):
         bwmap = list()
-        sn_request = False
         if (time - self.sn_request_last_time) >= self.serial_number_request_interval:
             self.sn_request_last_time = self.next_cycle_start
             self.sn_request_quiet_interval_end =\
@@ -64,6 +70,7 @@ class Olt(ActiveDevice):
             # alloc_structure['StopTime'] = self.sn_request_quiet_interval_end + 236
             # allocation = alloc_structure
             # bwmap.append(allocation)
+            return {'bwmap': bwmap, 'sn_request': sn_request, 's_timestamp': self.next_cycle_start}
         elif self.config['dba_type'] == 'static':
             alloc_timer = 0 #in bytes
             max_time = self.maximum_allocation_start_time
@@ -86,9 +93,10 @@ class Olt(ActiveDevice):
                         bwmap.append(alloc_structure)
 
                 alloc_timer += self.upstream_interframe_interval
+            return {'bwmap': bwmap, 's_timestamp': self.next_cycle_start}
         else:
             print('Unknown dba_type {}'.format(self.config['dba_type']))
-        return {'bwmap': bwmap, 'sn_request': sn_request, 's_timestamp': self.next_cycle_start}
+            return {}
 
     # def r_start(self, sig, port: int):
     #     self.receiving_sig.append(sig)
@@ -112,6 +120,7 @@ class Olt(ActiveDevice):
             #self.ont_discovered.append(sig.data['sn_response'])
             s_number = sig.data['sn_response']
             self.ont_discovered[s_number] = {s_number+'_0': None}
+            self.data_to_send['sn_ack'] = s_number
             sig = self.oe_transform(sig)
         #output = {"sig": sig, "delay": delay}
         else:
@@ -119,3 +128,6 @@ class Olt(ActiveDevice):
             pass
         return {}#port: output}
 
+    def export_counters(self):
+        self.counters.ont_discovered = len(self.ont_discovered)
+        return self.counters.export_to_console()

@@ -14,6 +14,7 @@ class ActiveDevice(PonDevice):
         # TODO: в следующей версии, предусмотреть вместо списка словарь порт: список сигналов
         # либо в дальнейшем перенести мониторинг коллизий на наблюдателя контрольных точек
         self.receiving_sig = list()
+        self.sending_sig = list()
         self.time = 0
         self.counters = Counters()
         self.collision_events = list()
@@ -44,6 +45,7 @@ class ActiveDevice(PonDevice):
 
     def r_start(self, sig, port: int):
         self.receiving_sig.append(sig)
+        receiving_sigs = self.receiving_sig
         if len(self.receiving_sig) > 1:
             print('{} ИНТЕРФЕРЕНЦИОННАЯ КОЛЛИЗИЯ на порту {}!!!'.format(self.name, port))
             sig.physics['collision'] = True
@@ -77,3 +79,5 @@ class ActiveDevice(PonDevice):
         sig.physics.update(optic_parameters)
         return sig
 
+    def export_counters(self):
+        return self.counters.export_to_console()
