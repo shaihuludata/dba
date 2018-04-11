@@ -130,5 +130,5 @@ class FlowObserver:
             fig.canvas.draw()
             #time.sleep(1)
         fig.canvas.draw()
-        time.sleep(3)
+        # time.sleep(3)
         fig.savefig('fig1.png', bbox_inches='tight')
