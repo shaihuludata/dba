@@ -115,7 +115,7 @@ class Olt(ActiveDevice):
     def r_end(self, sig, port: int):
         for rec_sig in self.receiving_sig:
             if rec_sig.id == sig.id:
-                self.receiving_sig.remove(rec_sig)
+                self.receiving_sig.pop(rec_sig)
                 if rec_sig.physics['collision']:
                     self.counters.ingress_collision += 1
                     return {}

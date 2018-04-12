@@ -71,7 +71,7 @@ class Ont(ActiveDevice):
         #тут обработка на случай коллизии
         for rec_sig in self.receiving_sig:
             if rec_sig.id == sig.id:
-                self.receiving_sig.remove(rec_sig)
+                self.receiving_sig.pop(rec_sig)
                 break
 
         if self.state == 'Offline':
@@ -109,19 +109,19 @@ class Ont(ActiveDevice):
                 s_timestamp = sig.data['s_timestamp']
                 if len(self.range_time_delta) > 10:
                     self.range_time_delta.pop(0)
-                self.range_time_delta.append(self.time - s_timestamp)
+                self.range_time_delta.append(self.time - s_timestamp - self.cycle_duration)
             self.state = 'Operation'
         elif self.state == 'Operation':
             #'Alloc-ID'
-            avg_rtt = sum(self.range_time_delta)/len(self.range_time_delta)
+            avg_half_rtt = sum(self.range_time_delta)/len(self.range_time_delta)
             for allocation in sig.data['bwmap']:
                 alloc_id = allocation['Alloc-ID']
                 if self.name in alloc_id:
                     #TODO вот тут надо будет воткнуть поправку на RTT
                     intra_cycle_s_start = round(8*1000000 * allocation['StartTime'] / self.transmitter_speed)
-                    planned_s_time = self.next_cycle_start + intra_cycle_s_start# + 3*self.cycle_duration
+                    planned_s_time = self.next_cycle_start + intra_cycle_s_start - 2*avg_half_rtt# + self.cycle_duration
                     intra_cycle_e_start = round(8*1000000 * allocation['StopTime'] / self.transmitter_speed)
-                    planned_e_time = self.next_cycle_start + intra_cycle_e_start# + 3*self.cycle_duration
+                    planned_e_time = self.next_cycle_start + intra_cycle_e_start - 2*avg_half_rtt# + self.cycle_duration
                     #TODO: data_to_send надо будет наполнить из очередирования со стороны UNI ONT
                     self.data_to_send = {}
                     sig_id = '{}:{}:{}'.format(planned_s_time, self.name, planned_e_time)
