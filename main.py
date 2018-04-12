@@ -19,7 +19,7 @@ def main():
         #print('time: {}'.format(cur_time))
         #print(sched.schedule)
         sched.proceed_schedule(cur_time)
-        #sleep(1)
+        #sleep(10)
 
     print('End of simulation... Preparing results.')
     sched.make_results()
