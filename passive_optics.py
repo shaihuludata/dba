@@ -65,7 +65,7 @@ class Fiber(Splitter):
         PassiveDevice.__init__(self, name, config)
         self.type = self.config['type']
         self.length = float(self.config['length'])
-        self.delay = 10**6 * 1000 * self.length / light_velocity
+        self.delay = int(round(10**6 * 1000 * self.length / light_velocity))
         if self.type == "G657":
             self.att = 0.22
         else:

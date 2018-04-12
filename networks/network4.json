@@ -38,7 +38,7 @@
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
     "transmitter_type": "1G",
-    "activation_time": 1,
+    "activation_time": 0,
     "Alloc": ["even::even", "even::even"]
   },
   "Fiber2":
@@ -53,7 +53,7 @@
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
     "transmitter_type": "1G",
-    "activation_time": 2,
+    "activation_time": 10,
     "Alloc": ["even::even", "even::even"]
   },
   "Fiber3":
@@ -68,7 +68,7 @@
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
     "transmitter_type": "1G",
-    "activation_time": 3,
+    "activation_time": 10,
     "Alloc": ["even::even", "even::even"]
   },
   "Fiber4":

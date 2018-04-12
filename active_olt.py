@@ -24,6 +24,7 @@ class Olt(ActiveDevice):
         self.sn_request_last_time = -2750
         self.sn_request_quiet_interval_end = 0
         self.ont_discovered = dict()
+        self.global_bwmap = dict() #{time: intra_cycle_bwmap}
         self.maximum_ont_amount = int(self.config['maximum_ont_amount'])
         self.counters.ont_discovered = int()
 
@@ -45,54 +46,57 @@ class Olt(ActiveDevice):
         data_to_send = dict()
         data_to_send.update(self.data_to_send)
         if self.state == 'Initial':
-            if planned_s_time not in self.device_scheduler:
-                new_bwmap = self.make_bwmap(time, self.requests)
-                data_to_send.update(new_bwmap)
+            if planned_s_time not in self.sending_sig:
+                next_bwmap = self.make_bwmap(time)
+                data_to_send.update(next_bwmap)
                 sig_id = '{}:{}:{}'.format(planned_s_time, self.name, planned_e_time)
                 sig = Signal(sig_id, data_to_send)
-                self.device_scheduler[planned_s_time] = sig.id
+                self.sending_sig[planned_s_time] = sig.id
                 self.data_to_send.clear()
                 return {planned_s_time: [{"dev": self, "state": "s_start", "sig": sig, "port": 0}],
                         planned_e_time: [{"dev": self, "state": "s_end", "sig": sig, "port": 0}]}
             else:
                 return {}
 
-    def make_bwmap(self, time, requests):
+    def make_bwmap(self, time):
         bwmap = list()
         if (time - self.sn_request_last_time) >= self.serial_number_request_interval:
             self.sn_request_last_time = self.next_cycle_start
             self.sn_request_quiet_interval_end =\
-                self.next_cycle_start + self.serial_number_quiet_interval + 236
+                self.next_cycle_start + self.serial_number_quiet_interval + 236 + self.cycle_duration
             sn_request = True
-            # alloc_structure['Alloc-ID'] = 'to_all'
-            # alloc_structure['Flags'] = 0
+            alloc_structure = {'Alloc-ID': 'to_all', 'Flags': 0,
+                               'StartTime': 0,
+                               'StopTime': self.maximum_allocation_start_time,
+                               'CRC': None}
             # alloc_structure['StartTime'] = self.next_cycle_start + 236
             # alloc_structure['StopTime'] = self.sn_request_quiet_interval_end + 236
-            # allocation = alloc_structure
-            # bwmap.append(allocation)
+            bwmap.append(alloc_structure)
+            self.global_bwmap[self.next_cycle_start] = bwmap
+            self.global_bwmap[self.next_cycle_start + self.cycle_duration] = bwmap
             return {'bwmap': bwmap, 'sn_request': sn_request, 's_timestamp': self.next_cycle_start}
         elif self.config['dba_type'] == 'static':
             alloc_timer = 0 #in bytes
             max_time = self.maximum_allocation_start_time
-            for ont in self.ont_discovered:
-                for alloc in self.ont_discovered[ont]:
-                    # if self.ont_discovered[ont][alloc] is 'Ranging':
-                    if alloc_timer <= max_time:
-                        #self.ont_discovered[ont][alloc] = '{}'.format(alloc_timer)
-                        alloc_structure = {'Alloc-ID': alloc,
-                                           'Flags': 0,
-                                           'StartTime': alloc_timer,
-                                           'StopTime': None,
-                                           'CRC': None}
-                        #для статичного DBA выделяется интервал, обратно пропорциональный
-                        #self.maximum_ont_amount - количеству ONT
-                        alloc_timer += round(max_time / len(self.ont_discovered)) #self.maximum_ont_amount)
-                        alloc_structure['StopTime'] = alloc_timer
-                        if len(bwmap) > 0:
-                            pass
-                        bwmap.append(alloc_structure)
-
-                alloc_timer += self.upstream_interframe_interval
+            if self.next_cycle_start not in self.global_bwmap:
+                for ont in self.ont_discovered:
+                    for alloc in self.ont_discovered[ont]:
+                        # if self.ont_discovered[ont][alloc] is 'Ranging':
+                        if alloc_timer <= max_time:
+                            #self.ont_discovered[ont][alloc] = '{}'.format(alloc_timer)
+                            alloc_structure = {'Alloc-ID': alloc, 'Flags': 0,
+                                               'StartTime': alloc_timer,
+                                               'StopTime': None,
+                                               'CRC': None}
+                            #для статичного DBA выделяется интервал, обратно пропорциональный
+                            #self.maximum_ont_amount - количеству ONT
+                            alloc_timer += round(max_time / len(self.ont_discovered)) #self.maximum_ont_amount)
+                            alloc_structure['StopTime'] = alloc_timer
+                            bwmap.append(alloc_structure)
+                    alloc_timer += self.upstream_interframe_interval
+                self.global_bwmap[self.next_cycle_start] = bwmap
+            else:
+                bwmap = self.global_bwmap[self.next_cycle_start]
             return {'bwmap': bwmap, 's_timestamp': self.next_cycle_start}
         else:
             print('Unknown dba_type {}'.format(self.config['dba_type']))
