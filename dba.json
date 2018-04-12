@@ -1,4 +1,4 @@
 {
-    "horisont" : 4000,
-    "time_ranges" : [[500, 3000]]
+    "horisont" : 10000,
+    "time_ranges" : [[7800, 8400]]
 }

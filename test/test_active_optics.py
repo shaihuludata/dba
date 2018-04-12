@@ -2,7 +2,7 @@
 # from collections import OrderedDict
 from signal import Signal
 # import random
-from active_optics import Ont
+from active_ont import Ont
 
 class test_Ont(Ont):
 
@@ -13,10 +13,10 @@ class test_Ont(Ont):
             time_end = int(self.config["time_end"])
             data = 'bugaga'
             sig = Signal('{}:{}:{}'.format(time, self.name, time_start), data)
-            if time_start in self.device_scheduler:
+            if time_start in self.sending_sig:
                 return {}
             else:
-                self.device_scheduler[time_start] = sig.id
+                self.sending_sig[time_start] = sig.id
                 return {time_start: [{"dev": self, "state": "s_start", "sig": sig, "port": 0}],
                         time_end: [{"dev": self, "state": "s_end", "sig": sig, "port": 0}]
                         }

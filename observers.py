@@ -125,10 +125,20 @@ class FlowObserver:
         points_to_watch = list(data_to_plot.keys())
         data_sorted_by_time = map(list, zip(*data_to_plot.values()))
         for dtp in data_sorted_by_time:
-            ax.boxplot(dtp)
+            #boxprops = dict(linestyle='--', linewidth=3, color='darkgoldenrod')
+            boxprops = dict()
+            #meanlineprops = dict(linestyle='--', linewidth=2.5, color='purple')
+            # _linestyles = [('-', 'solid'), ('--', 'dashed'), ('-.', 'dashdot'), (':', 'dotted')
+            whiskerprops = dict(linestyle='-', linewidth=1, color='black')
+            ax.boxplot(dtp, 0, 'rs',
+                       meanline=False, vert=True,
+                       patch_artist=True, boxprops=boxprops,
+                       whiskerprops=whiskerprops)
+
             ax.set_xticklabels(points_to_watch)
             fig.canvas.draw()
             #time.sleep(1)
+
         fig.canvas.draw()
         # time.sleep(3)
         fig.savefig('fig1.png', bbox_inches='tight')

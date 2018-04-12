@@ -10,11 +10,10 @@ class ActiveDevice(PonDevice):
         self.next_cycle_start = 0
         self.requests = list()
         self.data_to_send = dict()
-        self.device_scheduler = dict()
         # TODO: в следующей версии, предусмотреть вместо списка словарь порт: список сигналов
         # либо в дальнейшем перенести мониторинг коллизий на наблюдателя контрольных точек
         self.receiving_sig = list()
-        self.sending_sig = list()
+        self.sending_sig = dict()
         self.time = 0
         self.counters = Counters()
         self.collision_events = list()
