@@ -12,7 +12,7 @@ class ActiveDevice(PonDevice):
         self.data_to_send = dict()
         # TODO: в следующей версии, предусмотреть вместо списка словарь порт: список сигналов
         # либо в дальнейшем перенести мониторинг коллизий на наблюдателя контрольных точек
-        self.receiving_sig = list()
+        self.receiving_sig = dict()
         self.sending_sig = dict()
         self.time = 0
         self.counters = Counters()
@@ -43,7 +43,7 @@ class ActiveDevice(PonDevice):
         return self.name, port, sig
 
     def r_start(self, sig, port: int):
-        self.receiving_sig.append(sig)
+        self.receiving_sig[sig] = self.time
         receiving_sigs = self.receiving_sig
         if len(self.receiving_sig) > 1:
             print('{} ИНТЕРФЕРЕНЦИОННАЯ КОЛЛИЗИЯ на порту {}!!!'.format(self.name, port))
@@ -54,7 +54,7 @@ class ActiveDevice(PonDevice):
         return {port: output}
 
     def r_end(self, sig, port: int):
-        self.receiving_sig.remove(sig)
+        self.receiving_sig.pop(sig)
         sig = self.oe_transform(sig)
         output = {"sig": sig, "delay": self.cycle_duration}
         return {port: output}
