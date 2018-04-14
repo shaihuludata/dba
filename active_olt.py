@@ -39,7 +39,8 @@ class Olt(ActiveDevice):
         if self.state == 'Offline':
             self.state = 'Initial'
             time = time + self.cycle_duration
-        planned_s_time = round(time / self.cycle_duration + 0.51) * self.cycle_duration
+        self.counters.cycle_number = round(time / self.cycle_duration + 0.51)
+        planned_s_time = self.counters.cycle_number * self.cycle_duration
         self.next_cycle_start = planned_s_time
         planned_e_time = planned_s_time + self.cycle_duration
         sig = None
@@ -99,7 +100,7 @@ class Olt(ActiveDevice):
                 self.global_bwmap[self.next_cycle_start] = bwmap
             else:
                 bwmap = self.global_bwmap[self.next_cycle_start]
-            return {'bwmap': bwmap, 's_timestamp': self.next_cycle_start}
+            return {'bwmap': bwmap, 's_timestamp': self.next_cycle_start, 'cycle_num': self.counters.cycle_number}
         else:
             print('Unknown dba_type {}'.format(self.config['dba_type']))
             return {}
