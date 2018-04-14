@@ -90,7 +90,9 @@ class Olt(ActiveDevice):
                                                'CRC': None}
                             #для статичного DBA выделяется интервал, обратно пропорциональный
                             #self.maximum_ont_amount - количеству ONT
-                            alloc_timer += round(max_time / len(self.ont_discovered)) #self.maximum_ont_amount)
+                            onts = len(self.ont_discovered)
+                            alloc_timer += round(max_time / onts) - self.upstream_interframe_interval #self.maximum_ont_amount)
+                            #alloc_timer += round(max_time / onts)  # self.maximum_ont_amount)
                             alloc_structure['StopTime'] = alloc_timer
                             bwmap.append(alloc_structure)
                     alloc_timer += self.upstream_interframe_interval

@@ -119,9 +119,11 @@ class Ont(ActiveDevice):
                 if self.name in alloc_id:
                     #TODO вот тут надо будет воткнуть поправку на RTT
                     intra_cycle_s_start = round(8*1000000 * allocation['StartTime'] / self.transmitter_speed)
-                    planned_s_time = self.next_cycle_start + intra_cycle_s_start - 2*avg_half_rtt# + self.cycle_duration
+                    planned_s_time = self.next_cycle_start + intra_cycle_s_start - 2*avg_half_rtt + self.cycle_duration
                     intra_cycle_e_start = round(8*1000000 * allocation['StopTime'] / self.transmitter_speed)
-                    planned_e_time = self.next_cycle_start + intra_cycle_e_start - 2*avg_half_rtt# + self.cycle_duration
+                    planned_e_time = self.next_cycle_start + intra_cycle_e_start - 2*avg_half_rtt + self.cycle_duration
+                    if planned_s_time < self.time:
+                        print('жопажопажопа')
                     #TODO: data_to_send надо будет наполнить из очередирования со стороны UNI ONT
                     self.data_to_send = {}
                     sig_id = '{}:{}:{}'.format(planned_s_time, self.name, planned_e_time)
