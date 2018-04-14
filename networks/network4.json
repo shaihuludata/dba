@@ -3,7 +3,7 @@
   {
     "dba_type": "static",
     "maximum_ont_amount": "32",
-    "upstream_interframe_interval": 5,
+    "upstream_interframe_interval": 125,
     "transmitter_power": "1",
     "sn_request_interval": 3000,
     "transmitter_wavelength": "1550",
