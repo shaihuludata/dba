@@ -88,7 +88,14 @@ class ModelScheduler:
             observer.make_results()
 
         for dev in self.devices:
-            for name in ['ONT', 'OLT']:
+            for name in ['ONT']:
+                if name in dev:
+                    print('{}'.format(dev))
+                    device = self.devices[dev]
+                    # print('{}'.format(device.counters.export_to_console()))
+                    print(device.export_counters())
+        for dev in self.devices:
+            for name in ['OLT']:
                 if name in dev:
                     print('{}'.format(dev))
                     device = self.devices[dev]
