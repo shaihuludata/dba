@@ -21,8 +21,8 @@ class ActiveDevice(PonDevice):
         if "transmitter_type" in self.config:
             trans_type = self.config["transmitter_type"]
             if trans_type == "1G":
-                #self.transmitter_speed = 1244160000
-                self.transmitter_speed = 1000000000
+                self.transmitter_speed = 1244160000
+                #self.transmitter_speed = 1000000000
             elif trans_type == "2G":
                 self.transmitter_speed = 2488320000
             else:
@@ -52,8 +52,15 @@ class ActiveDevice(PonDevice):
             for i in self.receiving_sig:
                 for j in self.receiving_sig:
                     delta.append(self.receiving_sig[i] - self.receiving_sig[j])
-            print('{} ИНТЕРФЕРЕНЦИОННАЯ КОЛЛИЗИЯ. Сигналов: {}, дельта {}!!!'
-                  .format(self.name, len(self.receiving_sig), delta))
+            print('Time {} {} ИНТЕРФЕРЕНЦИОННАЯ КОЛЛИЗИЯ. Сигналов: {}, дельта {}!!!'
+                  .format(self.time, self.name, len(self.receiving_sig), delta))
+
+            sn = False
+            for i in receiving_sigs:
+                if 'sn_response' in i.data:
+                    sn = True
+            if not sn:
+                print('плохая коллизия')
 
             sig.physics['collision'] = True
             for rec_sig in self.receiving_sig:
