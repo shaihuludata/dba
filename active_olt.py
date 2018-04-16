@@ -64,7 +64,7 @@ class Olt(ActiveDevice):
         if (time - self.sn_request_last_time) >= self.serial_number_request_interval:
             self.sn_request_last_time = self.next_cycle_start
             self.sn_request_quiet_interval_end =\
-                self.next_cycle_start + self.serial_number_quiet_interval + 236 + self.cycle_duration
+                self.next_cycle_start + self.serial_number_quiet_interval + 236 + 2*self.cycle_duration
             sn_request = True
             alloc_structure = {'Alloc-ID': 'to_all', 'Flags': 0,
                                'StartTime': 0,
@@ -93,7 +93,6 @@ class Olt(ActiveDevice):
                             #self.maximum_ont_amount - количеству ONT
                             onts = len(self.ont_discovered)
                             alloc_timer += round(max_time / onts) - self.upstream_interframe_interval #self.maximum_ont_amount)
-                            #alloc_timer += round(max_time / onts)  # self.maximum_ont_amount)
                             alloc_structure['StopTime'] = alloc_timer
                             bwmap.append(alloc_structure)
                     alloc_timer += self.upstream_interframe_interval
@@ -127,7 +126,10 @@ class Olt(ActiveDevice):
             #self.ont_discovered.append(sig.data['sn_response'])
             s_number = sig.data['sn_response']
             self.ont_discovered[s_number] = {s_number+'_0': None}
-            self.data_to_send['sn_ack'] = s_number
+            if 'sn_ack' not in self.data_to_send:
+                self.data_to_send['sn_ack'] = list()
+            self.data_to_send['sn_ack'].append(s_number)
+            #self.data_to_send['sn_ack'] = s_number
             sig = self.oe_transform(sig)
         #output = {"sig": sig, "delay": delay}
         else:

@@ -8,4 +8,5 @@ class Counters:
 
     def export_to_console(self):
         for counter in self.__dict__:
-            print('{} = {}'.format(counter, self.__dict__[counter]))
+            if counter is not None:
+                print('{} = {}'.format(counter, self.__dict__[counter]))

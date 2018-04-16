@@ -80,13 +80,14 @@ class Ont(ActiveDevice):
             self.state = 'Standby'
         elif self.state == 'Standby':
         # delimiter value, power level mode and pre-assigned delay)
+            time = self.time
             #тут нужно из сигнала вытащить запрос SN
             if 'sn_request' in sig.data:
-                delay = random.randrange(34, 36, 1) + random.randrange(0, 50, 1)
+                #delay = random.randrange(34, 36, 1) + random.randrange(0, 50, 1)
+                delay = random.randrange(0, 80, 1) + self.cycle_duration
                 sig = self.oe_transform(sig)
-                # TODO вот тут надо будет воткнуть поправку на RTT
-                planned_s_time = self.next_cycle_start + delay# + self.cycle_duration
-                planned_e_time = planned_s_time + 5# + self.cycle_duration
+                planned_s_time = self.next_cycle_start + delay
+                planned_e_time = planned_s_time + 5
                 sig_id = '{}:{}:{}'.format(planned_s_time, self.name, planned_e_time)
                 resp_sig = Signal(sig_id, self.data_to_send)
                 resp_sig.data['sn_response'] = self.name
@@ -119,9 +120,10 @@ class Ont(ActiveDevice):
                 if self.name in alloc_id:
                     #TODO вот тут надо будет воткнуть поправку на RTT
                     intra_cycle_s_start = round(8*1000000 * allocation['StartTime'] / self.transmitter_speed)
-                    planned_s_time = self.next_cycle_start + intra_cycle_s_start# + 2*avg_half_rtt# + 2*self.cycle_duration
+                    planned_s_time = self.next_cycle_start + intra_cycle_s_start - avg_half_rtt + self.cycle_duration
                     intra_cycle_e_start = round(8*1000000 * allocation['StopTime'] / self.transmitter_speed)
-                    planned_e_time = self.next_cycle_start + intra_cycle_e_start# + 2*avg_half_rtt# + 2*self.cycle_duration
+                    planned_e_time = self.next_cycle_start + intra_cycle_e_start - avg_half_rtt + self.cycle_duration
+                    planned_delta = planned_e_time - planned_s_time
                     if planned_s_time < self.time:
                         print('жопажопажопа')
                     #TODO: data_to_send надо будет наполнить из очередирования со стороны UNI ONT
