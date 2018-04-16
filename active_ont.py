@@ -118,11 +118,10 @@ class Ont(ActiveDevice):
             for allocation in sig.data['bwmap']:
                 alloc_id = allocation['Alloc-ID']
                 if self.name in alloc_id:
-                    #TODO вот тут надо будет воткнуть поправку на RTT
                     intra_cycle_s_start = round(8*1000000 * allocation['StartTime'] / self.transmitter_speed)
-                    planned_s_time = self.next_cycle_start + intra_cycle_s_start - avg_half_rtt + self.cycle_duration
+                    planned_s_time = self.next_cycle_start + intra_cycle_s_start - 2*avg_half_rtt + self.cycle_duration
                     intra_cycle_e_start = round(8*1000000 * allocation['StopTime'] / self.transmitter_speed)
-                    planned_e_time = self.next_cycle_start + intra_cycle_e_start - avg_half_rtt + self.cycle_duration
+                    planned_e_time = self.next_cycle_start + intra_cycle_e_start - 2*avg_half_rtt + self.cycle_duration
                     planned_delta = planned_e_time - planned_s_time
                     if planned_s_time < self.time:
                         print('жопажопажопа')
