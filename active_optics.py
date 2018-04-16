@@ -23,8 +23,10 @@ class ActiveDevice(PonDevice):
             if trans_type == "1G":
                 self.transmitter_speed = 1244160000
                 #self.transmitter_speed = 1000000000
+                self.maximum_allocation_start_time = 19438
             elif trans_type == "2G":
                 self.transmitter_speed = 2488320000
+                self.maximum_allocation_start_time = 38878
             else:
                 raise Exception('Transmitter type {} not specified'.format(trans_type))
         else:

@@ -1,0 +1,16 @@
+{
+  "type1": {
+    "class": 0,
+    "service": "voip",
+    "send_interval": 1000,
+    "distribution": "deterministic",
+    "size_of_packet": 300
+  },
+  "type2": {
+    "class": 3,
+    "service": "best_effort",
+    "send_interval": 125,
+    "distribution": "deterministic",
+    "size_of_packet": 65535
+  }
+}
