@@ -7,6 +7,7 @@ class Counters:
         self.cycle_number = int()
 
     def export_to_console(self):
-        for counter in self.__dict__:
-            if counter is not None:
-                print('{} = {}'.format(counter, self.__dict__[counter]))
+        print('{}'.format(self.__dict__))
+        # for counter in self.__dict__:
+        #     if counter is not None:
+        #         print('{} = {}'.format(counter, self.__dict__[counter]))
