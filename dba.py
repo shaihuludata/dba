@@ -83,6 +83,7 @@ class DbaTM(Dba):
         bwmap = list()
         onts = len(requests)
         max_time = self.maximum_allocation_start_time
-
+        for ont in requests:
+            print(requests[ont])
 
         return bwmap

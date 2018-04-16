@@ -26,11 +26,6 @@ class Olt(ActiveDevice):
         self.maximum_ont_amount = int(self.config['maximum_ont_amount'])
         self.counters.ont_discovered = int()
 
-        if self.config["transmitter_type"] == "1G":
-            self.maximum_allocation_start_time = 19438
-        elif self.config["transmitter_type"] == "2G":
-            self.maximum_allocation_start_time = 38878
-
         dba_config = dict()
         #self.upstream_interframe_interval = self.config['upstream_interframe_interval']  # 10 #in bytes
         for dba_par in ["cycle_duration", "transmitter_type",
