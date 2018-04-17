@@ -1,4 +1,11 @@
 {
+  "type0": {
+    "class": 0,
+    "service": "basic",
+    "send_interval": 0,
+    "distribution": "deterministic",
+    "size_of_packet": 0
+  },
   "type1": {
     "class": 0,
     "service": "voip",

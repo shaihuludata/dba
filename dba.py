@@ -43,6 +43,37 @@ class DbaStatic(Dba):
         max_time = self.maximum_allocation_start_time
         if self.next_cycle_start not in self.global_bwmap:
             for ont in requests:
+                alloc = requests[ont][0]
+                if alloc_timer <= max_time:
+                    alloc_structure = {'Alloc-ID': alloc, 'Flags': 0,
+                                       'StartTime': alloc_timer, 'StopTime': None,
+                                       'CRC': None}
+                    # для статичного DBA выделяется интервал, обратно пропорциональный
+                    # self.maximum_ont_amount - количеству ONT
+                    alloc_timer += round(max_time / onts) - self.upstream_interframe_interval
+                    alloc_structure['StopTime'] = alloc_timer
+                    bwmap.append(alloc_structure)
+                alloc_timer += self.upstream_interframe_interval
+            self.global_bwmap[self.next_cycle_start] = bwmap
+        else:
+            bwmap = self.global_bwmap[self.next_cycle_start]
+        if len(bwmap) > 0:
+            pass
+        return bwmap
+
+class DbaStaticAllocs(Dba):
+    def __init__(self, config):
+        Dba.__init__(self, config)
+
+    def bwmap(self, requests):
+        alloc_timer = 0  # in bytes
+        bwmap = list()
+        onts = 0
+        for alloc_ids in requests:
+            onts += len(alloc_ids)
+        max_time = self.maximum_allocation_start_time
+        if self.next_cycle_start not in self.global_bwmap:
+            for ont in requests:
                 for alloc in requests[ont]:
                     if alloc_timer <= max_time:
                         alloc_structure = {'Alloc-ID': alloc, 'Flags': 0,
@@ -50,14 +81,15 @@ class DbaStatic(Dba):
                                            'CRC': None}
                         # для статичного DBA выделяется интервал, обратно пропорциональный
                         # self.maximum_ont_amount - количеству ONT
-                        alloc_timer += round(
-                            max_time / onts) - self.upstream_interframe_interval  # self.maximum_ont_amount)
+                        alloc_timer += round(max_time / onts) - self.upstream_interframe_interval
                         alloc_structure['StopTime'] = alloc_timer
                         bwmap.append(alloc_structure)
                 alloc_timer += self.upstream_interframe_interval
             self.global_bwmap[self.next_cycle_start] = bwmap
         else:
             bwmap = self.global_bwmap[self.next_cycle_start]
+        if len(bwmap) > 0:
+            pass
         return bwmap
 
 class DbaSR(Dba):

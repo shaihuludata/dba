@@ -2,7 +2,7 @@ from active_optics import ActiveDevice
 from collections import OrderedDict
 from signal import Signal
 import copy
-from dba import DbaStatic, DbaSR, DbaTM
+from dba import DbaStatic, DbaStaticAllocs, DbaSR, DbaTM
 
 dumb_event = {'dev': None, 'state': 'dumb_event', 'sig': None, 'port': None}
 
@@ -20,7 +20,7 @@ class Olt(ActiveDevice):
     def __init__(self, name, config):
         ActiveDevice.__init__(self, name, config)
         self.serial_number_request_interval = self.config['sn_request_interval']
-        self.sn_request_last_time = -2750
+        self.sn_request_last_time = 0 - self.serial_number_request_interval + 250
         self.sn_request_quiet_interval_end = 0
         self.ont_discovered = dict()
         self.maximum_ont_amount = int(self.config['maximum_ont_amount'])
@@ -35,6 +35,8 @@ class Olt(ActiveDevice):
 
         if config['dba_type'] == 'static':
             self.dba = DbaStatic(dba_config)
+        elif config['dba_type'] == 'static_allocs':
+            self.dba = DbaStaticAllocs(dba_config)
         elif config['dba_type'] == 'traffic_monitoring':
             self.dba = DbaTM(dba_config)
         elif config['dba_type'] == 'status_report':
@@ -78,6 +80,7 @@ class Olt(ActiveDevice):
             return {'bwmap': bwmap, 's_timestamp': self.dba.next_cycle_start, 'cycle_num': self.counters.cycle_number}
 
     def r_end(self, sig, port: int):
+        #обработка коллизий
         for rec_sig in self.receiving_sig:
             if rec_sig.id == sig.id:
                 self.receiving_sig.pop(rec_sig)
@@ -85,14 +88,15 @@ class Olt(ActiveDevice):
                     self.counters.ingress_collision += 1
                     return {}
                 break
+
         if 'sn_response' in sig.data and self.time < self.sn_request_quiet_interval_end:
             #self.ont_discovered.append(sig.data['sn_response'])
-            s_number = sig.data['sn_response']
-            self.ont_discovered[s_number] = {s_number+'_0': None}
+            s_number = sig.data['sn_response'][0]
+            allocs = sig.data['sn_response'][1]
+            self.ont_discovered[s_number] = allocs
             if 'sn_ack' not in self.data_to_send:
                 self.data_to_send['sn_ack'] = list()
-            self.data_to_send['sn_ack'].append(s_number)
-            #self.data_to_send['sn_ack'] = s_number
+            self.data_to_send['sn_ack'].extend(allocs)
             sig = self.oe_transform(sig)
         #output = {"sig": sig, "delay": delay}
         else:

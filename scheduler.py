@@ -108,6 +108,7 @@ class ModelScheduler:
         self.schedule.upd_schedule(self.interrogate_devices())
         current_events = self.schedule.events.pop(cur_time)
         new_sched = Schedule()
+        sending_sig = self.olt.sending_sig
         for event in current_events:
             state, sig = event['state'], event['sig']
             l_dev, l_port = event['dev'], event['port']
