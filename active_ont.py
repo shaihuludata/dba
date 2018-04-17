@@ -50,19 +50,28 @@ class Ont(ActiveDevice):
         elif self.state is 'Operation':
             for tg in self.traffic_generators:
                 tg.new_message(time)
-                message_parameters = tg.queue.pop(0)
-                send_time = time + message_parameters.pop('interval')
-                gem_name = message_parameters.pop('alloc_id')
-                traf_class = message_parameters['traf_class']
-                send_size = message_parameters['size']
-                if send_time not in self.data_to_send:
-                    self.data_to_send[send_time] = dict()
-                if gem_name not in self.data_to_send[send_time]:
-                    self.data_to_send[send_time][gem_name] = list()
-                self.data_to_send[send_time][gem_name].append(message_parameters)
+                if len(tg.queue) > 0:
+                    message_parameters = tg.queue.pop(0)
+                    send_time = time + message_parameters.pop('interval')
+                    gem_name = message_parameters['alloc_id']
+                    traf_class = message_parameters['traf_class']
+                    send_size = message_parameters['size']
+                    if send_time not in self.data_to_send:
+                        self.data_to_send[send_time] = dict()
+                    if gem_name not in self.data_to_send[send_time]:
+                        self.data_to_send[send_time][gem_name] = list()
+                    self.data_to_send[send_time][gem_name].append(message_parameters)
 
-            #обработка устаревших сообщений
-            #тут надо удалить всё устаревшее из self.data_...
+            # дальше надо удалить пустые позиции в буфере
+            # TODO: обработка устаревших сообщений
+            # тут надо удалить всё устаревшее из self.data_...
+            # !!! перенесено в процесс работы с data...
+            # for i in self.data_to_send:
+            #     for j in self.data_to_send[i]:
+            #         if len(self.data_to_send[i][j]) == 0:
+            #             self.data_to_send[i].pop(j)
+            #     if len(self.data_to_send[i]) == 0:
+            #         self.data_to_send.pop(i)
 
         elif self.state is 'POPUP':
             pass
@@ -153,19 +162,33 @@ class Ont(ActiveDevice):
 
                     #self.current_allocations[alloc_id] = grant_size
                     #TODO: data_to_send надо будет наполнить из очередирования со стороны UNI ONT
-                    is_allocation_served = False
+                    # actual_data_to_send = {actual_time: self.data_to_send[actual_time]
+                    #                        for actual_time in self.data_to_send
+                    #                        if actual_time <= time}
                     while grant_size >= 0:
-                        min_mes_time = min(self.data_to_send.keys())
-                        if time >= min_mes_time:
-                            if alloc_id in self.data_to_send[min_mes_time]:
-                                message_list = self.data_to_send[min_mes_time][alloc_id]
+                        mes_time = min(self.data_to_send.keys())
+                        if time >= mes_time:
+                            if alloc_id in self.data_to_send[mes_time]:
+                                message_list = self.data_to_send[mes_time][alloc_id]
                                 if len(message_list) == 0:
                                     break
-                                packet = message_list.pop(0)
+                                #фрагментация
+                                if grant_size >= message_list[0]['size']:
+                                    packet = message_list.pop(0)
+                                    if len(self.data_to_send[mes_time][alloc_id]) == 0:
+                                        self.data_to_send[mes_time].pop(alloc_id)
+                                else:
+                                    packet = dict().update(message_list[0])
+                                    packet['size'] = grant_size
+                                    message_list[0]['size'] -= grant_size
+                                    message_list[0]['fragment_offset'] += grant_size
+                                grant_size -= packet['size']
                                 print(packet)
-                                data_to_send.update({packet['packet_id']: packet})
+                                data_to_send.update({packet['alloc_id']: packet})
                             else:
                                 break
+                            if len(self.data_to_send[mes_time]) == 0:
+                                self.data_to_send.pop(time)
                         else:
                             break
                     data_to_send.update({'cycle_num': sig.data['cycle_num']})
