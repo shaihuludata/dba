@@ -40,7 +40,9 @@ class Ont(ActiveDevice):
         elif self.state is 'Ranging':
             pass
         elif self.state is 'Operation':
-            cur_req_parameters = self.requests.pop(0)
+            for tg in self.traffic_generators:
+                tg.new_message()k
+f                cur_req_parameters = self.requests.pop(0)
             #req_age
 
             cur_req_delay_before_send = cur_req_parameters[0]

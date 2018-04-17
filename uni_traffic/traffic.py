@@ -5,6 +5,7 @@ class Traffic:
     def __init__(self, type):
         configs = json.load(open('./traffic_types.json'))
         config = configs[type]
+        self.queue = list()
         self.traf_class = config["class"]
         self.service = config["service"]
         if config["distribution"] is "deterministic":
@@ -14,5 +15,8 @@ class Traffic:
             raise NotImplemented
 
     def new_message(self, time):
-        return {}
+        age = time
+        interval = self.send_interval
+        size = self.size_of_packet
+        self.queue.append((age, interval, size))
 
