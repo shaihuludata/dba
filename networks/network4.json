@@ -73,7 +73,7 @@
   },
   "Fiber4":
   {
-    "length": "10",
+    "length": "8",
     "type": "G657",
     "ports": {"0": "ONT4::0", "1": "Splitter1::4"}
   },

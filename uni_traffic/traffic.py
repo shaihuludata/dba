@@ -9,6 +9,8 @@ class Traffic:
         self.queue = list()
         self.traf_class = config["class"]
         self.service = config["service"]
+        self.packet_counter = 0
+        self.last_packet_born = 0
         if config["distribution"] == "deterministic":
             self.send_interval = config["send_interval"]
             self.size_of_packet = config["size_of_packet"]
@@ -16,14 +18,17 @@ class Traffic:
             raise NotImplemented
 
     def new_message(self, time):
-        message = {'born_time': time,
-                   'alloc_id': self.id,
-                   'traf_class': self.traf_class,
-                   'interval': self.send_interval,
-                   'size': self.size_of_packet,
-                   'fragment_offset': self.size_of_packet,
-                   'packet_id': self.id + '_{}'.format(time),
-                   'llid': self.id
-                   }
-        self.queue.append(message)
+        if time - self.last_packet_born >= self.send_interval:
+            self.last_packet_born = time
+            self.packet_counter += 1
+            message = {'born_time': time,
+                       'alloc_id': self.id,
+                       'traf_class': self.traf_class,
+                       'interval': self.send_interval,
+                       'size': self.size_of_packet,
+                       'fragment_offset': 0,
+                       'packet_id': self.id + '_{}'.format(time),
+                       'packet_num': self.packet_counter,
+                       }
+            self.queue.append(message)
 
