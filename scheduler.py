@@ -63,14 +63,17 @@ class ModelScheduler:
             elif 'Fiber' in dev:
                 self.devices[dev] = Fiber(name=dev, config=net[dev])
 
-        self.observers = list()
         if 'time_ranges' in config:
             time_ranges = config['time_ranges']
         else:
             time_ranges = [[0, time_horisont]]
 
-        self.observers.append(FlowObserver(time_ranges_to_show=time_ranges))
+        self.observers = list()
+        if config["observers"]["flow"]:
+            self.observers.append(FlowObserver(time_ranges_to_show=time_ranges))
         #self.observers.append(DevicesObserver(self.devices))
+        if config["observers"]["power"]:
+            self.observers.append(PhysicsObserver(time_ranges_to_show=time_ranges))
 
         # self.dba_algorithm = algorithm
         self.current_requests = list()

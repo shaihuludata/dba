@@ -1,5 +1,4 @@
 from pon_device import PonDevice
-from signal import Signal
 import copy
 import math
 
