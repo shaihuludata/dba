@@ -59,7 +59,7 @@ class Olt(ActiveDevice):
                 next_bwmap = self.make_bwmap(time)
                 data_to_send.update(next_bwmap)
                 sig_id = '{}:{}:{}'.format(planned_s_time, self.name, planned_e_time)
-                sig = Signal(sig_id, data_to_send)
+                sig = Signal(sig_id, data_to_send, source=self.name)
                 self.sending_sig[planned_s_time] = sig.id
                 self.data_to_send.clear()
                 return {planned_s_time: [{"dev": self, "state": "s_start", "sig": sig, "port": 0}],

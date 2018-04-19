@@ -113,7 +113,7 @@ class Ont(ActiveDevice):
                 planned_s_time = self.next_cycle_start + delay
                 planned_e_time = planned_s_time + 2
                 sig_id = '{}:{}:{}'.format(planned_s_time, self.name, planned_e_time)
-                resp_sig = Signal(sig_id, {})#self.data_to_send)
+                resp_sig = Signal(sig_id, {}, source=self.name)
                 alloc_ids = list(self.current_allocations.keys())
                 resp_sig.data['sn_response'] = (self.name, alloc_ids)
                 self.planned_events.update({
@@ -196,7 +196,7 @@ class Ont(ActiveDevice):
                     sig_id = '{}:{}:{}'.format(planned_s_time, self.name, planned_e_time)
                     if sig_id not in self.sending_sig.values():
                         self.sending_sig[planned_s_time] = sig_id
-                        req_sig = Signal(sig_id, data_to_send)
+                        req_sig = Signal(sig_id, data_to_send, source=self.name)
                         self.planned_events.update({
                             planned_s_time: [{"dev": self, "state": "s_start", "sig": req_sig, "port": 0}],
                             planned_e_time: [{"dev": self, "state": "s_end", "sig": req_sig, "port": 0}]})

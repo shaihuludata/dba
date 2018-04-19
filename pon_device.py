@@ -1,5 +1,3 @@
-import queue
-from signal import Signal
 
 
 class PonDevice:

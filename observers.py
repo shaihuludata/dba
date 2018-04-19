@@ -5,11 +5,12 @@ import matplotlib as mp
 # mp.use('agg')
 import time
 
+result_dir = './result/'
 
 class FlowObserver:
 
     def __init__(self, time_ranges_to_show):
-        self.name = 'some kind of observer'
+        self.name = 'GTC_signals_visualizer'
         self.observer_result = dict()
         # {dev.name + '::' + port: [(time, sig.__dict__)]}
         if not time_ranges_to_show:
@@ -32,7 +33,7 @@ class FlowObserver:
         for ev_time in passed_schedule:
             for event in passed_schedule[ev_time]:
                 dev, state, sig, port = event['dev'], event['state'], event['sig'], event['port']
-                if event['state'] in ['s_start', 's_end', 'r_start', 'r_end']:
+                if state in ['s_start', 's_end', 'r_start', 'r_end']:
                     point = dev.name + '::' + str(port)
                     if point in self.observer_result:
                         time_sig = self.observer_result[point]
@@ -141,4 +142,70 @@ class FlowObserver:
 
         fig.canvas.draw()
         # time.sleep(3)
+        fig.savefig(result_dir + 'flow_diagram.png', bbox_inches='tight')
+
+
+class PhysicsObserver:
+
+    def __init__(self, time_ranges_to_show):
+        self.name = 'Physics visualizer'
+        self.observer_result = dict()
+        # {dev.name + '::' + port: [(time, sig.__dict__)]}
+        if not time_ranges_to_show:
+            self.time_ranges_to_show = [[1000, 2000]]
+        else:
+            self.time_ranges_to_show = time_ranges_to_show
+
+        self.time_horisont = 0
+        for time_range in self.time_ranges_to_show:
+            new_horizont = max(time_range)
+            if self.time_horisont < new_horizont:
+                self.time_horisont = new_horizont
+
+    def notice(self, schedule, cur_time):
+        # обозреваем только события, заключённые в time_ranges_to_show
+        passed_schedule = dict()
+        for time_range in self.time_ranges_to_show:
+            passed_schedule.update({time: schedule[time] for time in schedule
+                                    if (time in range(time_range[0], time_range[1])) and (time <= cur_time)})
+
+        for ev_time in passed_schedule:
+            for event in passed_schedule[ev_time]:
+                dev, state, sig, port = event['dev'], event['state'], event['sig'], event['port']
+                if sig.name not in self.observer_result:#[sig.name]:
+                    self.observer_result[sig.name] = dict()
+                physics = dict()
+                physics.update(sig.physics)
+                self.observer_result[sig.name][ev_time] = physics
+                #в результате накапливается 3 уровня вложений словарей
+                #{имя сигнала : {время: физика сигнала}}
+        return
+
+    def cook_result(self):
+
+        return
+
+    def make_results(self):
+        fig = plt.figure(1, figsize=(15, 15))
+        fig.show()
+        sig_name_index = 1
+        for sig_name in self.observer_result:
+            time_phys_result = self.observer_result[sig_name]
+            time_result, pow_result = list(), list()
+            number_of_sigs = len(time_phys_result)
+            times = list(time_phys_result.keys())
+            times.sort()
+            for time_r in times:
+                time_result.append(time_r)
+                pow_result.append(time_phys_result[time_r]['power'])
+            ax = fig.add_subplot(number_of_sigs, 1, sig_name_index)
+            sig_name_index += 1
+            ax.plot(time_result, pow_result)
+            #fig.canvas.draw()
+            time.sleep(1)
+
+        #ax.set_xticklabels(points_to_watch)
+        fig.canvas.draw()
+        #time.sleep(1)
+        #plt.show()
         fig.savefig('fig1.png', bbox_inches='tight')
