@@ -71,9 +71,12 @@ class ModelScheduler:
         self.observers = list()
         if config["observers"]["flow"]:
             self.observers.append(FlowObserver(time_ranges_to_show=time_ranges))
-        #self.observers.append(DevicesObserver(self.devices))
         if config["observers"]["power"]:
             self.observers.append(PhysicsObserver(time_ranges_to_show=time_ranges))
+        if config["observers"]["traffic"]:
+            self.observers.append(TrafficObserver(time_ranges_to_show=time_ranges))
+
+        # self.observers.append(DevicesObserver(self.devices))
 
         # self.dba_algorithm = algorithm
         self.current_requests = list()

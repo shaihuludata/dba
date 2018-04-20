@@ -102,7 +102,7 @@ class Olt(ActiveDevice):
             self.counters.ingress_unicast += 1
             pass
         sig = self.oe_transform(sig)
-        return {}#port: output}
+        return {}
 
     def export_counters(self):
         self.counters.ont_discovered = len(self.ont_discovered)

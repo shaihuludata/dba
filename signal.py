@@ -1,4 +1,10 @@
 
+
+class ExternalData:
+    def __init__(self):
+        self.distance_passed = 0
+
+
 class Signal:
 
     def __init__(self, id, data, source):
@@ -6,6 +12,7 @@ class Signal:
         self.physics = dict()
         self.physics['type'] = 'electric'
         self.physics['collision'] = False
+        self.external = ExternalData()
         self.data = data
         self.name = source
 

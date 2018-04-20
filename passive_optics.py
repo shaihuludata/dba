@@ -16,6 +16,7 @@ class Splitter(PassiveDevice):
     def __init__(self, name, config):
         PassiveDevice.__init__(self, name, config)
         # self.name = name
+        self.length = 0.000001
         self.type = self.config['type']
         if self.type == '1:2':
             self.power_matrix = [[0, 0.25, 0.25],
@@ -33,6 +34,7 @@ class Splitter(PassiveDevice):
     def multiply_power(self, sig, ratio):
         new_sig = copy.deepcopy(sig)
         new_sig.physics['power'] *= ratio
+        new_sig.external.distance_passed += self.length
         return new_sig
 
     def s_start(self, sig, port):
