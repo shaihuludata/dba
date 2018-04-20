@@ -166,17 +166,17 @@ class PhysicsObserver:
         # обозреваем только события, заключённые в time_ranges_to_show
         passed_schedule = dict()
         for time_range in self.time_ranges_to_show:
-            passed_schedule.update({time: schedule[time] for time in schedule
-                                    if (time in range(time_range[0], time_range[1])) and (time <= cur_time)})
+            passed_schedule.update({t: schedule[t] for t in schedule
+                                    if (t in range(time_range[0], time_range[1])) and (t <= cur_time)})
 
         for ev_time in passed_schedule:
             for event in passed_schedule[ev_time]:
                 dev, state, sig, port = event['dev'], event['state'], event['sig'], event['port']
-                if sig.name not in self.observer_result:#[sig.name]:
+                if sig.name not in self.observer_result:
                     self.observer_result[sig.name] = dict()
                 physics = dict()
                 physics.update(sig.physics)
-                self.observer_result[sig.name][ev_time] = physics
+                self.observer_result[sig.name][sig.external.distance_passed] = physics
                 #в результате накапливается 3 уровня вложений словарей
                 #{имя сигнала : {время: физика сигнала}}
         return
@@ -185,27 +185,123 @@ class PhysicsObserver:
 
         return
 
+    def make_results_by_time(self):
+        # for sig_name in self.observer_result:
+        #     time_phys_result = self.observer_result[sig_name]
+        #     time_result, pow_result = list(), list()
+        #     number_of_sigs = len(time_phys_result)
+        #     times = list(time_phys_result.keys())
+        #     times.sort()
+        #     for time_r in times:
+        #         time_result.append(time_r)
+        #         pow_result.append(time_phys_result[time_r]['power'])
+        #     ax = fig.add_subplot(number_of_sigs, 1, sig_name_index)
+        #     sig_name_index += 1
+        #     ax.plot(time_result, pow_result)
+        #     #fig.canvas.draw()
+        #     time.sleep(1)
+        return
+
     def make_results(self):
         fig = plt.figure(1, figsize=(15, 15))
         fig.show()
         sig_name_index = 1
+        length_limit = int()
+
+        #чтобы уравнять длины графиков
         for sig_name in self.observer_result:
-            time_phys_result = self.observer_result[sig_name]
-            time_result, pow_result = list(), list()
-            number_of_sigs = len(time_phys_result)
-            times = list(time_phys_result.keys())
-            times.sort()
-            for time_r in times:
-                time_result.append(time_r)
-                pow_result.append(time_phys_result[time_r]['power'])
+            cur_length_limit = max(self.observer_result[sig_name].keys())
+            if length_limit < cur_length_limit:
+                length_limit = cur_length_limit
+
+        number_of_sigs = len(self.observer_result)
+        for sig_name in self.observer_result:
+            dist_phys_result = self.observer_result[sig_name]
+            dist_result, pow_result = list(), list()
+            dists = list(dist_phys_result.keys())
+            dists.sort()
+            for time_r in dists:
+                dist_result.append(time_r)
+                pow_result.append(dist_phys_result[time_r]['power'])
             ax = fig.add_subplot(number_of_sigs, 1, sig_name_index)
             sig_name_index += 1
-            ax.plot(time_result, pow_result)
-            #fig.canvas.draw()
+            plt.ylabel(sig_name)
+            ax.plot(dist_result, pow_result)
+            ax.set_xlim(0, length_limit)
+            fig.canvas.draw()
             time.sleep(1)
 
         #ax.set_xticklabels(points_to_watch)
         fig.canvas.draw()
         #time.sleep(1)
         #plt.show()
-        fig.savefig('fig1.png', bbox_inches='tight')
+        fig.savefig(result_dir + 'levels.png', bbox_inches='tight')
+
+
+class TrafficObserver:
+
+    def __init__(self, time_ranges_to_show):
+        self.name = 'Traffic visualizer'
+        self.observer_result = dict()
+        # # {dev.name + '::' + port: [(time, sig.__dict__)]}
+        if not time_ranges_to_show:
+            self.time_ranges_to_show = [[1000, 2000]]
+        else:
+            self.time_ranges_to_show = time_ranges_to_show
+
+        self.time_horisont = 0
+        for time_range in self.time_ranges_to_show:
+            new_horizont = max(time_range)
+            if self.time_horisont < new_horizont:
+                self.time_horisont = new_horizont
+
+    def notice(self, schedule, cur_time):
+        # обозреваем только события, заключённые в time_ranges_to_show
+        passed_schedule = dict()
+        for time_range in self.time_ranges_to_show:
+            passed_schedule.update({t: schedule[t] for t in schedule
+                                    if (t in range(time_range[0], time_range[1])) and (t <= cur_time)})
+
+        for ev_time in passed_schedule:
+            for event in passed_schedule[ev_time]:
+                dev, state, sig, port = event['dev'], event['state'], event['sig'], event['port']
+                if sig.physics['type'] == 'electric':
+                    if sig.name not in self.observer_result:
+                        self.observer_result[sig.name] = dict()
+                data = dict()
+                data.update(sig.data)
+                for dev_name in ['ONT']:  # , 'OLT']
+                    if dev_name in dev.name:
+                        self.observer_result[sig.name][ev_time] = data
+                # {имя сигнала : {время: данные сигнала}}
+        return
+
+    def cook_result(self):
+        return
+
+    def make_results(self):
+        fig = plt.figure(1, figsize=(15, 15))
+        fig.show()
+        sig_name_index = 1
+
+        number_of_sigs = len(self.observer_result)
+        for sig_name in self.observer_result:
+            time_data_result = self.observer_result[sig_name]
+            time_result, latency_result = list(), list()
+            for time_r in time_data_result:
+                packet_data = time_data_result[time_r]
+                if 'born_time' in packet_data:
+                    time_result.append(time_r)
+                    latency_result.append(time_r - packet_data['born_time'])
+            ax = fig.add_subplot(number_of_sigs, 1, sig_name_index)
+            sig_name_index += 1
+            plt.ylabel(sig_name)
+            ax.plot(time_result, latency_result)
+            fig.canvas.draw()
+            time.sleep(1)
+
+        # ax.set_xticklabels(points_to_watch)
+        fig.canvas.draw()
+        # time.sleep(1)
+        # plt.show()
+        fig.savefig(result_dir + 'packets.png', bbox_inches='tight')
