@@ -10,7 +10,7 @@ class ActiveDevice(PonDevice):
         self.next_cycle_start = 0
         self.requests = list()
         self.data_to_send = dict()
-        # TODO: в следующей версии, предусмотреть вместо списка словарь порт: список сигналов
+        # в следующей версии, предусмотреть вместо списка словарь порт: список сигналов
         # либо в дальнейшем перенести мониторинг коллизий на наблюдателя контрольных точек
         self.receiving_sig = dict()
         self.sending_sig = dict()
@@ -22,7 +22,7 @@ class ActiveDevice(PonDevice):
             trans_type = self.config["transmitter_type"]
             if trans_type == "1G":
                 self.transmitter_speed = 1244160000
-                #self.transmitter_speed = 1000000000
+                # self.transmitter_speed = 1000000000
                 self.maximum_allocation_start_time = 19438
             elif trans_type == "2G":
                 self.transmitter_speed = 2488320000
@@ -35,8 +35,8 @@ class ActiveDevice(PonDevice):
     def plan_next_act(self, time):
         self.time = time
         pass
-        #data = 'nothing to send'
-        #return {0: [data]}
+        # data = 'nothing to send'
+        # return {0: [data]}
 
     def s_start(self, sig, port: int):
         sig = self.eo_transform(sig)
@@ -62,7 +62,8 @@ class ActiveDevice(PonDevice):
                 if 'sn_response' in i.data:
                     sn = True
             if not sn:
-                print('плохая коллизия')
+                # print('плохая коллизия')
+                raise Exception('плохая коллизия')
 
             sig.physics['collision'] = True
             for rec_sig in self.receiving_sig:
