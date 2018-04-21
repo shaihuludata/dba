@@ -265,37 +265,50 @@ class TrafficObserver:
         for ev_time in passed_schedule:
             for event in passed_schedule[ev_time]:
                 dev, state, sig, port = event['dev'], event['state'], event['sig'], event['port']
-                if sig.physics['type'] == 'electric':
+                # if sig.physics['type'] == 'electric':
+                if 'OLT' in dev.name and state == 'r_end':
                     if sig.name not in self.observer_result:
                         self.observer_result[sig.name] = dict()
-                data = dict()
-                data.update(sig.data)
-                for dev_name in ['ONT']:  # , 'OLT']
-                    if dev_name in dev.name:
-                        self.observer_result[sig.name][ev_time] = data
+                    data = dict()
+                    data.update(sig.data)
+                    # for dev_name in ['OLT']:  # , 'OLT']
+                    # if dev_name in dev.name:
+                    self.observer_result[sig.name][ev_time] = data
                 # {имя сигнала : {время: данные сигнала}}
         return
 
     def cook_result(self):
-        return
+        flow_time_result = dict()
+        for dev_name in self.observer_result:
+            time_data_result = self.observer_result[dev_name]
+            for time_r in time_data_result:
+                tcont_data = time_data_result[time_r]
+                for alloc in tcont_data:
+                    if dev_name in alloc:
+                        if alloc not in flow_time_result:
+                            flow_time_result[alloc] = dict()
+                        if time_r not in flow_time_result[alloc]:
+                            flow_time_result[alloc][time_r] = tcont_data[alloc]
+        return flow_time_result
 
     def make_results(self):
         fig = plt.figure(1, figsize=(15, 15))
         fig.show()
-        sig_name_index = 1
 
-        number_of_sigs = len(self.observer_result)
-        for sig_name in self.observer_result:
-            time_data_result = self.observer_result[sig_name]
+        # number_of_sigs = len(self.observer_result)
+        flow_time_result = self.cook_result()
+        number_of_flows = len(flow_time_result)
+        flow_index = 1
+        for flow_name in flow_time_result:
             time_result, latency_result = list(), list()
-            for time_r in time_data_result:
-                packet_data = time_data_result[time_r]
+            for time_r in flow_time_result[flow_name]:
+                packet_data = flow_time_result[flow_name][time_r]
                 if 'born_time' in packet_data:
                     time_result.append(time_r)
                     latency_result.append(time_r - packet_data['born_time'])
-            ax = fig.add_subplot(number_of_sigs, 1, sig_name_index)
-            sig_name_index += 1
-            plt.ylabel(sig_name)
+            ax = fig.add_subplot(number_of_flows, 1, flow_index)
+            flow_index += 1
+            plt.ylabel(flow_name)
             ax.plot(time_result, latency_result)
             fig.canvas.draw()
             time.sleep(1)

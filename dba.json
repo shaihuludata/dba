@@ -1,5 +1,5 @@
 {
-    "horisont" : 10000,
-    "time_ranges" : [[0, 10000]],
+    "horisont" : 5000,
+    "time_ranges" : [[4000, 5000]],
     "observers" : {"flow": false, "power": false, "traffic": true}
 }
