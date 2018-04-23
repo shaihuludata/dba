@@ -3,6 +3,7 @@ from collections import OrderedDict
 from signal import Signal
 import copy
 from dba import DbaStatic, DbaStaticAllocs, DbaSR, DbaTM
+from sympy import Interval, Union, EmptySet
 
 dumb_event = {'dev': None, 'state': 'dumb_event', 'sig': None, 'port': None}
 
@@ -82,6 +83,7 @@ class Olt(ActiveDevice):
             return {'bwmap': bwmap, 's_timestamp': self.dba.next_cycle_start, 'cycle_num': self.counters.cycle_number}
 
     def r_end(self, sig, port: int):
+        ret = dict()
         # обработка интерференционной коллизии
         # каждый принимаемый сигнал должен быть помечен как коллизирующий
         for rec_sig in self.receiving_sig:
@@ -110,22 +112,45 @@ class Olt(ActiveDevice):
                         if packet_id not in self.defragmentation_buffer:
                             self.defragmentation_buffer[packet_id] = list()
                         self.defragmentation_buffer[packet_id].append(packet)
-            # TODO дефрагментация накопленных в буффере пакетов
-            for pack in self.defragmentation_buffer:
-                offset = int()
-                for fragment in pack:
-                    pass
-                    # from sympy import Interval, Union
-                    # def union(data):
-                    #     """ Union of a list of intervals e.g. [(1,2),(3,4)] """
-                    #     intervals = [Interval(begin, end) for (begin, end) in data]
-                    #     u = Union(*intervals)
-                    #     return [list(u.args[:2])] if isinstance(u, Interval) \
-                    #         else list(u.args)
 
-            self.counters.ingress_unicast += 1
-        return {}
+            # дефрагментация накопленных в буффере пакетов
+            for pack in self.defragmentation_buffer:
+                fragments = self.defragmentation_buffer[pack]
+                defragmented = EmptySet()
+                for fragment in fragments:
+                    cur_start = fragment['fragment_offset']
+                    cur_end = cur_start + fragment['size']
+                    total_size = fragment['total_size']
+                    if cur_start == 0:
+                        cur_fragment = Interval(cur_start, cur_end)
+                    else:
+                        cur_fragment = Interval.Lopen(cur_start, cur_end)
+                    if defragmented.intersect(cur_fragment) is EmptySet():
+                        defragmented = defragmented.union(cur_fragment)
+                    else:
+                        raise Exception('Ошибка дефрагментации')
+                    if defragmented.measure == total_size:
+                        # if self.time not in self.received_packets:
+                        #     self.received_packets[self.time] = list()
+                        # self.received_packets[self.time].append(defragmented)
+                        self.counters.ingress_unicast += 1
+                        if self.time not in ret:
+                            ret[self.time] = list()
+                        fragment['fragment_offset'] = 0
+                        fragment['size'] = total_size
+                        defrag_packet = dict()
+                        defrag_packet.update(fragment)
+                        ret[self.time].append({"dev": self, "state": "defrag", "sig": defrag_packet, "port": 0})
+        return ret
 
     def export_counters(self):
         self.counters.ont_discovered = len(self.ont_discovered)
         return self.counters.export_to_console()
+
+
+# def union(data):
+#     """ Union of a list of intervals e.g. [(1,2),(3,4)] """
+#     intervals = [Interval(begin, end) for (begin, end) in data]
+#     u = Union(*intervals)
+#     return [list(u.args[:2])] if isinstance(u, Interval) else list(u.args)
+

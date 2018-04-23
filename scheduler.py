@@ -69,14 +69,13 @@ class ModelScheduler:
             time_ranges = [[0, time_horisont]]
 
         self.observers = list()
+        self.traf_observers = list()
         if config["observers"]["flow"]:
             self.observers.append(FlowObserver(time_ranges_to_show=time_ranges))
         if config["observers"]["power"]:
             self.observers.append(PhysicsObserver(time_ranges_to_show=time_ranges))
         if config["observers"]["traffic"]:
-            self.observers.append(TrafficObserver(time_ranges_to_show=time_ranges))
-
-        # self.observers.append(DevicesObserver(self.devices))
+            self.observers.append(ReceivedTrafficObserver(time_ranges_to_show=time_ranges))
 
         # self.dba_algorithm = algorithm
         self.current_requests = list()
@@ -88,6 +87,17 @@ class ModelScheduler:
     def notify_observers(self):
         for observer in self.observers:
             observer.notice(self.schedule.events, self.time)
+
+        # чтобы не городить этот код, ввёл глобально новый event_state
+        # new_data = list()
+        # for dev_name in self.devices:
+        #     if 'ONT' in dev_name or 'OLT' in dev_name:
+        #         dev = self.devices[dev_name]
+        #         if len(dev.received_packets) > 0:
+        #             new_data.append(dev.received_packets)
+        #             dev.received_packets.clear()
+        # for observer in self.traf_observers:
+        #     observer.notice(new_data, self.time)
 
     def make_results(self):
         for observer in self.observers:
@@ -161,17 +171,19 @@ class ModelScheduler:
                 new_event = {'dev': r_dev, 'state': 'r_end', 'sig': sig, 'port': int(r_port)}
                 new_sched.upd_schedule({cur_time: [new_event]})
             elif state == 'r_end':
-                port_sig_dict = l_dev.r_end(sig, l_port)
-                if ('ONT' in l_dev.name or 'OLT' in l_dev.name) and len(port_sig_dict) == 1:
-                    for port in port_sig_dict:
-                        sig = port_sig_dict[port]['sig']
-                        if sig.physics['type'] == 'electric':
-                            print('Сигнал {} доставлен и принят {}'.format(sig.id, l_dev.name))
-                        new_event = {'dev': l_dev, 'state': 's_start',
-                                     'sig': port_sig_dict[port]['sig'], 'port': port}
-                        delay = port_sig_dict[port]['delay']
-                        new_sched.upd_schedule({cur_time + delay: [new_event]})
+                if 'ONT' in l_dev.name or 'OLT' in l_dev.name:
+                    time_sig_dict = l_dev.r_end(sig, l_port)
+                    if len(time_sig_dict) > 0:
+                        new_sched.upd_schedule(time_sig_dict)
+                    # for port in port_sig_dict:
+                    #     sig = port_sig_dict[port]['sig']
+                    #     if sig.physics['type'] == 'electric':
+                    #         print('Сигнал {} доставлен и принят {}'.format(sig.id, l_dev.name))
+                    #     new_event = {'dev': l_dev, 'state': 's_start',
+                    #                  'sig': port_sig_dict[port]['sig'], 'port': port}
+                    #     delay = port_sig_dict[port]['delay']
                 else:
+                    port_sig_dict = l_dev.r_end(sig, l_port)
                     for port in port_sig_dict:
                         # r_device, r_port = self.net[l_dev.name]['ports'][str(port)].split("::")
                         # r_dev = self.devices[r_device]
@@ -179,8 +191,10 @@ class ModelScheduler:
                                      'sig': port_sig_dict[port]['sig'], 'port': port}
                         delay = port_sig_dict[port]['delay']
                         new_sched.upd_schedule({cur_time + delay: [new_event]})
+            elif state == 'defrag':
+                pass
             else:
-                raise Exception('{} Non implemented'.format(state))
+                raise Exception('{} Not implemented'.format(state))
         self.schedule.upd_schedule(new_sched.events)
         return True
 

@@ -13,6 +13,7 @@ class ActiveDevice(PonDevice):
         # в следующей версии, предусмотреть вместо списка словарь порт: список сигналов
         # либо в дальнейшем перенести мониторинг коллизий на наблюдателя контрольных точек
         self.receiving_sig = dict()
+        self.received_packets = dict()
         self.sending_sig = dict()
         self.time = 0
         self.counters = Counters()
