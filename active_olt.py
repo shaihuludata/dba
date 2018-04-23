@@ -14,6 +14,7 @@ dumb_event = {'dev': None, 'state': 'dumb_event', 'sig': None, 'port': None}
 #     def new_alloc(self):
 #         return self.alloc_structure
 
+
 class Olt(ActiveDevice):
     serial_number_quiet_interval = 200
 
@@ -25,9 +26,10 @@ class Olt(ActiveDevice):
         self.ont_discovered = dict()
         self.maximum_ont_amount = int(self.config['maximum_ont_amount'])
         self.counters.ont_discovered = int()
+        self.defragmentation_buffer = dict()
 
         dba_config = dict()
-        #self.upstream_interframe_interval = self.config['upstream_interframe_interval']  # 10 #in bytes
+        # self.upstream_interframe_interval = self.config['upstream_interframe_interval']  # 10 #in bytes
         for dba_par in ["cycle_duration", "transmitter_type",
                         'maximum_allocation_start_time', 'upstream_interframe_interval']:
             if dba_par in config:
@@ -54,18 +56,18 @@ class Olt(ActiveDevice):
         sig = None
         data_to_send = dict()
         data_to_send.update(self.data_to_send)
-        if self.state == 'Initial':
-            if planned_s_time not in self.sending_sig:
-                next_bwmap = self.make_bwmap(time)
-                data_to_send.update(next_bwmap)
-                sig_id = '{}:{}:{}'.format(planned_s_time, self.name, planned_e_time)
-                sig = Signal(sig_id, data_to_send, source=self.name)
-                self.sending_sig[planned_s_time] = sig.id
-                self.data_to_send.clear()
-                return {planned_s_time: [{"dev": self, "state": "s_start", "sig": sig, "port": 0}],
-                        planned_e_time: [{"dev": self, "state": "s_end", "sig": sig, "port": 0}]}
-            else:
-                return {}
+        # if self.state == 'Initial':
+        if planned_s_time not in self.sending_sig:
+            next_bwmap = self.make_bwmap(time)
+            data_to_send.update(next_bwmap)
+            sig_id = '{}:{}:{}'.format(planned_s_time, self.name, planned_e_time)
+            sig = Signal(sig_id, data_to_send, source=self.name)
+            self.sending_sig[planned_s_time] = sig.id
+            self.data_to_send.clear()
+            return {planned_s_time: [{"dev": self, "state": "s_start", "sig": sig, "port": 0}],
+                    planned_e_time: [{"dev": self, "state": "s_end", "sig": sig, "port": 0}]}
+        else:
+            return {}
 
     def make_bwmap(self, time):
         if (time - self.sn_request_last_time) >= self.serial_number_request_interval:
@@ -76,11 +78,12 @@ class Olt(ActiveDevice):
             bwmap = self.dba.sn_request()
             return {'bwmap': bwmap, 'sn_request': sn_request, 's_timestamp': self.dba.next_cycle_start}
         else:
-            bwmap = self.dba.bwmap(requests=self.ont_discovered)
+            bwmap = self.dba.bwmap(requests=self.ont_discovered, cur_time=time)
             return {'bwmap': bwmap, 's_timestamp': self.dba.next_cycle_start, 'cycle_num': self.counters.cycle_number}
 
     def r_end(self, sig, port: int):
-        #обработка коллизий
+        # обработка интерференционной коллизии
+        # каждый принимаемый сигнал должен быть помечен как коллизирующий
         for rec_sig in self.receiving_sig:
             if rec_sig.id == sig.id:
                 self.receiving_sig.pop(rec_sig)
@@ -89,19 +92,38 @@ class Olt(ActiveDevice):
                     return {}
                 break
 
+        sig = self.oe_transform(sig)
         if 'sn_response' in sig.data and self.time < self.sn_request_quiet_interval_end:
-            #self.ont_discovered.append(sig.data['sn_response'])
+            # self.ont_discovered.append(sig.data['sn_response'])
             s_number = sig.data['sn_response'][0]
             allocs = sig.data['sn_response'][1]
             self.ont_discovered[s_number] = allocs
             if 'sn_ack' not in self.data_to_send:
                 self.data_to_send['sn_ack'] = list()
             self.data_to_send['sn_ack'].extend(allocs)
-        #output = {"sig": sig, "delay": delay}
+        # output = {"sig": sig, "delay": delay}
         else:
+            for alloc in sig.data:
+                if 'ONT' in alloc:
+                    for packet in sig.data[alloc]:
+                        packet_id = packet['packet_id']
+                        if packet_id not in self.defragmentation_buffer:
+                            self.defragmentation_buffer[packet_id] = list()
+                        self.defragmentation_buffer[packet_id].append(packet)
+            # TODO дефрагментация накопленных в буффере пакетов
+            for pack in self.defragmentation_buffer:
+                offset = int()
+                for fragment in pack:
+                    pass
+                    # from sympy import Interval, Union
+                    # def union(data):
+                    #     """ Union of a list of intervals e.g. [(1,2),(3,4)] """
+                    #     intervals = [Interval(begin, end) for (begin, end) in data]
+                    #     u = Union(*intervals)
+                    #     return [list(u.args[:2])] if isinstance(u, Interval) \
+                    #         else list(u.args)
+
             self.counters.ingress_unicast += 1
-            pass
-        sig = self.oe_transform(sig)
         return {}
 
     def export_counters(self):

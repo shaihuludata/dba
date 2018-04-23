@@ -16,15 +16,14 @@ class Dba:
         elif config["transmitter_type"] == "2G":
             self.maximum_allocation_start_time = 38878
 
-    def bwmap(self, requests):
+    def bwmap(self, requests, cur_time):
         pass
 
     def sn_request(self):
         bwmap = list()
-        alloc_structure = {'Alloc-ID': 'to_all', 'Flags': 0,
+        alloc_structure = {'Alloc-ID': 'to_all',  # 'Flags': 0,
                            'StartTime': 0,
-                           'StopTime': self.maximum_allocation_start_time,
-                           'CRC': None}
+                           'StopTime': self.maximum_allocation_start_time}  # , 'CRC': None}
         # alloc_structure['StartTime'] = self.next_cycle_start + 236
         # alloc_structure['StopTime'] = self.sn_request_quiet_interval_end + 236
         bwmap.append(alloc_structure)
@@ -32,25 +31,30 @@ class Dba:
         self.global_bwmap[self.next_cycle_start + self.cycle_duration] = bwmap
         return bwmap
 
+
 class DbaStatic(Dba):
     def __init__(self, config):
         Dba.__init__(self, config)
 
-    def bwmap(self, requests):
+    def bwmap(self, requests, cur_time):
         alloc_timer = 0  # in bytes
         bwmap = list()
         onts = len(requests)
-        max_time = self.maximum_allocation_start_time
-        if self.next_cycle_start not in self.global_bwmap:
+        max_alloc_time = self.maximum_allocation_start_time  # in bytes!
+        if (self.next_cycle_start not in self.global_bwmap)\
+                or len(self.global_bwmap[self.next_cycle_start]) == 0:
             for ont in requests:
-                alloc = requests[ont][0]
-                if alloc_timer <= max_time:
-                    alloc_structure = {'Alloc-ID': alloc, 'Flags': 0,
-                                       'StartTime': alloc_timer, 'StopTime': None,
-                                       'CRC': None}
+                alloc = str()
+                for allocation in requests[ont]:
+                    if allocation.endswith('_1'):
+                        alloc = allocation
+                        break
+                if alloc_timer <= max_alloc_time:
+                    alloc_structure = {'Alloc-ID': alloc,  # 'Flags': 0,
+                                       'StartTime': alloc_timer, 'StopTime': None}  # , 'CRC': None}
                     # для статичного DBA выделяется интервал, обратно пропорциональный
                     # self.maximum_ont_amount - количеству ONT
-                    alloc_timer += round(max_time / onts) - self.upstream_interframe_interval
+                    alloc_timer += round(max_alloc_time / onts) - self.upstream_interframe_interval
                     alloc_structure['StopTime'] = alloc_timer
                     bwmap.append(alloc_structure)
                 alloc_timer += self.upstream_interframe_interval
@@ -61,11 +65,12 @@ class DbaStatic(Dba):
             pass
         return bwmap
 
+
 class DbaStaticAllocs(Dba):
     def __init__(self, config):
         Dba.__init__(self, config)
 
-    def bwmap(self, requests):
+    def bwmap(self, requests, cur_time):
         alloc_timer = 0  # in bytes
         bwmap = list()
         onts = 0
@@ -76,9 +81,8 @@ class DbaStaticAllocs(Dba):
             for ont in requests:
                 for alloc in requests[ont]:
                     if alloc_timer <= max_time:
-                        alloc_structure = {'Alloc-ID': alloc, 'Flags': 0,
-                                           'StartTime': alloc_timer, 'StopTime': None,
-                                           'CRC': None}
+                        alloc_structure = {'Alloc-ID': alloc,  # 'Flags': 0,
+                                           'StartTime': alloc_timer, 'StopTime': None}  # , 'CRC': None}
                         # для статичного DBA выделяется интервал, обратно пропорциональный
                         # self.maximum_ont_amount - количеству ONT
                         alloc_timer += round(max_time / onts) - self.upstream_interframe_interval
@@ -92,11 +96,12 @@ class DbaStaticAllocs(Dba):
             pass
         return bwmap
 
+
 class DbaSR(Dba):
     def __init__(self, config):
         Dba.__init__(self, config)
 
-    def bwmap(self, requests):
+    def bwmap(self, requests, cur_time):
         alloc_timer = 0  # in bytes
         bwmap = list()
         onts = len(requests)
@@ -106,11 +111,12 @@ class DbaSR(Dba):
 
         return bwmap
 
+
 class DbaTM(Dba):
     def __init__(self, config):
         Dba.__init__(self, config)
 
-    def bwmap(self, requests):
+    def bwmap(self, requests, cur_time):
         alloc_timer = 0  # in bytes
         bwmap = list()
         onts = len(requests)
