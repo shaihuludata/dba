@@ -143,7 +143,7 @@ class Ont(ActiveDevice):
                 self.range_time_delta.append(self.time - s_timestamp - self.cycle_duration)
             self.state = 'Operation'
         elif self.state == 'Operation':
-            #'Alloc-ID'
+            # 'Alloc-ID'
             avg_half_rtt = sum(self.range_time_delta)/len(self.range_time_delta)
             data_to_send = dict()
             for allocation in sig.data['bwmap']:
@@ -156,12 +156,12 @@ class Ont(ActiveDevice):
                     intra_cycle_e_start = round(8 * 1000000 * allocation_stop / self.transmitter_speed)
                     planned_s_time = self.next_cycle_start + intra_cycle_s_start - 2*avg_half_rtt + self.cycle_duration
                     planned_e_time = self.next_cycle_start + intra_cycle_e_start - 2*avg_half_rtt + self.cycle_duration
-                    planned_delta = planned_e_time - planned_s_time #полезно для отладки
+                    planned_delta = planned_e_time - planned_s_time  # полезно для отладки
                     if planned_s_time < self.time:
                         raise Exception('Текущее время {}, запланированное время {}'.format(self.time, planned_s_time))
 
-                    #self.current_allocations[alloc_id] = grant_size
-                    #TODO: data_to_send надо будет наполнить из очередирования со стороны UNI ONT
+                    # self.current_allocations[alloc_id] = grant_size
+                    # TODO: data_to_send надо будет наполнить из очередирования со стороны UNI ONT
                     # actual_data_to_send = {actual_time: self.data_to_send[actual_time]
                     #                        for actual_time in self.data_to_send
                     #                        if actual_time <= time}
@@ -172,7 +172,7 @@ class Ont(ActiveDevice):
                                 message_list = self.data_to_send[mes_time][alloc_id]
                                 if len(message_list) == 0:
                                     break
-                                #фрагментация
+                                # фрагментация
                                 if grant_size >= message_list[0]['size']:
                                     packet = message_list.pop(0)
                                     if len(self.data_to_send[mes_time][alloc_id]) == 0:
