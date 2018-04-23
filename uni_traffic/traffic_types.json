@@ -9,7 +9,7 @@
   "type1": {
     "class": 0,
     "service": "voip",
-    "send_interval": 1000,
+    "send_interval": 125,
     "distribution": "deterministic",
     "size_of_packet": 300
   },

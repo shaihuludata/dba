@@ -178,7 +178,8 @@ class Ont(ActiveDevice):
                                     if len(self.data_to_send[mes_time][alloc_id]) == 0:
                                         self.data_to_send[mes_time].pop(alloc_id)
                                 else:
-                                    packet = dict().update(message_list[0])
+                                    packet = dict()
+                                    packet.update(message_list[0])
                                     packet['size'] = grant_size
                                     message_list[0]['size'] -= grant_size
                                     message_list[0]['fragment_offset'] += grant_size
