@@ -26,9 +26,9 @@ class Traffic:
                        'traf_class': self.traf_class,
                        'interval': self.send_interval,
                        'size': self.size_of_packet,
+                       'total_size': self.size_of_packet,
                        'fragment_offset': 0,
                        'packet_id': self.id + '_{}'.format(time),
                        'packet_num': self.packet_counter,
                        }
             self.queue.append(message)
-

@@ -93,20 +93,26 @@ class ModelScheduler:
         for observer in self.observers:
             observer.make_results()
 
-        for dev in self.devices:
-            for name in ['ONT']:
-                if name in dev:
-                    print('{}'.format(dev))
-                    device = self.devices[dev]
-                    # print('{}'.format(device.counters.export_to_console()))
-                    print(device.export_counters())
-        for dev in self.devices:
-            for name in ['OLT']:
-                if name in dev:
-                    print('{}'.format(dev))
-                    device = self.devices[dev]
-                    # print('{}'.format(device.counters.export_to_console()))
-                    print(device.export_counters())
+        for dev in self.onts:
+            print('{}'.format(dev.name))
+            print(dev.counters.export_to_console())
+        print('{}'.format(self.olt.name))
+        print(self.olt.counters.export_to_console())
+
+        # for dev in self.devices:
+        #     for name in ['ONT']:
+        #         if name in dev:
+        #             print('{}'.format(dev))
+        #             device = self.devices[dev]
+        #             # print('{}'.format(device.counters.export_to_console()))
+        #             print(device.export_counters())
+        # for dev in self.devices:
+        #     for name in ['OLT']:
+        #         if name in dev:
+        #             print('{}'.format(dev))
+        #             device = self.devices[dev]
+        #             # print('{}'.format(device.counters.export_to_console()))
+        #             print(device.export_counters())
 
     def proceed_schedule(self, cur_time):
         self.time = cur_time

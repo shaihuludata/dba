@@ -105,11 +105,11 @@ class Ont(ActiveDevice):
             self.state = 'Standby'
         elif self.state == 'Standby':
         # delimiter value, power level mode and pre-assigned delay)
+            sig = self.oe_transform(sig)
             #тут нужно из сигнала вытащить запрос SN
             if 'sn_request' in sig.data:
                 #delay = random.randrange(34, 36, 1) + random.randrange(0, 50, 1)
                 delay = random.randrange(0, 80, 1) + self.cycle_duration
-                sig = self.oe_transform(sig)
                 planned_s_time = self.next_cycle_start + delay
                 planned_e_time = planned_s_time + 2
                 sig_id = '{}:{}:{}'.format(planned_s_time, self.name, planned_e_time)
@@ -128,7 +128,6 @@ class Ont(ActiveDevice):
                                     if self.current_allocations[i] == 'sn_ack')
                 if len(allocs_acked) > 0:
                     print('{} Авторизация на OLT подтверждена, allocs: {}'.format(self.name, allocs_acked))
-                sig = self.oe_transform(sig)
                 # Формально тут должно быть 'SerialNumber'
                 # но без потери смысла для симуляции должно быть Ranging
                 self.state = 'Ranging'
@@ -143,36 +142,53 @@ class Ont(ActiveDevice):
                 self.range_time_delta.append(self.time - s_timestamp - self.cycle_duration)
             self.state = 'Operation'
         elif self.state == 'Operation':
-            #'Alloc-ID'
+            # 'Alloc-ID'
             avg_half_rtt = sum(self.range_time_delta)/len(self.range_time_delta)
             data_to_send = dict()
             for allocation in sig.data['bwmap']:
+                name = self.name
                 alloc_id = allocation['Alloc-ID']
-                if self.name in alloc_id:
+                if name in alloc_id:
                     allocation_start = allocation['StartTime']
                     allocation_stop = allocation['StopTime']
                     grant_size = allocation_stop - allocation_start
-                    intra_cycle_s_start = round(8*1000000 * allocation_start / self.transmitter_speed)
-                    intra_cycle_e_start = round(8 * 1000000 * allocation_stop / self.transmitter_speed)
+                    intra_cycle_s_start = round(8*1000000*allocation_start / self.transmitter_speed)
+                    intra_cycle_e_start = round(8*1000000*allocation_stop / self.transmitter_speed)
                     planned_s_time = self.next_cycle_start + intra_cycle_s_start - 2*avg_half_rtt + self.cycle_duration
                     planned_e_time = self.next_cycle_start + intra_cycle_e_start - 2*avg_half_rtt + self.cycle_duration
-                    planned_delta = planned_e_time - planned_s_time #полезно для отладки
+                    planned_delta = planned_e_time - planned_s_time  # полезно для отладки
                     if planned_s_time < self.time:
                         raise Exception('Текущее время {}, запланированное время {}'.format(self.time, planned_s_time))
 
-                    #self.current_allocations[alloc_id] = grant_size
-                    #TODO: data_to_send надо будет наполнить из очередирования со стороны UNI ONT
+                    # self.current_allocations[alloc_id] = grant_size
+                    # TODO: data_to_send надо будет наполнить из очередирования со стороны UNI ONT
                     # actual_data_to_send = {actual_time: self.data_to_send[actual_time]
                     #                        for actual_time in self.data_to_send
                     #                        if actual_time <= time}
-                    while grant_size >= 0:
-                        mes_time = min(self.data_to_send.keys())
-                        if time >= mes_time:
+                    print('time {}, alloc_id {}, cycle {}, grant {}'
+                          .format(self.time, alloc_id, sig.data['cycle_num'], grant_size))
+                    while grant_size > 0:
+                        # в массиве self.data_to_send хранятся записи
+                        # в формате {time: {alloc_id: [list_of_messages]}}
+                        # нужно из него взять серию сообщений минимальным временем,
+                        # но такую, в котором есть очередь alloc_id
+                        # поэтому введён временный массив temp_data_to_send
+                        temp_data_to_send = dict()
+                        temp_data_to_send.update(self.data_to_send)
+                        mes_time = int()
+                        while len(temp_data_to_send) > 0:
+                            mes_time = min(temp_data_to_send.keys())
+                            if alloc_id in temp_data_to_send[mes_time]:
+                                break
+                            temp_data_to_send.pop(mes_time)
+                        del(temp_data_to_send)
+
+                        if planned_s_time >= mes_time:
                             if alloc_id in self.data_to_send[mes_time]:
                                 message_list = self.data_to_send[mes_time][alloc_id]
                                 if len(message_list) == 0:
                                     break
-                                #фрагментация
+                                # фрагментация
                                 if grant_size >= message_list[0]['size']:
                                     packet = message_list.pop(0)
                                     if len(self.data_to_send[mes_time][alloc_id]) == 0:
@@ -184,8 +200,15 @@ class Ont(ActiveDevice):
                                     message_list[0]['size'] -= grant_size
                                     message_list[0]['fragment_offset'] += grant_size
                                 grant_size -= packet['size']
-                                print(packet)
-                                data_to_send.update({packet['alloc_id']: packet})
+                                print('planned_s_time {}, packet_id {}, size {}'
+                                      .format(planned_s_time, packet['packet_id'], packet['size']))
+                                packet_alloc = packet['alloc_id']
+                                if not packet_alloc == alloc_id:
+                                    raise Exception
+                                if alloc_id not in data_to_send:
+                                    data_to_send[alloc_id] = list()
+                                data_to_send[alloc_id].append(packet)
+                                # data_to_send.update({packet['alloc_id']: packet})
                             else:
                                 break
                             if len(self.data_to_send[mes_time]) == 0:
