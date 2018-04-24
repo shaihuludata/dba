@@ -79,6 +79,10 @@ class ModelScheduler:
         if config["observers"]["traffic"]["report"]:
             time_ranges = config["observers"]["traffic"]["time_ranges"]
             self.observers.append(ReceivedTrafficObserver(time_ranges_to_show=time_ranges))
+        if config["observers"]["IPtraffic"]["report"]:
+            time_ranges = config["observers"]["traffic"]["time_ranges"]
+            self.observers.append(IPTrafficObserver(time_ranges_to_show=time_ranges))
+
 
         # self.dba_algorithm = algorithm
         self.current_requests = list()
