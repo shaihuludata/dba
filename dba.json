@@ -1,5 +1,17 @@
 {
-    "horisont" : 20000,
-    "time_ranges" : [[0, 20000]],
-    "observers" : {"flow": false, "power": false, "traffic": true, "bandwidth": false}
+    "horisont" : 10000,
+    "observers" : {
+        "flow": {
+            "report": false,
+            "time_ranges": [[500, 2000]]
+        },
+        "power": {
+            "report": false,
+            "time_ranges": [[3000, 5000]]
+        },
+        "traffic": {
+            "report": true,
+            "time_ranges": [[0, 5000]]
+        }
+    }
 }

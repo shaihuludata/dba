@@ -13,7 +13,7 @@
   },
   "Fiber0":
   {
-    "length": "5",
+    "length": "10",
     "type": "G657",
     "ports": {"0": "OLT::0", "1": "Splitter1::0"}
   },
@@ -24,7 +24,7 @@
     "transmitter_wavelength": "1310",
     "transmitter_type": "1G",
     "activation_time": 0,
-    "Alloc": {"1": "type1"}
+    "Alloc": {"1": "type1", "2": "type2"}
   },
   "Fiber1":
   {
@@ -39,7 +39,7 @@
     "transmitter_wavelength": "1310",
     "transmitter_type": "1G",
     "activation_time": 0,
-    "Alloc": {"1": "type1"}
+    "Alloc": {"1": "type1", "2": "type1"}
   },
   "Fiber2":
   {
@@ -54,7 +54,7 @@
     "transmitter_wavelength": "1310",
     "transmitter_type": "1G",
     "activation_time": 0,
-    "Alloc": {"1": "type2"}
+    "Alloc": {"1": "type1", "2": "type1"}
   },
   "Fiber3":
   {
@@ -69,7 +69,7 @@
     "transmitter_wavelength": "1310",
     "transmitter_type": "1G",
     "activation_time": 0,
-    "Alloc": {"1": "type2"}
+    "Alloc": {"1": "type1", "2": "type1"}
   },
   "Fiber4":
   {

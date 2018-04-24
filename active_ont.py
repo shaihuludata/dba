@@ -62,17 +62,6 @@ class Ont(ActiveDevice):
                         self.data_to_send[send_time][gem_name] = list()
                     self.data_to_send[send_time][gem_name].append(message_parameters)
 
-            # дальше надо удалить пустые позиции в буфере
-            # TODO: обработка устаревших сообщений
-            # тут надо удалить всё устаревшее из self.data_...
-            # !!! перенесено в процесс работы с data...
-            # for i in self.data_to_send:
-            #     for j in self.data_to_send[i]:
-            #         if len(self.data_to_send[i][j]) == 0:
-            #             self.data_to_send[i].pop(j)
-            #     if len(self.data_to_send[i]) == 0:
-            #         self.data_to_send.pop(i)
-
         elif self.state is 'POPUP':
             pass
         elif self.state is 'EmergencyStop':
@@ -161,12 +150,7 @@ class Ont(ActiveDevice):
                         raise Exception('Текущее время {}, запланированное время {}'.format(self.time, planned_s_time))
 
                     # self.current_allocations[alloc_id] = grant_size
-                    # TODO: data_to_send надо будет наполнить из очередирования со стороны UNI ONT
-                    # actual_data_to_send = {actual_time: self.data_to_send[actual_time]
-                    #                        for actual_time in self.data_to_send
-                    #                        if actual_time <= time}
-                    print('time {}, alloc_id {}, cycle {}, grant {}'
-                          .format(self.time, alloc_id, sig.data['cycle_num'], grant_size))
+
                     while grant_size > 0:
                         # в массиве self.data_to_send хранятся записи
                         # в формате {time: {alloc_id: [list_of_messages]}}
@@ -182,6 +166,9 @@ class Ont(ActiveDevice):
                                 break
                             temp_data_to_send.pop(mes_time)
                         del(temp_data_to_send)
+
+                        if mes_time == 0:
+                            break
 
                         if planned_s_time >= mes_time:
                             if alloc_id in self.data_to_send[mes_time]:
@@ -200,8 +187,8 @@ class Ont(ActiveDevice):
                                     message_list[0]['size'] -= grant_size
                                     message_list[0]['fragment_offset'] += grant_size
                                 grant_size -= packet['size']
-                                print('planned_s_time {}, packet_id {}, size {}'
-                                      .format(planned_s_time, packet['packet_id'], packet['size']))
+                                # print("planned_s_time {}, packet_id {}, size {}"
+                                #       .format(planned_s_time, packet['packet_id'], packet['size']))
                                 packet_alloc = packet['alloc_id']
                                 if not packet_alloc == alloc_id:
                                     raise Exception
@@ -212,7 +199,7 @@ class Ont(ActiveDevice):
                             else:
                                 break
                             if len(self.data_to_send[mes_time]) == 0:
-                                self.data_to_send.pop(time)
+                                self.data_to_send.pop(mes_time)
                         else:
                             break
                     data_to_send.update({'cycle_num': sig.data['cycle_num']})

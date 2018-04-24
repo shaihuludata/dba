@@ -144,6 +144,7 @@ class FlowObserver:
         fig.canvas.draw()
         # time.sleep(3)
         fig.savefig(result_dir + 'flow_diagram.png', bbox_inches='tight')
+        plt.close(fig)
 
 
 class PhysicsObserver:
@@ -173,13 +174,14 @@ class PhysicsObserver:
         for ev_time in passed_schedule:
             for event in passed_schedule[ev_time]:
                 dev, state, sig, port = event['dev'], event['state'], event['sig'], event['port']
-                if sig.name not in self.observer_result:
-                    self.observer_result[sig.name] = dict()
-                physics = dict()
-                physics.update(sig.physics)
-                self.observer_result[sig.name][sig.external.distance_passed] = physics
-                #в результате накапливается 3 уровня вложений словарей
-                #{имя сигнала : {время: физика сигнала}}
+                if state in ['s_start', 's_end', 'r_start', 'r_end']:
+                    if sig.name not in self.observer_result:
+                        self.observer_result[sig.name] = dict()
+                    physics = dict()
+                    physics.update(sig.physics)
+                    self.observer_result[sig.name][sig.external.distance_passed] = physics
+                    #в результате накапливается 3 уровня вложений словарей
+                    #{имя сигнала : {время: физика сигнала}}
         return
 
     def cook_result(self):
@@ -237,6 +239,7 @@ class PhysicsObserver:
         #time.sleep(1)
         #plt.show()
         fig.savefig(result_dir + 'levels.png', bbox_inches='tight')
+        plt.close(fig)
 
 
 class TrafficObserver:
@@ -372,10 +375,27 @@ class ReceivedTrafficObserver:
                     flow_packet_result[alloc][packet_num] = packet
         return flow_packet_result
 
+    def cook_result2(self):
+        time_throughput_result = dict()
+        # for alloc in self.observer_result:
+        #     time_data_result = self.observer_result[alloc]
+        #     for time_r in time_data_result:
+        #         alloc_time_data = time_data_result[time_r]
+        #         for packet in alloc_time_data:
+        #             if alloc not in flow_packet_result:
+        #                 flow_packet_result[alloc] = dict()
+        #             packet_num = packet['packet_num']
+        #             # if packet_num not in flow_packet_result[alloc]:
+        #             packet['dead_time'] = time_r
+        #             flow_packet_result[alloc][packet_num] = packet
+        # return time_throughput_result
+        return self.observer_result
+
     def make_results(self):
         fig = plt.figure(1, figsize=(15, 15))
         fig.show()
         flow_packet_result = self.cook_result()
+        flow_time_throughput_result = self.cook_result2()
         number_of_flows = len(self.observer_result)
         subplot_index = 1
         for flow_name in flow_packet_result:
@@ -388,20 +408,31 @@ class ReceivedTrafficObserver:
             ax = fig.add_subplot(number_of_flows, 2, subplot_index)
             subplot_index += 1
             plt.ylabel(flow_name)
-            ax.plot(packet_result, latency_result)
+            ax.plot(packet_result, latency_result, 'ro')
             fig.canvas.draw()
             time.sleep(1)
 
-            packet_result, throughput_result = list(), list()
-            for pack_num in flow_packet_result[flow_name]:
-                packet = flow_packet_result[flow_name][pack_num]
-                if 'born_time' in packet:
-                    packet_result.append(pack_num)
-                    throughput_result.append(64*packet['size'])
+            time_result, throughput_result = list(), list()
+            time_throughput_result = dict()
+            for time_d in self.observer_result[flow_name]:
+                packets = flow_time_throughput_result[flow_name][time_d]
+                throughput = list()
+                for packet in packets:
+                    throughput.append(packet['size'])
+                time_throughput_result[time_d] = (sum(throughput))
+
+            # теперь надо пронормировать пришедшее количество байт на временной интервал
+            time_result = list(time_throughput_result.keys())
+            time_result.sort()
+            last_time_d = int()
+            for time_d in time_result:
+                throughput_result.append(time_throughput_result[time_d] / (time_d - last_time_d))
+                last_time_d = time_d
+
             ax = fig.add_subplot(number_of_flows, 2, subplot_index)
             subplot_index += 1
-            plt.ylabel(flow_name)
-            ax.plot(packet_result, throughput_result)
+            # plt.ylabel(flow_name)
+            ax.plot(time_result, throughput_result)
             fig.canvas.draw()
             time.sleep(1)
 
@@ -410,3 +441,4 @@ class ReceivedTrafficObserver:
         # time.sleep(1)
         # plt.show()
         fig.savefig(result_dir + 'packets.png', bbox_inches='tight')
+        plt.close(fig)
