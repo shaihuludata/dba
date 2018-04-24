@@ -11,6 +11,7 @@ class Traffic:
         self.service = config["service"]
         self.packet_counter = 0
         self.last_packet_born = 0
+        self.max_queue_size = config["max_queue_size"]  # in number_of_packets
         if config["distribution"] == "deterministic":
             self.send_interval = config["send_interval"]
             self.size_of_packet = config["size_of_packet"]
@@ -18,6 +19,8 @@ class Traffic:
             raise NotImplemented
 
     def new_message(self, time):
+        if len(self.queue) > self.max_queue_size:
+            return False
         if time - self.last_packet_born >= self.send_interval:
             self.last_packet_born = time
             self.packet_counter += 1
@@ -32,3 +35,4 @@ class Traffic:
                        'packet_num': self.packet_counter,
                        }
             self.queue.append(message)
+        return True

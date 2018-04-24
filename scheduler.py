@@ -63,18 +63,21 @@ class ModelScheduler:
             elif 'Fiber' in dev:
                 self.devices[dev] = Fiber(name=dev, config=net[dev])
 
-        if 'time_ranges' in config:
-            time_ranges = config['time_ranges']
-        else:
-            time_ranges = [[0, time_horisont]]
+        # if 'time_ranges' in config:
+        #     time_ranges = config['time_ranges']
+        # else:
+        #     time_ranges = [[0, time_horisont]]
 
         self.observers = list()
         self.traf_observers = list()
-        if config["observers"]["flow"]:
+        if config["observers"]["flow"]["report"]:
+            time_ranges = config["observers"]["flow"]["time_ranges"]
             self.observers.append(FlowObserver(time_ranges_to_show=time_ranges))
-        if config["observers"]["power"]:
+        if config["observers"]["power"]["report"]:
+            time_ranges = config["observers"]["power"]["time_ranges"]
             self.observers.append(PhysicsObserver(time_ranges_to_show=time_ranges))
-        if config["observers"]["traffic"]:
+        if config["observers"]["traffic"]["report"]:
+            time_ranges = config["observers"]["traffic"]["time_ranges"]
             self.observers.append(ReceivedTrafficObserver(time_ranges_to_show=time_ranges))
 
         # self.dba_algorithm = algorithm
@@ -88,16 +91,13 @@ class ModelScheduler:
         for observer in self.observers:
             observer.notice(self.schedule.events, self.time)
 
-        # чтобы не городить этот код, ввёл глобально новый event_state
-        # new_data = list()
+        #для traffic_observer'ов нужно освободить буферы дефрагментированных пакетов
         # for dev_name in self.devices:
         #     if 'ONT' in dev_name or 'OLT' in dev_name:
         #         dev = self.devices[dev_name]
         #         if len(dev.received_packets) > 0:
-        #             new_data.append(dev.received_packets)
+        #             #new_data.append(dev.received_packets)
         #             dev.received_packets.clear()
-        # for observer in self.traf_observers:
-        #     observer.notice(new_data, self.time)
 
     def make_results(self):
         for observer in self.observers:

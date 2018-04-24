@@ -30,7 +30,7 @@ class Olt(ActiveDevice):
         self.defragmentation_buffer = dict()
 
         dba_config = dict()
-        # self.upstream_interframe_interval = self.config['upstream_interframe_interval']  # 10 #in bytes
+        # self.upstream_interframe_interval = self.config['upstream_interframe_interval']  # 10 # in bytes
         for dba_par in ["cycle_duration", "transmitter_type",
                         'maximum_allocation_start_time', 'upstream_interframe_interval']:
             if dba_par in config:
@@ -100,6 +100,7 @@ class Olt(ActiveDevice):
             s_number = sig.data['sn_response'][0]
             allocs = sig.data['sn_response'][1]
             self.ont_discovered[s_number] = allocs
+            self.counters.ont_discovered = len(self.ont_discovered)
             if 'sn_ack' not in self.data_to_send:
                 self.data_to_send['sn_ack'] = list()
             self.data_to_send['sn_ack'].extend(allocs)
@@ -114,6 +115,7 @@ class Olt(ActiveDevice):
                         self.defragmentation_buffer[packet_id].append(packet)
 
             # дефрагментация накопленных в буффере пакетов
+            ids_to_delete_from_buffer = list()
             for pack in self.defragmentation_buffer:
                 fragments = self.defragmentation_buffer[pack]
                 defragmented = EmptySet()
@@ -141,16 +143,13 @@ class Olt(ActiveDevice):
                         defrag_packet = dict()
                         defrag_packet.update(fragment)
                         ret[self.time].append({"dev": self, "state": "defrag", "sig": defrag_packet, "port": 0})
+                        ids_to_delete_from_buffer.append(fragment['packet_id'])
+            # теперь надо удалить из self.defragmentation_buffer всё, что похоже на 'packet_id'
+            for id in ids_to_delete_from_buffer:
+                self.defragmentation_buffer.pop(id)
         return ret
 
     def export_counters(self):
-        self.counters.ont_discovered = len(self.ont_discovered)
+        # self.counters.ont_discovered = len(self.ont_discovered)
         return self.counters.export_to_console()
-
-
-# def union(data):
-#     """ Union of a list of intervals e.g. [(1,2),(3,4)] """
-#     intervals = [Interval(begin, end) for (begin, end) in data]
-#     u = Union(*intervals)
-#     return [list(u.args[:2])] if isinstance(u, Interval) else list(u.args)
 
