@@ -4,8 +4,22 @@ import matplotlib.pyplot as plt
 import matplotlib as mp
 # mp.use('agg')
 import time
+import json
 
 result_dir = './result/'
+
+
+def append_to_json(_dict, path):
+    with open(path, 'a+') as f:
+        f.seek(0, 2)  # Go to the end of file
+        if f.tell() == 0:  # Check if file is empty
+            json.dump([_dict], f)  # If empty, write an array
+        else:
+            f.seek(-1, 2)
+            f.truncate()  # Remove the last character, open the array
+            f.write(' , ')  # Write the separator
+            json.dump(_dict, f)  # Dump the dictionary
+            f.write(']')  # Close the array
 
 
 class FlowObserver:
@@ -341,6 +355,127 @@ class ReceivedTrafficObserver:
                 self.time_horisont = new_horisont
 
     def notice(self, schedule, cur_time):
+        passed_schedule = dict()
+        for time_range in self.time_ranges_to_show:
+            passed_schedule.update({t: schedule[t] for t in schedule
+                                    if (t in range(time_range[0], time_range[1])) and (t <= cur_time)})
+
+        for ev_time in passed_schedule:
+            for event in passed_schedule[ev_time]:
+                state = event['state']
+                if state == 'defrag':
+                    dev, packet, port = event['dev'], event['sig'], event['port']
+                    alloc = packet['alloc_id']
+                    # {alloc : {время: [пакеты]}}
+                    if alloc not in self.observer_result:
+                        self.observer_result[alloc] = dict()
+                    if ev_time not in self.observer_result[alloc]:
+                        self.observer_result[alloc][ev_time] = list()
+                    self.observer_result[alloc][ev_time].append(packet)
+        return
+
+    def cook_result(self):
+        flow_packet_result = dict()
+        for alloc in self.observer_result:
+            time_data_result = self.observer_result[alloc]
+            for time_r in time_data_result:
+                alloc_time_data = time_data_result[time_r]
+                for packet in alloc_time_data:
+                    if alloc not in flow_packet_result:
+                        flow_packet_result[alloc] = dict()
+                    packet_num = packet['packet_num']
+                    # if packet_num not in flow_packet_result[alloc]:
+                    packet['dead_time'] = time_r
+                    flow_packet_result[alloc][packet_num] = packet
+        return flow_packet_result
+
+    def cook_result2(self):
+        time_throughput_result = dict()
+        # for alloc in self.observer_result:
+        #     time_data_result = self.observer_result[alloc]
+        #     for time_r in time_data_result:
+        #         alloc_time_data = time_data_result[time_r]
+        #         for packet in alloc_time_data:
+        #             if alloc not in flow_packet_result:
+        #                 flow_packet_result[alloc] = dict()
+        #             packet_num = packet['packet_num']
+        #             # if packet_num not in flow_packet_result[alloc]:
+        #             packet['dead_time'] = time_r
+        #             flow_packet_result[alloc][packet_num] = packet
+        # return time_throughput_result
+        return self.observer_result
+
+    def make_results(self):
+        fig = plt.figure(1, figsize=(15, 15))
+        fig.show()
+        flow_packet_result = self.cook_result()
+        flow_time_throughput_result = self.cook_result2()
+        number_of_flows = len(self.observer_result)
+        subplot_index = 1
+        for flow_name in flow_packet_result:
+            packet_result, latency_result = list(), list()
+            for pack_num in flow_packet_result[flow_name]:
+                packet = flow_packet_result[flow_name][pack_num]
+                if 'born_time' in packet:
+                    packet_result.append(pack_num)
+                    latency_result.append(packet['dead_time'] - packet['born_time'])
+            ax = fig.add_subplot(number_of_flows, 2, subplot_index)
+            subplot_index += 1
+            plt.ylabel(flow_name)
+            ax.plot(packet_result, latency_result, 'ro')
+            fig.canvas.draw()
+            time.sleep(1)
+
+            time_result, throughput_result = list(), list()
+            time_throughput_result = dict()
+            for time_d in self.observer_result[flow_name]:
+                packets = flow_time_throughput_result[flow_name][time_d]
+                throughput = list()
+                for packet in packets:
+                    throughput.append(packet['size'])
+                time_throughput_result[time_d] = (sum(throughput))
+
+            # теперь надо пронормировать пришедшее количество байт на временной интервал
+            time_result = list(time_throughput_result.keys())
+            time_result.sort()
+            last_time_d = int()
+            for time_d in time_result:
+                throughput_result.append(time_throughput_result[time_d] / (time_d - last_time_d))
+                last_time_d = time_d
+
+            ax = fig.add_subplot(number_of_flows, 2, subplot_index)
+            subplot_index += 1
+            # plt.ylabel(flow_name)
+            ax.plot(time_result, throughput_result)
+            fig.canvas.draw()
+            time.sleep(1)
+
+        # ax.set_xticklabels(points_to_watch)
+        fig.canvas.draw()
+        # time.sleep(1)
+        # plt.show()
+        fig.savefig(result_dir + 'packets.png', bbox_inches='tight')
+        plt.close(fig)
+
+
+class IPTrafficObserver:
+
+    def __init__(self, time_ranges_to_show):
+        self.name = 'Traffic visualizer'
+        self.observer_result = dict()
+        if not time_ranges_to_show:
+            self.time_ranges_to_show = [[1000, 2000]]
+        else:
+            self.time_ranges_to_show = time_ranges_to_show
+
+        self.time_horisont = 0
+        for time_range in self.time_ranges_to_show:
+            new_horisont = max(time_range)
+            if self.time_horisont < new_horisont:
+                self.time_horisont = new_horisont
+
+    def notice(self, schedule, cur_time):
+        # append_to_json(schedule.__dict__, result_dir + 'IPtraffic.json')
         passed_schedule = dict()
         for time_range in self.time_ranges_to_show:
             passed_schedule.update({t: schedule[t] for t in schedule
