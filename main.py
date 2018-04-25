@@ -36,7 +36,7 @@ def main():#*args, **kwargs):
     while cur_time < time_horisont and len(sched.schedule.events) > 0:
         cur_time = min(sched.schedule.events)
         if cur_time >= cur_report:
-            delta = time.time() - last_time
+            delta = round(time.time() - last_time, 2)
             print('Time: {}, delta {}'.format(cur_report, delta))
             cur_report += step_report
             times.append(delta)

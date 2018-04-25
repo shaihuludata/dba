@@ -5,6 +5,7 @@ import matplotlib as mp
 # mp.use('agg')
 import time
 import json
+from sympy import Interval
 
 result_dir = './result/'
 
@@ -42,8 +43,9 @@ class FlowObserver:
     def notice(self, schedule, cur_time):
         passed_schedule = dict()
         for time_range in self.time_ranges_to_show:
+            time_interval = Interval(time_range[0], time_range[1])
             passed_schedule.update({time: schedule[time] for time in schedule
-                                    if (time in range(time_range[0], time_range[1])) and (time <= cur_time)})
+                                    if (time in time_interval) and (time <= cur_time)})
 
         for ev_time in passed_schedule:
             for event in passed_schedule[ev_time]:
@@ -182,8 +184,9 @@ class PhysicsObserver:
         # обозреваем только события, заключённые в time_ranges_to_show
         passed_schedule = dict()
         for time_range in self.time_ranges_to_show:
+            time_interval = Interval(time_range[0], time_range[1])
             passed_schedule.update({t: schedule[t] for t in schedule
-                                    if (t in range(time_range[0], time_range[1])) and (t <= cur_time)})
+                                    if (t in time_interval) and (t <= cur_time)})
 
         for ev_time in passed_schedule:
             for event in passed_schedule[ev_time]:
@@ -277,8 +280,9 @@ class TrafficObserver:
         # обозреваем только события, заключённые в time_ranges_to_show
         passed_schedule = dict()
         for time_range in self.time_ranges_to_show:
+            time_interval = Interval(time_range[0], time_range[1])
             passed_schedule.update({t: schedule[t] for t in schedule
-                                    if (t in range(time_range[0], time_range[1])) and (t <= cur_time)})
+                                    if (t in time_interval) and (t <= cur_time)})
 
         for ev_time in passed_schedule:
             for event in passed_schedule[ev_time]:
@@ -357,8 +361,9 @@ class ReceivedTrafficObserver:
     def notice(self, schedule, cur_time):
         passed_schedule = dict()
         for time_range in self.time_ranges_to_show:
+            time_interval = Interval(time_range[0], time_range[1])
             passed_schedule.update({t: schedule[t] for t in schedule
-                                    if (t in range(time_range[0], time_range[1])) and (t <= cur_time)})
+                                    if (t in time_interval) and (t <= cur_time)})
 
         for ev_time in passed_schedule:
             for event in passed_schedule[ev_time]:
@@ -462,6 +467,7 @@ class IPTrafficObserver:
 
     def __init__(self, time_ranges_to_show):
         self.name = 'Traffic visualizer'
+        self.observer_result_list = list()
         self.observer_result = dict()
         if not time_ranges_to_show:
             self.time_ranges_to_show = [[1000, 2000]]
@@ -475,27 +481,41 @@ class IPTrafficObserver:
                 self.time_horisont = new_horisont
 
     def notice(self, schedule, cur_time):
+        sched = dict()
+        sched.update(schedule)
+        self.observer_result_list.append((cur_time, sched))
         # append_to_json(schedule.__dict__, result_dir + 'IPtraffic.json')
-        passed_schedule = dict()
-        for time_range in self.time_ranges_to_show:
-            passed_schedule.update({t: schedule[t] for t in schedule
-                                    if (t in range(time_range[0], time_range[1])) and (t <= cur_time)})
-
-        for ev_time in passed_schedule:
-            for event in passed_schedule[ev_time]:
-                state = event['state']
-                if state == 'defrag':
-                    dev, packet, port = event['dev'], event['sig'], event['port']
-                    alloc = packet['alloc_id']
-                    # {alloc : {время: [пакеты]}}
-                    if alloc not in self.observer_result:
-                        self.observer_result[alloc] = dict()
-                    if ev_time not in self.observer_result[alloc]:
-                        self.observer_result[alloc][ev_time] = list()
-                    self.observer_result[alloc][ev_time].append(packet)
-        return
 
     def cook_result(self):
+        for time_sched_tup in self.observer_result_list:
+            passed_schedule = dict()
+            cur_time = time_sched_tup[0]
+            schedule = time_sched_tup[1]
+            for time_range in self.time_ranges_to_show:
+                time_interval = Interval(time_range[0], time_range[1])
+                passed_schedule.update({t: schedule[t] for t in schedule
+                                        if (t in time_interval) and (t <= cur_time)})
+                # for t in schedule:
+                #     if t <= cur_time:
+                #         time_interval = Interval(time_range[0], time_range[1])
+                #         if t in time_interval:
+                #             passed_schedule.update({t: schedule[t]})
+
+            for ev_time in passed_schedule:
+                for event in passed_schedule[ev_time]:
+                    state = event['state']
+                    if state == 'defrag':
+                        dev, packet, port = event['dev'], event['sig'], event['port']
+                        alloc = packet['alloc_id']
+                        # {alloc : {время: [пакеты]}}
+                        if alloc not in self.observer_result:
+                            self.observer_result[alloc] = dict()
+                        if ev_time not in self.observer_result[alloc]:
+                            self.observer_result[alloc][ev_time] = list()
+                        self.observer_result[alloc][ev_time].append(packet)
+    #
+    # def cook_latency(self):
+
         flow_packet_result = dict()
         for alloc in self.observer_result:
             time_data_result = self.observer_result[alloc]
@@ -504,70 +524,55 @@ class IPTrafficObserver:
                 for packet in alloc_time_data:
                     if alloc not in flow_packet_result:
                         flow_packet_result[alloc] = dict()
-                    packet_num = packet['packet_num']
+
+                    # packet_num = packet['packet_num']
                     # if packet_num not in flow_packet_result[alloc]:
                     packet['dead_time'] = time_r
-                    flow_packet_result[alloc][packet_num] = packet
+                    # flow_packet_result[alloc][packet_num] = packet
+                    flow_packet_result[alloc][time_r] = packet
         return flow_packet_result
 
-    def cook_result2(self):
-        time_throughput_result = dict()
-        # for alloc in self.observer_result:
-        #     time_data_result = self.observer_result[alloc]
-        #     for time_r in time_data_result:
-        #         alloc_time_data = time_data_result[time_r]
-        #         for packet in alloc_time_data:
-        #             if alloc not in flow_packet_result:
-        #                 flow_packet_result[alloc] = dict()
-        #             packet_num = packet['packet_num']
-        #             # if packet_num not in flow_packet_result[alloc]:
-        #             packet['dead_time'] = time_r
-        #             flow_packet_result[alloc][packet_num] = packet
-        # return time_throughput_result
-        return self.observer_result
-
     def make_results(self):
+        flow_packet_result = self.cook_result()
+        #flow_packet_result = self.cook_latency()
         fig = plt.figure(1, figsize=(15, 15))
         fig.show()
-        flow_packet_result = self.cook_result()
-        flow_time_throughput_result = self.cook_result2()
+
         number_of_flows = len(self.observer_result)
         subplot_index = 1
         for flow_name in flow_packet_result:
-            packet_result, latency_result = list(), list()
-            for pack_num in flow_packet_result[flow_name]:
-                packet = flow_packet_result[flow_name][pack_num]
+            # график задержек
+            time_result, latency_result = list(), list()
+            for time_r in flow_packet_result[flow_name]:
+                packet = flow_packet_result[flow_name][time_r]
                 if 'born_time' in packet:
-                    packet_result.append(pack_num)
+                    time_result.append(time_r)
                     latency_result.append(packet['dead_time'] - packet['born_time'])
             ax = fig.add_subplot(number_of_flows, 2, subplot_index)
             subplot_index += 1
             plt.ylabel(flow_name)
-            ax.plot(packet_result, latency_result, 'ro')
+            ax.plot(time_result, latency_result, 'ro')
+            max_latency = max(latency_result)
+            ax.set_ylim(bottom=0, top=max_latency+100)
             fig.canvas.draw()
             time.sleep(1)
 
-            time_result, throughput_result = list(), list()
-            time_throughput_result = dict()
-            for time_d in self.observer_result[flow_name]:
-                packets = flow_time_throughput_result[flow_name][time_d]
-                throughput = list()
-                for packet in packets:
-                    throughput.append(packet['size'])
-                time_throughput_result[time_d] = (sum(throughput))
-
-            # теперь надо пронормировать пришедшее количество байт на временной интервал
-            time_result = list(time_throughput_result.keys())
-            time_result.sort()
-            last_time_d = int()
-            for time_d in time_result:
-                throughput_result.append(time_throughput_result[time_d] / (time_d - last_time_d))
-                last_time_d = time_d
-
+            # график вариации задержек
+            dv_result = list()
+            #basis_latency = min(latency_result)
+            basis_latency = sum(latency_result) / len(latency_result)
+            for time_r in time_result:
+                packet = flow_packet_result[flow_name][time_r]
+                if 'born_time' in packet:
+                    dv = (packet['dead_time'] - packet['born_time'])/basis_latency
+                    dv_result.append(dv)
             ax = fig.add_subplot(number_of_flows, 2, subplot_index)
             subplot_index += 1
-            # plt.ylabel(flow_name)
-            ax.plot(time_result, throughput_result)
+            #plt.ylabel(flow_name)
+            ax.plot(time_result, dv_result, 'ro')
+            min_dv = min(dv_result)
+            max_dv = max(dv_result)
+            ax.set_ylim(bottom=min_dv-1, top=max_dv+1)
             fig.canvas.draw()
             time.sleep(1)
 
