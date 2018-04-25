@@ -515,7 +515,6 @@ class IPTrafficObserver:
                         self.observer_result[alloc][ev_time].append(packet)
     #
     # def cook_latency(self):
-
         flow_packet_result = dict()
         for alloc in self.observer_result:
             time_data_result = self.observer_result[alloc]
@@ -532,9 +531,13 @@ class IPTrafficObserver:
                     flow_packet_result[alloc][time_r] = packet
         return flow_packet_result
 
+    def cook_loss_rate(self):
+        result = dict()
+        return result
+
     def make_results(self):
         flow_packet_result = self.cook_result()
-        #flow_packet_result = self.cook_latency()
+        # flow_packet_result = self.cook_latency()
         fig = plt.figure(1, figsize=(15, 15))
         fig.show()
 
@@ -548,33 +551,54 @@ class IPTrafficObserver:
                 if 'born_time' in packet:
                     time_result.append(time_r)
                     latency_result.append(packet['dead_time'] - packet['born_time'])
-            ax = fig.add_subplot(number_of_flows, 2, subplot_index)
+            ax = fig.add_subplot(number_of_flows, 3, subplot_index)
             subplot_index += 1
             plt.ylabel(flow_name)
             ax.plot(time_result, latency_result, 'ro')
             max_latency = max(latency_result)
             ax.set_ylim(bottom=0, top=max_latency+100)
             fig.canvas.draw()
-            time.sleep(1)
+            # time.sleep(1)
 
             # график вариации задержек
             dv_result = list()
-            #basis_latency = min(latency_result)
+            # basis_latency = min(latency_result)
             basis_latency = sum(latency_result) / len(latency_result)
             for time_r in time_result:
                 packet = flow_packet_result[flow_name][time_r]
                 if 'born_time' in packet:
                     dv = (packet['dead_time'] - packet['born_time'])/basis_latency
                     dv_result.append(dv)
-            ax = fig.add_subplot(number_of_flows, 2, subplot_index)
+            ax = fig.add_subplot(number_of_flows, 3, subplot_index)
             subplot_index += 1
-            #plt.ylabel(flow_name)
+            # plt.ylabel(flow_name)
             ax.plot(time_result, dv_result, 'ro')
             min_dv = min(dv_result)
             max_dv = max(dv_result)
             ax.set_ylim(bottom=min_dv-1, top=max_dv+1)
             fig.canvas.draw()
-            time.sleep(1)
+            # time.sleep(1)
+
+            # график коэффициента потерь
+            packet_nums = list()
+            lr_result = list()
+            max_pack_num_got = int()
+            for time_r in time_result:
+                packet = flow_packet_result[flow_name][time_r]
+                packet_num = packet['packet_num']
+                max_pack_num_got = packet_num if packet_num > max_pack_num_got else packet_num
+                packet_nums.append(packet_num)
+                current_lr = (max_pack_num_got - len(packet_nums)) / max_pack_num_got
+                lr_result.append(current_lr)
+            ax = fig.add_subplot(number_of_flows, 3, subplot_index)
+            subplot_index += 1
+            # plt.ylabel(flow_name)
+            ax.plot(time_result, lr_result, 'ro')
+            min_lr = min(lr_result)
+            max_lr = max(lr_result)
+            ax.set_ylim(bottom=min_lr, top=max_lr)
+            fig.canvas.draw()
+            # time.sleep(1)
 
         # ax.set_xticklabels(points_to_watch)
         fig.canvas.draw()

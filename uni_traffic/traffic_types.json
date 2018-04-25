@@ -18,9 +18,9 @@
   "type2": {
     "class": 3,
     "service": "best_effort",
-    "send_interval": 500,
+    "send_interval": 300,
     "distribution": "deterministic",
-    "size_of_packet": 15000,
+    "size_of_packet": 60000,
     "max_queue_size": 3
   }
 }

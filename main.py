@@ -17,7 +17,7 @@ def profile(func):
     return wrapper
 
 
-def main():#*args, **kwargs):
+def main():  # *args, **kwargs):
     config = json.load(open('./dba.json'))
     if "horisont" in config:
         time_horisont = config["horisont"]
