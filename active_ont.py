@@ -50,9 +50,13 @@ class Ont(ActiveDevice):
         elif self.state is 'Operation':
             for tg in self.traffic_generators:
                 tg.new_message(time)
+                # TODO чтобы не городить двойную буферизацию
+                # этот код перенести в обработку bwmap
                 if len(tg.queue) > 0:
-                    message_parameters = tg.queue.pop(0)
-                    send_time = time + message_parameters.pop('interval')
+                    # message_parameters = tg.queue.pop(0)
+                    # send_time = time + message_parameters.pop('interval')
+                    message_parameters = tg.queue[0]
+                    send_time = time + message_parameters['interval']
                     gem_name = message_parameters['alloc_id']
                     traf_class = message_parameters['traf_class']
                     send_size = message_parameters['size']
@@ -60,8 +64,12 @@ class Ont(ActiveDevice):
                         self.data_to_send[send_time] = dict()
                     if gem_name not in self.data_to_send[send_time]:
                         self.data_to_send[send_time][gem_name] = list()
-                    self.data_to_send[send_time][gem_name].append(message_parameters)
-
+                    # кррруцио!!!1
+                    gems_list = list(list(i.keys())[0] for i in list(self.data_to_send.values()))
+                    if gem_name not in gems_list:
+                    #if len(self.data_to_send[send_time][gem_name]) == 0:
+                        self.data_to_send[send_time][gem_name].append(message_parameters)
+                        tg.queue.pop(0)
         elif self.state is 'POPUP':
             pass
         elif self.state is 'EmergencyStop':
