@@ -94,14 +94,6 @@ class ModelScheduler:
         for observer in self.observers:
             observer.notice(self.schedule.events, self.time)
 
-        # для traffic_observer'ов нужно освободить буферы дефрагментированных пакетов
-        # for dev_name in self.devices:
-        #     if 'ONT' in dev_name or 'OLT' in dev_name:
-        #         dev = self.devices[dev_name]
-        #         if len(dev.received_packets) > 0:
-        #             #new_data.append(dev.received_packets)
-        #             dev.received_packets.clear()
-
     def make_results(self):
         for observer in self.observers:
             observer.make_results()
@@ -111,21 +103,6 @@ class ModelScheduler:
             print(dev.counters.export_to_console())
         print('{} {}'.format(self.olt.name, self.olt.state))
         print(self.olt.counters.export_to_console())
-
-        # for dev in self.devices:
-        #     for name in ['ONT']:
-        #         if name in dev:
-        #             print('{}'.format(dev))
-        #             device = self.devices[dev]
-        #             # print('{}'.format(device.counters.export_to_console()))
-        #             print(device.export_counters())
-        # for dev in self.devices:
-        #     for name in ['OLT']:
-        #         if name in dev:
-        #             print('{}'.format(dev))
-        #             device = self.devices[dev]
-        #             # print('{}'.format(device.counters.export_to_console()))
-        #             print(device.export_counters())
 
     def proceed_schedule(self, cur_time):
         self.time = cur_time

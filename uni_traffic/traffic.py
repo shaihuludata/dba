@@ -19,13 +19,13 @@ class Traffic:
             raise NotImplemented
 
     def new_message(self, time):
-        if len(self.queue) > self.max_queue_size:
-            self.last_packet_born = time
-            self.packet_counter += 1
-            return False
         if time - self.last_packet_born >= self.send_interval:
             self.last_packet_born = time
             self.packet_counter += 1
+
+            if len(self.queue) > self.max_queue_size:
+                return False
+
             message = {'born_time': time,
                        'alloc_id': self.id,
                        'traf_class': self.traf_class,
