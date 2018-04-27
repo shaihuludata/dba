@@ -482,8 +482,15 @@ class IPTrafficObserver:
 
     def notice(self, schedule, cur_time):
         sched = dict()
-        sched.update(schedule)
-        self.observer_result_list.append((cur_time, sched))
+        for t in schedule:
+            if t <= cur_time:
+                for ev in schedule[t]:
+                    if ev['state'] is 'defrag':
+                        sched[t] = list()
+                        sched[t].append(ev)
+        # sched.update(schedule)
+        if len(sched) > 0:
+            self.observer_result_list.append((cur_time, sched))
         # append_to_json(schedule.__dict__, result_dir + 'IPtraffic.json')
 
     def cook_result(self):
@@ -574,7 +581,7 @@ class IPTrafficObserver:
             for pack_num in packet_num_result:
                 packet = flow_packet_result[flow_name][pack_num]
                 #if 'born_time' in packet:
-                dv = (packet['dead_time'] - packet['born_time'])/basis_latency
+                dv = (packet['dead_time'] - packet['born_time']) / basis_latency
                 dv_result.append(dv)
             ax = fig.add_subplot(number_of_flows, 3, subplot_index)
             subplot_index += 1
@@ -598,11 +605,14 @@ class IPTrafficObserver:
                 max_pack_num_got = packet_num if packet_num > max_pack_num_got else packet_num
                 packet_nums.append(packet_num)
                 current_lr = (max_pack_num_got - len(packet_nums)) / max_pack_num_got
-                if current_lr > 0:
-                    print('123')
-                    pass
-                if 'ONT4' in flow_name:
-                    print('321')
+                # if current_lr > 0 and 'ONT4' in flow_name:
+                #     print('4')
+                # if current_lr > 0 and 'ONT3' in flow_name:
+                #     print('3')
+                if current_lr > 0 and 'ONT2' in flow_name:
+                    print('2')
+                if current_lr > 0 and 'ONT1' in flow_name:
+                    print('1')
                 lr_result.append(current_lr)
             ax = fig.add_subplot(number_of_flows, 3, subplot_index)
             subplot_index += 1
