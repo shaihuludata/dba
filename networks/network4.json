@@ -54,7 +54,7 @@
     "transmitter_wavelength": "1310",
     "transmitter_type": "1G",
     "activation_time": 0,
-    "Alloc": {"1": "type1"}
+    "Alloc": {"1": "type2"}
   },
   "Fiber3":
   {

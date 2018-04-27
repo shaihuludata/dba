@@ -13,6 +13,12 @@ class Schedule:
         start_schedule.update(self.events)
         new_time_schedule = dict()
         for time in new_events:
+            for ev in new_events[time]:
+                if type(ev['sig']) == list():
+                    for p in ev['sig']:
+                        if 'ONT2' in p['alloc_id'] and p['packet_num'] == 34:
+                            print('вот тут')
+
             if time not in self.events:
                 new_time_schedule.update({time: new_events[time]})
             elif self.events[time] is None:
