@@ -1,6 +1,7 @@
 from pon_device import PonDevice
 from support import Counters
 
+
 class ActiveDevice(PonDevice):
     def __init__(self, name, config):
         PonDevice.__init__(self, name, config)
