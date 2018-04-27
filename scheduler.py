@@ -99,9 +99,9 @@ class ModelScheduler:
             observer.make_results()
 
         for dev in self.onts:
-            print('{} {}'.format(dev.name, dev.state))
+            print('{} {}'.format(dev.name, dev.STATE))
             print(dev.counters.export_to_console())
-        print('{} {}'.format(self.olt.name, self.olt.state))
+        print('{} {}'.format(self.olt.name, self.olt.STATE))
         print(self.olt.counters.export_to_console())
 
     def proceed_schedule(self, cur_time):

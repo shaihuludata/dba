@@ -47,8 +47,8 @@ class Olt(ActiveDevice):
 
     def plan_next_act(self, time):
         self.time = time
-        if self.state == 'Offline':
-            self.state = 'Initial'
+        if self.STATE == 'Offline':
+            self.STATE = 'Initial'
             time = time + self.cycle_duration
         self.counters.cycle_number = round(time / self.cycle_duration + 0.51)
         planned_s_time = self.counters.cycle_number * self.cycle_duration
@@ -57,7 +57,7 @@ class Olt(ActiveDevice):
         sig = None
         data_to_send = dict()
         data_to_send.update(self.data_to_send)
-        # if self.state == 'Initial':
+        # if self.STATE == 'Initial':
         if planned_s_time not in self.sending_sig:
             next_bwmap = self.make_bwmap(time)
             data_to_send.update(next_bwmap)
@@ -139,11 +139,15 @@ class Olt(ActiveDevice):
                         if self.time not in ret:
                             ret[self.time] = list()
                         fragment['fragment_offset'] = 0
+                        if 'ONT2' in fragment['alloc_id'] and fragment['packet_num'] == 30:
+                            print('543')
                         fragment['size'] = total_size
                         defrag_packet = dict()
                         defrag_packet.update(fragment)
                         ret[self.time].append({"dev": self, "state": "defrag", "sig": defrag_packet, "port": 0})
                         ids_to_delete_from_buffer.append(fragment['packet_id'])
+                    if 'ONT2' in fragment['alloc_id']:
+                        print('765')
             # теперь надо удалить из self.defragmentation_buffer всё, что похоже на 'packet_id'
             for id in ids_to_delete_from_buffer:
                 self.defragmentation_buffer.pop(id)

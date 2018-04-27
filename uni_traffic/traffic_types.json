@@ -12,7 +12,7 @@
     "service": "voip",
     "send_interval": 125,
     "distribution": "deterministic",
-    "size_of_packet": 3000,
+    "size_of_packet": 300,
     "max_queue_size": 10
   },
   "type2": {
@@ -20,7 +20,7 @@
     "service": "best_effort",
     "send_interval": 600,
     "distribution": "deterministic",
-    "size_of_packet": 10000,
+    "size_of_packet": 30000,
     "max_queue_size": 2
   }
 }
