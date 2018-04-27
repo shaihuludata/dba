@@ -49,10 +49,9 @@ def main():  # *args, **kwargs):
             sched.proceed_schedule(cur_time)
         # sleep(10)
 
+    # print(times)
     print('End of simulation... Preparing results.')
     sched.make_results()
-    print(times)
-
 
 if __name__ == '__main__':
     main()

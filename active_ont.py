@@ -60,16 +60,22 @@ class Ont(ActiveDevice):
                     gem_name = message_parameters['alloc_id']
                     traf_class = message_parameters['traf_class']
                     send_size = message_parameters['size']
-                    if send_time not in self.data_to_send:
-                        self.data_to_send[send_time] = dict()
-                    if gem_name not in self.data_to_send[send_time]:
-                        self.data_to_send[send_time][gem_name] = list()
+
                     # кррруцио!!!1
+                    # gems_list - список alloc'ов в конструкции вида {time: {alloc: [list_of_messages]}}
                     gems_list = list(list(i.keys())[0] for i in list(self.data_to_send.values()))
                     if gem_name not in gems_list:
-                    #if len(self.data_to_send[send_time][gem_name]) == 0:
-                        self.data_to_send[send_time][gem_name].append(message_parameters)
-                        tg.queue.pop(0)
+                        if send_time not in self.data_to_send:
+                            self.data_to_send[send_time] = dict()
+
+                        if gem_name not in self.data_to_send[send_time]:
+                            self.data_to_send[send_time][gem_name] = list()
+
+                        #    self.data_to_send[send_time][gem_name] = list()
+                        # if len(self.data_to_send[send_time][gem_name]) == 0:
+                        message = tg.queue.pop(0)
+                        self.data_to_send[send_time][gem_name].append(message)
+            # print('')
         elif self.state is 'POPUP':
             pass
         elif self.state is 'EmergencyStop':

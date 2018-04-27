@@ -546,7 +546,7 @@ class IPTrafficObserver:
         number_of_flows = len(self.observer_result)
         subplot_index = 1
         for flow_name in flow_packet_result:
-            # список временных позиций
+            # список пакетов
             packet_num_result = list(flow_packet_result[flow_name].keys())
             packet_num_result.sort()
             #time_result_in_ms = list(i/1000 for i in packet_num_result)
@@ -601,6 +601,8 @@ class IPTrafficObserver:
                 if current_lr > 0:
                     print('123')
                     pass
+                if 'ONT4' in flow_name:
+                    print('321')
                 lr_result.append(current_lr)
             ax = fig.add_subplot(number_of_flows, 3, subplot_index)
             subplot_index += 1
