@@ -486,12 +486,12 @@ class IPTrafficObserver:
             if t <= cur_time:
                 for ev in schedule[t]:
                     if ev['state'] is 'defrag':
-                        sched[t] = list()
+                        if t not in sched:
+                            sched[t] = list()
                         sched[t].append(ev)
         # sched.update(schedule)
         if len(sched) > 0:
             self.observer_result_list.append((cur_time, sched))
-        # append_to_json(schedule.__dict__, result_dir + 'IPtraffic.json')
 
     def cook_result(self):
         for time_sched_tup in self.observer_result_list:
@@ -609,10 +609,10 @@ class IPTrafficObserver:
                 #     print('4')
                 # if current_lr > 0 and 'ONT3' in flow_name:
                 #     print('3')
-                if current_lr > 0 and 'ONT2' in flow_name:
-                    print('2')
-                if current_lr > 0 and 'ONT1' in flow_name:
-                    print('1')
+                # if current_lr > 0 and 'ONT2' in flow_name:
+                #     print('2')
+                # if current_lr > 0 and 'ONT1' in flow_name:
+                #     print('1')
                 lr_result.append(current_lr)
             ax = fig.add_subplot(number_of_flows, 3, subplot_index)
             subplot_index += 1
