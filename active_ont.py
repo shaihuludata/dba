@@ -4,8 +4,8 @@ from signal import Signal
 from uni_traffic.traffic import Traffic
 
 class Ont(ActiveDevice):
-    TO1 = 0 #Serial number acquisition and ranging timer
-    TO2 = 0 #POPUP timer
+    # TO1 = 0 #Serial number acquisition and ranging timer
+    # TO2 = 0 #POPUP timer
 
     def __init__(self, name, config):
         ActiveDevice.__init__(self, name, config)
@@ -14,16 +14,16 @@ class Ont(ActiveDevice):
             self.time_activation = self.config['activation_time'] * 1000
             # time_start = self.config["activation_time"]
             # time_end = time_start + 10
-        self.state = 'Offline'
+        self.STATE = 'Offline'
         self.range_time_delta = list()
-        self.traffic_generators = list()
+        self.traffic_generators = dict()
         self.current_allocations = dict() #key alloc_id : value grant_size
 
         if 'Alloc' in config:
             for alloc_id in config['Alloc']:
                 alloc_type = config['Alloc'][alloc_id]
                 tg = Traffic(self.name, alloc_id, alloc_type)
-                self.traffic_generators.append(tg)
+                self.traffic_generators[self.name + '_' + alloc_id] = tg
                 self.current_allocations[tg.id] = None
         if "0" not in config['Alloc']:
             alloc_type = 'type0'
@@ -37,18 +37,19 @@ class Ont(ActiveDevice):
         if len(self.planned_events) > 0:
             planned_signals.update(self.planned_events)
             self.planned_events = dict()
-        if self.state is 'Offline' and time >= self.time_activation:
-            self.state = 'Initial'
-        if self.state is 'Initial':
+        if self.STATE is 'Offline' and time >= self.time_activation:
+            self.STATE = 'Initial'
+        if self.STATE is 'Initial':
             pass
-        elif self.state is 'Standby':
+        elif self.STATE is 'Standby':
             pass
-        elif self.state is 'SerialNumber':
+        elif self.STATE is 'SerialNumber':
             pass
-        elif self.state is 'Ranging':
+        elif self.STATE is 'Ranging':
             pass
-        elif self.state is 'Operation':
-            for tg in self.traffic_generators:
+        elif self.STATE is 'Operation':
+            for tg_name in self.traffic_generators:
+                tg = self.traffic_generators[tg_name]
                 tg.new_message(time)
                 # TODO чтобы не городить двойную буферизацию
                 # этот код перенести в обработку bwmap
@@ -76,9 +77,9 @@ class Ont(ActiveDevice):
                 #         message = tg.queue.pop(0)
                 #         self.data_to_send[send_time][gem_name].append(message)
             # print('')
-        elif self.state is 'POPUP':
+        elif self.STATE is 'POPUP':
             pass
-        elif self.state is 'EmergencyStop':
+        elif self.STATE is 'EmergencyStop':
             pass
         return planned_signals
 
@@ -102,11 +103,11 @@ class Ont(ActiveDevice):
 
         self.next_cycle_start = self.time + self.cycle_duration
         time = self.time
-        if self.state == 'Offline':
+        if self.STATE == 'Offline':
             pass
-        elif self.state == 'Initial':
-            self.state = 'Standby'
-        elif self.state == 'Standby':
+        elif self.STATE == 'Initial':
+            self.STATE = 'Standby'
+        elif self.STATE == 'Standby':
         # delimiter value, power level mode and pre-assigned delay)
             sig = self.oe_transform(sig)
             #тут нужно из сигнала вытащить запрос SN
@@ -133,18 +134,18 @@ class Ont(ActiveDevice):
                     print('{} Авторизация на OLT подтверждена, allocs: {}'.format(self.name, allocs_acked))
                 # Формально тут должно быть 'SerialNumber'
                 # но без потери смысла для симуляции должно быть Ranging
-                self.state = 'Ranging'
+                    self.STATE = 'Ranging'
                 # print(sig)
                 # output = {"sig": sig, "delay": delay}
                 return {}
-        elif self.state == 'Ranging':
+        elif self.STATE == 'Ranging':
             if 's_timestamp' in sig.data:
                 s_timestamp = sig.data['s_timestamp']
                 if len(self.range_time_delta) > 10:
                     self.range_time_delta.pop(0)
                 self.range_time_delta.append(self.time - s_timestamp - self.cycle_duration)
-            self.state = 'Operation'
-        elif self.state == 'Operation':
+            self.STATE = 'Operation'
+        elif self.STATE == 'Operation':
             # 'Alloc-ID'
             avg_half_rtt = sum(self.range_time_delta)/len(self.range_time_delta)
             data_to_send = dict()
@@ -163,95 +164,49 @@ class Ont(ActiveDevice):
                     if planned_s_time < self.time:
                         raise Exception('Текущее время {} меньше запланированного {}'.format(self.time, planned_s_time))
 
-                    # self.current_allocations[alloc_id] = grant_size
-
-                    # while grant_size > 0:
-                        # # TODO эту ересь надо выкорчевать
-                        # # в массиве self.data_to_send хранятся записи
-                        # # в формате {time: {alloc_id: [list_of_messages]}}
-                        # # нужно из него взять серию сообщений минимальным временем,
-                        # # но такую, в котором есть очередь alloc_id
-                        # # поэтому введён временный массив temp_data_to_send
-                        # temp_data_to_send = dict()
-                        # temp_data_to_send.update(self.data_to_send)
-                        # mes_time = int()
-                        # while len(temp_data_to_send) > 0:
-                        #     mes_time = min(temp_data_to_send.keys())
-                        #     if alloc_id in temp_data_to_send[mes_time]:
-                        #         break
-                        #     temp_data_to_send.pop(mes_time)
-                        # del(temp_data_to_send)
-
-                        # if mes_time == 0:
-                        #     break
-
-                        # if planned_s_time >= mes_time:
-                        #     if alloc_id in self.data_to_send[mes_time]:
-                        #         message_list = self.data_to_send[mes_time][alloc_id]
-                        #         if len(message_list) == 0:
-                        #             break
-                        #         # фрагментация
-                        #         if grant_size >= message_list[0]['size']:
-                        #             packet = message_list.pop(0)
-                        #             if len(self.data_to_send[mes_time][alloc_id]) == 0:
-                        #                 self.data_to_send[mes_time].pop(alloc_id)
-                        #         else:
-                        #             packet = dict()
-                        #             packet.update(message_list[0])
-                        #             packet['size'] = grant_size
-                        #             message_list[0]['size'] -= grant_size
-                        #             message_list[0]['fragment_offset'] += grant_size
-                        #         grant_size -= packet['size']
-                        #         # print("planned_s_time {}, packet_id {}, size {}"
-                        #         #       .format(planned_s_time, packet['packet_id'], packet['size']))
-                        #         packet_alloc = packet['alloc_id']
-                        #         if not packet_alloc == alloc_id:
-                        #             raise Exception
-                        #         if alloc_id not in data_to_send:
-                        #             data_to_send[alloc_id] = list()
-                        #         data_to_send[alloc_id].append(packet)
-                        #         # data_to_send.update({packet['alloc_id']: packet})
-                        #     else:
-                        #         break
-                        #     if len(self.data_to_send[mes_time]) == 0:
-                        #         self.data_to_send.pop(mes_time)
-                        # else:
-                        #     break
-
-                    for tg in self.traffic_generators:
+                    for tg_name in self.traffic_generators:
+                        tg = self.traffic_generators[tg_name]
                         if tg.id == alloc_id:
                             if len(tg.queue) == 0:
                                 break
                             else:  # len(tg.queue) > 0:
                                 packets_to_send = list()
                                 for message in tg.queue:
+                                    if grant_size == 0:
+                                        break
                                     send_time = time + message['interval']
                                     traf_class = message['traf_class']
+                                    # if 'ONT2' in message['alloc_id'] and message['packet_num'] == 30:
+                                    #     print('543')
+                                    # if 'ONT2' in message['alloc_id']:
+                                    #     print('765')
                                     send_size = message['size']
                                     packet = dict()
                                     packet.update(message)
                                     if grant_size >= send_size:
-                                        packets_to_send.append(packet)
+                                        # packets_to_send.append(packet)
                                         message['size'] = 0
                                     else:
                                         packet['size'] = grant_size
                                         message['size'] -= grant_size
                                         message['fragment_offset'] += grant_size
+                                    packets_to_send.append(packet)
                                     grant_size -= packet['size']
                                     # print("planned_s_time {}, packet_id {}, size {}"
                                     #       .format(planned_s_time, packet['packet_id'], packet['size']))
                                     packet_alloc = packet['alloc_id']
                                 for packet in packets_to_send:
                                     for packet_q in tg.queue:
-                                        if packet['packet_id'] == packet_q['packet_id']:
+                                        packet_id = packet['packet_id']
+                                        if packet_id == packet_q['packet_id']:
                                             if packet_q['size'] == 0:
-                                                tg.queue.remove(packet_q)
+                                                self.traffic_generators[alloc_id].queue.remove(packet_q)
                                                 break
                                     if alloc_id not in data_to_send:
                                         data_to_send[alloc_id] = list()
                                     data_to_send[alloc_id].append(packet)
-                                if alloc_id in data_to_send: # похоже, это условие никогда не выполняется
-                                    if len(data_to_send[alloc_id]) == 0:
+                                if alloc_id in data_to_send:
+                                    if len(data_to_send[alloc_id]) == 0:  # похоже, это условие никогда не выполняется
                                         data_to_send.pop(alloc_id)
                             break
                                     # data_to_send.update({packet_alloc: packet})
@@ -273,8 +228,8 @@ class Ont(ActiveDevice):
                             planned_s_time: [{"dev": self, "state": "s_start", "sig": req_sig, "port": 0}],
                             planned_e_time: [{"dev": self, "state": "s_end", "sig": req_sig, "port": 0}]})
         else:
-            raise Exception('State {} not implemented'.format(self.state))
-        if self.state != 'Offline':
+            raise Exception('State {} not implemented'.format(self.STATE))
+        if self.STATE != 'Offline':
             self.counters.ingress_unicast += 1
         return {}
 

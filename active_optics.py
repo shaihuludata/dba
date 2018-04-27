@@ -5,7 +5,7 @@ from support import Counters
 class ActiveDevice(PonDevice):
     def __init__(self, name, config):
         PonDevice.__init__(self, name, config)
-        self.state = 'Offline'
+        self.STATE = 'Offline'
         self.power_matrix = 0
         self.cycle_duration = 125
         self.next_cycle_start = 0
