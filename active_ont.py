@@ -52,29 +52,29 @@ class Ont(ActiveDevice):
                 tg.new_message(time)
                 # TODO чтобы не городить двойную буферизацию
                 # этот код перенести в обработку bwmap
-                if len(tg.queue) > 0:
-                    # message_parameters = tg.queue.pop(0)
-                    # send_time = time + message_parameters.pop('interval')
-                    message_parameters = tg.queue[0]
-                    send_time = time + message_parameters['interval']
-                    gem_name = message_parameters['alloc_id']
-                    traf_class = message_parameters['traf_class']
-                    send_size = message_parameters['size']
-
-                    # кррруцио!!!1
-                    # gems_list - список alloc'ов в конструкции вида {time: {alloc: [list_of_messages]}}
-                    gems_list = list(list(i.keys())[0] for i in list(self.data_to_send.values()))
-                    if gem_name not in gems_list:
-                        if send_time not in self.data_to_send:
-                            self.data_to_send[send_time] = dict()
-
-                        if gem_name not in self.data_to_send[send_time]:
-                            self.data_to_send[send_time][gem_name] = list()
-
-                        #    self.data_to_send[send_time][gem_name] = list()
-                        # if len(self.data_to_send[send_time][gem_name]) == 0:
-                        message = tg.queue.pop(0)
-                        self.data_to_send[send_time][gem_name].append(message)
+                # if len(tg.queue) > 0:
+                #     # message_parameters = tg.queue.pop(0)
+                #     # send_time = time + message_parameters.pop('interval')
+                #     message_parameters = tg.queue[0]
+                #     send_time = time + message_parameters['interval']
+                #     gem_name = message_parameters['alloc_id']
+                #     traf_class = message_parameters['traf_class']
+                #     send_size = message_parameters['size']
+                #
+                #     # кррруцио!!!1
+                #     # gems_list - список alloc'ов в конструкции вида {time: {alloc: [list_of_messages]}}
+                #     gems_list = list(list(i.keys())[0] for i in list(self.data_to_send.values()))
+                #     if gem_name not in gems_list:
+                #         if send_time not in self.data_to_send:
+                #             self.data_to_send[send_time] = dict()
+                #
+                #         if gem_name not in self.data_to_send[send_time]:
+                #             self.data_to_send[send_time][gem_name] = list()
+                #
+                #         #    self.data_to_send[send_time][gem_name] = list()
+                #         # if len(self.data_to_send[send_time][gem_name]) == 0:
+                #         message = tg.queue.pop(0)
+                #         self.data_to_send[send_time][gem_name].append(message)
             # print('')
         elif self.state is 'POPUP':
             pass
@@ -165,57 +165,104 @@ class Ont(ActiveDevice):
 
                     # self.current_allocations[alloc_id] = grant_size
 
-                    while grant_size > 0:
-                        # в массиве self.data_to_send хранятся записи
-                        # в формате {time: {alloc_id: [list_of_messages]}}
-                        # нужно из него взять серию сообщений минимальным временем,
-                        # но такую, в котором есть очередь alloc_id
-                        # поэтому введён временный массив temp_data_to_send
-                        temp_data_to_send = dict()
-                        temp_data_to_send.update(self.data_to_send)
-                        mes_time = int()
-                        while len(temp_data_to_send) > 0:
-                            mes_time = min(temp_data_to_send.keys())
-                            if alloc_id in temp_data_to_send[mes_time]:
+                    # while grant_size > 0:
+                        # # TODO эту ересь надо выкорчевать
+                        # # в массиве self.data_to_send хранятся записи
+                        # # в формате {time: {alloc_id: [list_of_messages]}}
+                        # # нужно из него взять серию сообщений минимальным временем,
+                        # # но такую, в котором есть очередь alloc_id
+                        # # поэтому введён временный массив temp_data_to_send
+                        # temp_data_to_send = dict()
+                        # temp_data_to_send.update(self.data_to_send)
+                        # mes_time = int()
+                        # while len(temp_data_to_send) > 0:
+                        #     mes_time = min(temp_data_to_send.keys())
+                        #     if alloc_id in temp_data_to_send[mes_time]:
+                        #         break
+                        #     temp_data_to_send.pop(mes_time)
+                        # del(temp_data_to_send)
+
+                        # if mes_time == 0:
+                        #     break
+
+                        # if planned_s_time >= mes_time:
+                        #     if alloc_id in self.data_to_send[mes_time]:
+                        #         message_list = self.data_to_send[mes_time][alloc_id]
+                        #         if len(message_list) == 0:
+                        #             break
+                        #         # фрагментация
+                        #         if grant_size >= message_list[0]['size']:
+                        #             packet = message_list.pop(0)
+                        #             if len(self.data_to_send[mes_time][alloc_id]) == 0:
+                        #                 self.data_to_send[mes_time].pop(alloc_id)
+                        #         else:
+                        #             packet = dict()
+                        #             packet.update(message_list[0])
+                        #             packet['size'] = grant_size
+                        #             message_list[0]['size'] -= grant_size
+                        #             message_list[0]['fragment_offset'] += grant_size
+                        #         grant_size -= packet['size']
+                        #         # print("planned_s_time {}, packet_id {}, size {}"
+                        #         #       .format(planned_s_time, packet['packet_id'], packet['size']))
+                        #         packet_alloc = packet['alloc_id']
+                        #         if not packet_alloc == alloc_id:
+                        #             raise Exception
+                        #         if alloc_id not in data_to_send:
+                        #             data_to_send[alloc_id] = list()
+                        #         data_to_send[alloc_id].append(packet)
+                        #         # data_to_send.update({packet['alloc_id']: packet})
+                        #     else:
+                        #         break
+                        #     if len(self.data_to_send[mes_time]) == 0:
+                        #         self.data_to_send.pop(mes_time)
+                        # else:
+                        #     break
+
+                    for tg in self.traffic_generators:
+                        if tg.id == alloc_id:
+                            if len(tg.queue) == 0:
                                 break
-                            temp_data_to_send.pop(mes_time)
-                        del(temp_data_to_send)
-
-                        if mes_time == 0:
-                            break
-
-                        if planned_s_time >= mes_time:
-                            if alloc_id in self.data_to_send[mes_time]:
-                                message_list = self.data_to_send[mes_time][alloc_id]
-                                if len(message_list) == 0:
-                                    break
-                                # фрагментация
-                                if grant_size >= message_list[0]['size']:
-                                    packet = message_list.pop(0)
-                                    if len(self.data_to_send[mes_time][alloc_id]) == 0:
-                                        self.data_to_send[mes_time].pop(alloc_id)
-                                else:
+                            else:  # len(tg.queue) > 0:
+                                packets_to_send = list()
+                                for message in tg.queue:
+                                    send_time = time + message['interval']
+                                    traf_class = message['traf_class']
+                                    send_size = message['size']
                                     packet = dict()
-                                    packet.update(message_list[0])
-                                    packet['size'] = grant_size
-                                    message_list[0]['size'] -= grant_size
-                                    message_list[0]['fragment_offset'] += grant_size
-                                grant_size -= packet['size']
-                                # print("planned_s_time {}, packet_id {}, size {}"
-                                #       .format(planned_s_time, packet['packet_id'], packet['size']))
-                                packet_alloc = packet['alloc_id']
-                                if not packet_alloc == alloc_id:
-                                    raise Exception
-                                if alloc_id not in data_to_send:
-                                    data_to_send[alloc_id] = list()
-                                data_to_send[alloc_id].append(packet)
-                                # data_to_send.update({packet['alloc_id']: packet})
-                            else:
-                                break
-                            if len(self.data_to_send[mes_time]) == 0:
-                                self.data_to_send.pop(mes_time)
-                        else:
+                                    packet.update(message)
+                                    if grant_size >= send_size:
+                                        packets_to_send.append(packet)
+                                        message['size'] = 0
+                                    else:
+                                        packet['size'] = grant_size
+                                        message['size'] -= grant_size
+                                        message['fragment_offset'] += grant_size
+                                    grant_size -= packet['size']
+                                    # print("planned_s_time {}, packet_id {}, size {}"
+                                    #       .format(planned_s_time, packet['packet_id'], packet['size']))
+                                    packet_alloc = packet['alloc_id']
+                                for packet in packets_to_send:
+                                    for packet_q in tg.queue:
+                                        if packet['packet_id'] == packet_q['packet_id']:
+                                            if packet_q['size'] == 0:
+                                                tg.queue.remove(packet_q)
+                                                break
+                                    if alloc_id not in data_to_send:
+                                        data_to_send[alloc_id] = list()
+                                    data_to_send[alloc_id].append(packet)
+                                if alloc_id in data_to_send: # похоже, это условие никогда не выполняется
+                                    if len(data_to_send[alloc_id]) == 0:
+                                        data_to_send.pop(alloc_id)
                             break
+                                    # data_to_send.update({packet_alloc: packet})
+                                #     else:
+                                #         break
+                                #     if len(self.data_to_send[mes_time]) == 0:
+                                #         self.data_to_send.pop(mes_time)
+                                    #         if grant_size >= message_list[0]['size']:
+                                    #             packet = message_list.pop(0)
+                                    #             if len(self.data_to_send[mes_time][alloc_id]) == 0:
+                                    #                 self.data_to_send[mes_time].pop(alloc_id)
                     data_to_send.update({'cycle_num': sig.data['cycle_num']})
 
                     sig_id = '{}:{}:{}'.format(planned_s_time, self.name, planned_e_time)
