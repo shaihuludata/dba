@@ -51,32 +51,6 @@ class Ont(ActiveDevice):
             for tg_name in self.traffic_generators:
                 tg = self.traffic_generators[tg_name]
                 tg.new_message(time)
-                # TODO чтобы не городить двойную буферизацию
-                # этот код перенести в обработку bwmap
-                # if len(tg.queue) > 0:
-                #     # message_parameters = tg.queue.pop(0)
-                #     # send_time = time + message_parameters.pop('interval')
-                #     message_parameters = tg.queue[0]
-                #     send_time = time + message_parameters['interval']
-                #     gem_name = message_parameters['alloc_id']
-                #     traf_class = message_parameters['traf_class']
-                #     send_size = message_parameters['size']
-                #
-                #     # кррруцио!!!1
-                #     # gems_list - список alloc'ов в конструкции вида {time: {alloc: [list_of_messages]}}
-                #     gems_list = list(list(i.keys())[0] for i in list(self.data_to_send.values()))
-                #     if gem_name not in gems_list:
-                #         if send_time not in self.data_to_send:
-                #             self.data_to_send[send_time] = dict()
-                #
-                #         if gem_name not in self.data_to_send[send_time]:
-                #             self.data_to_send[send_time][gem_name] = list()
-                #
-                #         #    self.data_to_send[send_time][gem_name] = list()
-                #         # if len(self.data_to_send[send_time][gem_name]) == 0:
-                #         message = tg.queue.pop(0)
-                #         self.data_to_send[send_time][gem_name].append(message)
-            # print('')
         elif self.STATE is 'POPUP':
             pass
         elif self.STATE is 'EmergencyStop':
@@ -88,11 +62,11 @@ class Ont(ActiveDevice):
 
     def s_start(self, sig, port: int):
         sig = self.eo_transform(sig)
-        #self.next_cycle_start = self.time + self.cycle_duration
+        # self.next_cycle_start = self.time + self.cycle_duration
         return self.name, port, sig
 
     def r_end(self, sig, port: int):
-        #обработка на случай коллизии
+        # обработка на случай коллизии
         for rec_sig in self.receiving_sig:
             if rec_sig.id == sig.id:
                 self.receiving_sig.pop(rec_sig)
@@ -110,9 +84,9 @@ class Ont(ActiveDevice):
         elif self.STATE == 'Standby':
         # delimiter value, power level mode and pre-assigned delay)
             sig = self.oe_transform(sig)
-            #тут нужно из сигнала вытащить запрос SN
+            # тут нужно из сигнала вытащить запрос SN
             if 'sn_request' in sig.data:
-                #delay = random.randrange(34, 36, 1) + random.randrange(0, 50, 1)
+                # delay = random.randrange(34, 36, 1) + random.randrange(0, 50, 1)
                 delay = random.randrange(0, 80, 1) + self.cycle_duration
                 planned_s_time = self.next_cycle_start + delay
                 planned_e_time = planned_s_time + 2

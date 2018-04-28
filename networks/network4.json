@@ -1,7 +1,7 @@
 {
   "OLT":
   {
-    "dba_type": "static",
+    "dba_type": "static_allocs",
     "maximum_ont_amount": "32",
     "upstream_interframe_interval": 200,
     "transmitter_power": "1",
@@ -24,7 +24,7 @@
     "transmitter_wavelength": "1310",
     "transmitter_type": "1G",
     "activation_time": 0,
-    "Alloc": {"1": "type1"}
+    "Alloc": {"1": "type1", "2": "type2"}
   },
   "Fiber1":
   {
@@ -39,7 +39,7 @@
     "transmitter_wavelength": "1310",
     "transmitter_type": "1G",
     "activation_time": 0,
-    "Alloc": {"1": "type1"}
+    "Alloc": {"1": "type1", "2": "type2"}
   },
   "Fiber2":
   {
@@ -54,7 +54,7 @@
     "transmitter_wavelength": "1310",
     "transmitter_type": "1G",
     "activation_time": 0,
-    "Alloc": {"1": "type2"}
+    "Alloc": {"1": "type2", "2": "type2"}
   },
   "Fiber3":
   {
@@ -69,7 +69,7 @@
     "transmitter_wavelength": "1310",
     "transmitter_type": "1G",
     "activation_time": 0,
-    "Alloc": {"1": "type2"}
+    "Alloc": {"1": "type2", "2": "type2"}
   },
   "Fiber4":
   {

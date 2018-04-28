@@ -98,7 +98,10 @@ class ModelScheduler:
 
     def notify_observers(self):
         for observer in self.observers:
-            observer.notice(self.schedule.events, self.time)
+            if observer.name == 'Traffic visualizer':
+                observer.notice(self.schedule.events[self.time], self.time)
+            else:
+                observer.notice(self.schedule.events, self.time)
 
     def make_results(self):
         for observer in self.observers:
@@ -115,16 +118,44 @@ class ModelScheduler:
         self.notify_observers()
         self.schedule.upd_schedule(self.interrogate_devices())
         current_events = self.schedule.events.pop(cur_time)
+        sorted_events = list()
+        # надо отсортировать, первые события должны быть 'r_end'
+        # а вообще-то это лучше сделать ниже, в case-if стиле
+        for ev_state in ['r_end', 's_end', 'r_start', 's_start', 'defrag']:
+            for event in current_events:
+                if event['state'] == ev_state:
+                    sorted_events.append(event)
         new_sched = Schedule()
         sending_sig = self.olt.sending_sig
-        for event in current_events:
+        for event in sorted_events:
             state, sig = event['state'], event['sig']
             l_dev, l_port = event['dev'], event['port']
             # if 'ONT' in l_dev.name or 'OLT' in l_dev.name:
             #     print('Time {}, device {} {}, sig {}, '.format(cur_time, l_dev.name, state, sig.id))
             # if 'Fiber' in l_dev.name:
             #     print('')
-            if state == 's_start':
+            if state == 'r_end':
+                if 'ONT' in l_dev.name or 'OLT' in l_dev.name:
+                    time_sig_dict = l_dev.r_end(sig, l_port)
+                    if len(time_sig_dict) > 0:
+                        new_sched.upd_schedule(time_sig_dict)
+                    # for port in port_sig_dict:
+                    #     sig = port_sig_dict[port]['sig']
+                    #     if sig.physics['type'] == 'electric':
+                    #         print('Сигнал {} доставлен и принят {}'.format(sig.id, l_dev.name))
+                    #     new_event = {'dev': l_dev, 'state': 's_start',
+                    #                  'sig': port_sig_dict[port]['sig'], 'port': port}
+                    #     delay = port_sig_dict[port]['delay']
+                else:
+                    port_sig_dict = l_dev.r_end(sig, l_port)
+                    for port in port_sig_dict:
+                        # r_device, r_port = self.net[l_dev.name]['ports'][str(port)].split("::")
+                        # r_dev = self.devices[r_device]
+                        new_event = {'dev': l_dev, 'state': 's_end',
+                                     'sig': port_sig_dict[port]['sig'], 'port': port}
+                        delay = port_sig_dict[port]['delay']
+                        new_sched.upd_schedule({cur_time + delay: [new_event]})
+            elif state == 's_start':
                 if 'OLT' in l_dev.name:
                     pass
                 elif 'ONT' in l_dev.name:
@@ -156,27 +187,6 @@ class ModelScheduler:
                 r_dev = self.devices[r_device]
                 new_event = {'dev': r_dev, 'state': 'r_end', 'sig': sig, 'port': int(r_port)}
                 new_sched.upd_schedule({cur_time: [new_event]})
-            elif state == 'r_end':
-                if 'ONT' in l_dev.name or 'OLT' in l_dev.name:
-                    time_sig_dict = l_dev.r_end(sig, l_port)
-                    if len(time_sig_dict) > 0:
-                        new_sched.upd_schedule(time_sig_dict)
-                    # for port in port_sig_dict:
-                    #     sig = port_sig_dict[port]['sig']
-                    #     if sig.physics['type'] == 'electric':
-                    #         print('Сигнал {} доставлен и принят {}'.format(sig.id, l_dev.name))
-                    #     new_event = {'dev': l_dev, 'state': 's_start',
-                    #                  'sig': port_sig_dict[port]['sig'], 'port': port}
-                    #     delay = port_sig_dict[port]['delay']
-                else:
-                    port_sig_dict = l_dev.r_end(sig, l_port)
-                    for port in port_sig_dict:
-                        # r_device, r_port = self.net[l_dev.name]['ports'][str(port)].split("::")
-                        # r_dev = self.devices[r_device]
-                        new_event = {'dev': l_dev, 'state': 's_end',
-                                     'sig': port_sig_dict[port]['sig'], 'port': port}
-                        delay = port_sig_dict[port]['delay']
-                        new_sched.upd_schedule({cur_time + delay: [new_event]})
             elif state == 'defrag':
                 pass
             else:
