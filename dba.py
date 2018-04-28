@@ -2,7 +2,7 @@
 
 class Dba:
     def __init__(self, config):
-        self.global_bwmap = dict() #{time: intra_cycle_bwmap}
+        self.global_bwmap = dict()  # {time: intra_cycle_bwmap}
         self.next_cycle_start = 0
 
         self.cycle_duration = config['cycle_duration']
@@ -73,9 +73,13 @@ class DbaStaticAllocs(Dba):
     def bwmap(self, requests, cur_time):
         alloc_timer = 0  # in bytes
         bwmap = list()
-        onts = 0
-        for alloc_ids in requests:
-            onts += len(alloc_ids)
+        onts = list()
+        allocs = list()
+
+        for ont in requests:
+            onts.append(ont)
+            allocs += requests[ont]
+
         max_time = self.maximum_allocation_start_time
         if self.next_cycle_start not in self.global_bwmap:
             for ont in requests:
@@ -85,10 +89,10 @@ class DbaStaticAllocs(Dba):
                                            'StartTime': alloc_timer, 'StopTime': None}  # , 'CRC': None}
                         # для статичного DBA выделяется интервал, обратно пропорциональный
                         # self.maximum_ont_amount - количеству ONT
-                        alloc_timer += round(max_time / onts) - self.upstream_interframe_interval
+                        alloc_timer += round(max_time / len(requests))
                         alloc_structure['StopTime'] = alloc_timer
                         bwmap.append(alloc_structure)
-                alloc_timer += self.upstream_interframe_interval
+                alloc_timer += self.upstream_interframe_interval - self.upstream_interframe_interval
             self.global_bwmap[self.next_cycle_start] = bwmap
         else:
             bwmap = self.global_bwmap[self.next_cycle_start]
