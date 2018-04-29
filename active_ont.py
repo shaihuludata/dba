@@ -65,6 +65,13 @@ class Ont(ActiveDevice):
         # self.next_cycle_start = self.time + self.cycle_duration
         return self.name, port, sig
 
+    def s_end(self, sig, port: int):
+        if 'sn_response' not in sig.data:
+            for content in sig.data:
+                if 'ONT' in content:
+                    print('nsnrinsig')
+        return self.name, port, sig
+
     def r_end(self, sig, port: int):
         # обработка на случай коллизии
         for rec_sig in self.receiving_sig:
@@ -122,85 +129,75 @@ class Ont(ActiveDevice):
         elif self.STATE == 'Operation':
             # 'Alloc-ID'
             avg_half_rtt = sum(self.range_time_delta)/len(self.range_time_delta)
-            data_to_send = dict()
             for allocation in sig.data['bwmap']:
                 name = self.name
                 alloc_id = allocation['Alloc-ID']
-                if name in alloc_id:
-                    allocation_start = allocation['StartTime']
-                    allocation_stop = allocation['StopTime']
-                    grant_size = allocation_stop - allocation_start
-                    intra_cycle_s_start = round(8*1000000*allocation_start / self.transmitter_speed)
-                    intra_cycle_e_start = round(8*1000000*allocation_stop / self.transmitter_speed)
-                    planned_s_time = self.next_cycle_start + intra_cycle_s_start - 2*avg_half_rtt + self.cycle_duration
-                    planned_e_time = self.next_cycle_start + intra_cycle_e_start - 2*avg_half_rtt + self.cycle_duration
-                    planned_delta = planned_e_time - planned_s_time  # полезно для отладки
-                    if planned_s_time < self.time:
-                        raise Exception('Текущее время {} меньше запланированного {}'.format(self.time, planned_s_time))
+                for dev_alloc in self.current_allocations:
+                    if dev_alloc == alloc_id:
+                        data_to_send = dict()
+                        allocation_start = allocation['StartTime']
+                        allocation_stop = allocation['StopTime']
+                        grant_size = allocation_stop - allocation_start
+                        intra_cycle_s_start = round(8*1000000*allocation_start / self.transmitter_speed, 1)
+                        intra_cycle_e_start = round(8*1000000*allocation_stop / self.transmitter_speed, 1)
+                        planned_s_time = self.next_cycle_start + intra_cycle_s_start - 2*avg_half_rtt + self.cycle_duration
+                        planned_e_time = self.next_cycle_start + intra_cycle_e_start - 2*avg_half_rtt + self.cycle_duration
+                        planned_delta = planned_e_time - planned_s_time  # полезно для отладки
+                        if planned_s_time < self.time:
+                            raise Exception('Текущее время {} меньше запланированного {}'.format(self.time, planned_s_time))
 
-                    for tg_name in self.traffic_generators:
-                        tg = self.traffic_generators[tg_name]
-                        if tg.id == alloc_id:
-                            if len(tg.queue) == 0:
+                        for tg_name in self.traffic_generators:
+                            tg = self.traffic_generators[tg_name]
+                            if tg.id == alloc_id:
+                                if len(tg.queue) == 0:
+                                    break
+                                else:  # len(tg.queue) > 0:
+                                    packets_to_send = list()
+                                    for message in tg.queue:
+                                        if grant_size == 0:
+                                            break
+                                        send_time = time + message['interval']
+                                        traf_class = message['traf_class']
+                                        # if 'ONT2' in message['alloc_id'] and message['packet_num'] == 30:
+                                        #     print('543')
+                                        # if 'ONT2' in message['alloc_id']:
+                                        #     print('765')
+                                        send_size = message['size']
+                                        packet = dict()
+                                        packet.update(message)
+                                        if grant_size >= send_size:
+                                            # packets_to_send.append(packet)
+                                            message['size'] = 0
+                                        else:
+                                            packet['size'] = grant_size
+                                            message['size'] -= grant_size
+                                            message['fragment_offset'] += grant_size
+                                        packets_to_send.append(packet)
+                                        grant_size -= packet['size']
+                                        # print("planned_s_time {}, packet_id {}, size {}"
+                                        #       .format(planned_s_time, packet['packet_id'], packet['size']))
+                                        packet_alloc = packet['alloc_id']
+                                    for packet in packets_to_send:
+                                        for packet_q in tg.queue:
+                                            packet_id = packet['packet_id']
+                                            if packet_id == packet_q['packet_id']:
+                                                if packet_q['size'] == 0:
+                                                    self.traffic_generators[alloc_id].queue.remove(packet_q)
+                                                    break
+                                        if alloc_id not in data_to_send:
+                                            data_to_send[alloc_id] = list()
+                                        data_to_send[alloc_id].append(packet)
                                 break
-                            else:  # len(tg.queue) > 0:
-                                packets_to_send = list()
-                                for message in tg.queue:
-                                    if grant_size == 0:
-                                        break
-                                    send_time = time + message['interval']
-                                    traf_class = message['traf_class']
-                                    # if 'ONT2' in message['alloc_id'] and message['packet_num'] == 30:
-                                    #     print('543')
-                                    # if 'ONT2' in message['alloc_id']:
-                                    #     print('765')
-                                    send_size = message['size']
-                                    packet = dict()
-                                    packet.update(message)
-                                    if grant_size >= send_size:
-                                        # packets_to_send.append(packet)
-                                        message['size'] = 0
-                                    else:
-                                        packet['size'] = grant_size
-                                        message['size'] -= grant_size
-                                        message['fragment_offset'] += grant_size
-                                    packets_to_send.append(packet)
-                                    grant_size -= packet['size']
-                                    # print("planned_s_time {}, packet_id {}, size {}"
-                                    #       .format(planned_s_time, packet['packet_id'], packet['size']))
-                                    packet_alloc = packet['alloc_id']
-                                for packet in packets_to_send:
-                                    for packet_q in tg.queue:
-                                        packet_id = packet['packet_id']
-                                        if packet_id == packet_q['packet_id']:
-                                            if packet_q['size'] == 0:
-                                                self.traffic_generators[alloc_id].queue.remove(packet_q)
-                                                break
-                                    if alloc_id not in data_to_send:
-                                        data_to_send[alloc_id] = list()
-                                    data_to_send[alloc_id].append(packet)
-                                if alloc_id in data_to_send:
-                                    if len(data_to_send[alloc_id]) == 0:  # похоже, это условие никогда не выполняется
-                                        data_to_send.pop(alloc_id)
-                            break
-                                    # data_to_send.update({packet_alloc: packet})
-                                #     else:
-                                #         break
-                                #     if len(self.data_to_send[mes_time]) == 0:
-                                #         self.data_to_send.pop(mes_time)
-                                    #         if grant_size >= message_list[0]['size']:
-                                    #             packet = message_list.pop(0)
-                                    #             if len(self.data_to_send[mes_time][alloc_id]) == 0:
-                                    #                 self.data_to_send[mes_time].pop(alloc_id)
-                    data_to_send.update({'cycle_num': sig.data['cycle_num']})
+                        data_to_send.update({'cycle_num': sig.data['cycle_num']})
 
-                    sig_id = '{}:{}:{}'.format(planned_s_time, self.name, planned_e_time)
-                    if sig_id not in self.sending_sig.values():
-                        self.sending_sig[planned_s_time] = sig_id
-                        req_sig = Signal(sig_id, data_to_send, source=self.name)
-                        self.planned_events.update({
-                            planned_s_time: [{"dev": self, "state": "s_start", "sig": req_sig, "port": 0}],
-                            planned_e_time: [{"dev": self, "state": "s_end", "sig": req_sig, "port": 0}]})
+                        sig_id = '{}:{}:{}'.format(planned_s_time, self.name, planned_e_time)
+                        if sig_id not in self.sending_sig.values():
+                            self.sending_sig[planned_s_time] = sig_id
+                            req_sig = Signal(sig_id, data_to_send, source=self.name)
+                            self.planned_events.update({
+                                planned_s_time: [{"dev": self, "state": "s_start", "sig": req_sig, "port": 0}],
+                                planned_e_time: [{"dev": self, "state": "s_end", "sig": req_sig, "port": 0}]})
+                        break
         else:
             raise Exception('State {} not implemented'.format(self.STATE))
         if self.STATE != 'Offline':
