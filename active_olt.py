@@ -82,37 +82,6 @@ class Olt(ActiveDevice):
             bwmap = self.dba.bwmap(requests=self.ont_discovered, cur_time=time)
             return {'bwmap': bwmap, 's_timestamp': self.dba.next_cycle_start, 'cycle_num': self.counters.cycle_number}
 
-    def s_end(self, sig, port: int):
-        return self.name, port, sig
-
-    def r_start(self, sig, port: int):
-        self.receiving_sig[sig] = self.time
-        receiving_sigs = list(self.receiving_sig.keys())
-        rec_sig = self.receiving_sig
-        if len(self.receiving_sig) > 1:
-            delta = list()
-            for i in self.receiving_sig:
-                for j in self.receiving_sig:
-                    delta.append(self.receiving_sig[i] - self.receiving_sig[j])
-            print('Time {} {} ИНТЕРФЕРЕНЦИОННАЯ КОЛЛИЗИЯ. Сигналов: {}, дельта {}!!!'
-                  .format(self.time, self.name, len(self.receiving_sig), delta))
-
-            sn = False
-            for i in receiving_sigs:
-                if 'sn_response' in i.data:
-                    sn = True
-            if not sn:
-                # print('плохая коллизия')
-                raise Exception('плохая коллизия')
-
-            sig.physics['collision'] = True
-            for rec_sig in self.receiving_sig:
-                rec_sig.physics['collision'] = True
-        if 'sn_response' not in sig.data:
-            print('nsnrinsig')
-        output = {"sig": sig, "delay": self.cycle_duration}
-        return {port: output}
-
     def r_end(self, sig, port: int):
         ret = dict()
         # обработка интерференционной коллизии

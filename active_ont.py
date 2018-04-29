@@ -60,18 +60,6 @@ class Ont(ActiveDevice):
     def request_bw(self):
         print('Sending req')
 
-    def s_start(self, sig, port: int):
-        sig = self.eo_transform(sig)
-        # self.next_cycle_start = self.time + self.cycle_duration
-        return self.name, port, sig
-
-    def s_end(self, sig, port: int):
-        if 'sn_response' not in sig.data:
-            for content in sig.data:
-                if 'ONT' in content:
-                    print('nsnrinsig')
-        return self.name, port, sig
-
     def r_end(self, sig, port: int):
         # обработка на случай коллизии
         for rec_sig in self.receiving_sig:
@@ -194,9 +182,12 @@ class Ont(ActiveDevice):
                         if sig_id not in self.sending_sig.values():
                             self.sending_sig[planned_s_time] = sig_id
                             req_sig = Signal(sig_id, data_to_send, source=self.name)
-                            self.planned_events.update({
-                                planned_s_time: [{"dev": self, "state": "s_start", "sig": req_sig, "port": 0}],
-                                planned_e_time: [{"dev": self, "state": "s_end", "sig": req_sig, "port": 0}]})
+                            if planned_s_time not in self.planned_events:
+                                self.planned_events[planned_s_time] = list()
+                            if planned_e_time not in self.planned_events:
+                                self.planned_events[planned_e_time] = list()
+                            self.planned_events[planned_s_time].append({"dev": self, "state": "s_start", "sig": req_sig, "port": 0})
+                            self.planned_events[planned_e_time].append({"dev": self, "state": "s_end", "sig": req_sig, "port": 0})
                         break
         else:
             raise Exception('State {} not implemented'.format(self.STATE))

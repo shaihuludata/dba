@@ -13,17 +13,6 @@ class Schedule:
         start_schedule.update(self.events)
         new_time_schedule = dict()
         for time in new_events:
-            # for ev in new_events[time]:
-            #     if type(ev['sig']) == list():
-            #         for p in ev['sig']:
-            #             if 'ONT2' in p['alloc_id'] and p['packet_num'] == 34:
-            #                 print('вот тут')
-            for ev in new_events[time]:
-                if 'OLT' in ev['dev'].name:
-                    if 'r_end' in ev['state'] or 'r_start' in ev['state']:
-                        if 'sn_response' not in ev['sig'].data:
-                            print('вот тут')
-
             if time not in self.events:
                 new_time_schedule.update({time: new_events[time]})
             elif self.events[time] is None:
@@ -120,10 +109,10 @@ class ModelScheduler:
         print('{} {}'.format(self.olt.name, self.olt.STATE))
         print(self.olt.counters.export_to_console())
 
-    def track_the_packet(self):
+    def track_the_packet(self, sched):
         # track = dict()
-        for t in self.schedule.events:
-            events = self.schedule.events[t]
+        for t in sched.events:
+            events = sched.events[t]
             for ev in events:
                 state = ev['state']
                 for ont_alloc_name in ev['sig'].data:
@@ -156,9 +145,9 @@ class ModelScheduler:
         for event in sorted_events:
             state, sig = event['state'], event['sig']
             l_dev, l_port = event['dev'], event['port']
-            if 'OLT' in l_dev.name:
-                if state == 'r_end':
-                    print('Time {}, device {} {}, sig {}, '.format(cur_time, l_dev.name, state, sig.id))
+            # if 'OLT' in l_dev.name:
+            #     if state == 'r_end':
+            #         print('Time {}, device {} {}, sig {}, '.format(cur_time, l_dev.name, state, sig.id))
             # if 'Fiber' in l_dev.name:
             #     print('')
             if state == 'r_end':
@@ -184,15 +173,6 @@ class ModelScheduler:
                         delay = port_sig_dict[port]['delay']
                         new_sched.upd_schedule({cur_time + delay: [new_event]})
             elif state == 's_start':
-                if 'sn_response' not in sig.data:
-                    if 'bwmap' not in sig.data:
-                        for content in sig.data:
-                            if 'ONT' in content:
-                                print('nsnrinsig')
-                if 'OLT' in l_dev.name:
-                    pass
-                elif 'ONT' in l_dev.name:
-                    pass
                 l_device, l_port, sig = l_dev.s_start(sig, l_port)
                 r_device, r_port = self.net[l_device]['ports'][str(l_port)].split("::")
                 r_dev = self.devices[r_device]
@@ -213,11 +193,6 @@ class ModelScheduler:
                         delay = port_sig_dict[port]['delay']
                         new_sched.upd_schedule({cur_time + delay: [new_event]})
             elif state == 's_end':
-                if 'sn_response' not in sig.data:
-                    if 'bwmap' not in sig.data:
-                        for content in sig.data:
-                            if 'ONT' in content:
-                                print('nsnrinsig')
                 l_device, l_port, sig = l_dev.s_end(sig, l_port)
                 try:
                     r_device, r_port = self.net[l_device]['ports'][str(l_port)].split("::")
@@ -242,4 +217,5 @@ class ModelScheduler:
                 event = dev.plan_next_act(self.time)
             if event is not None:
                 new_sched.upd_schedule(event)
+        # track = self.track_the_packet(new_sched)
         return new_sched.events

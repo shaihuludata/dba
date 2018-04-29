@@ -53,8 +53,6 @@ class Splitter(PassiveDevice):
 
     def s_end(self, sig, port: int):
         output = (self.name, port, sig)  # , "delay": 0}
-        if 'bwmap' not in sig.data and 'sn_response' not in sig.data:
-            print('nbwm')
         return output
 
     def r_end(self, sig, port: int):
