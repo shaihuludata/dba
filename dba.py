@@ -89,7 +89,8 @@ class DbaStaticAllocs(Dba):
                                            'StartTime': alloc_timer, 'StopTime': None}  # , 'CRC': None}
                         # для статичного DBA выделяется интервал, обратно пропорциональный
                         # self.maximum_ont_amount - количеству ONT
-                        alloc_timer += round(max_time / len(requests))
+                        alloc_size = round(max_time / len(allocs))
+                        alloc_timer += alloc_size
                         alloc_structure['StopTime'] = alloc_timer
                         bwmap.append(alloc_structure)
                 alloc_timer += self.upstream_interframe_interval - self.upstream_interframe_interval
