@@ -720,12 +720,24 @@ class MassTrafficObserver:
         fig.show()
 
         number_of_flows = len(self.observer_result)
-        subplot_index = 1
+        flow_time_intervals = dict()
         for flow_name in flow_time_result:
-            # список пакетов
-            packet_num_result = list(flow_time_result[flow_name].keys())
-            packet_num_result.sort()
-            # time_result_in_ms = list(i/1000 for i in packet_num_result)
+            time_event_dicts = flow_time_result[flow_name]
+            if flow_name not in flow_time_intervals:
+                min_time = min(time_event_dicts.keys())
+                max_time = max(time_event_dicts.keys())
+                flow_time_intervals[flow_name] = Interval(min_time, max_time)
+
+        common_interval = Interval(0, self.time_horisont)
+        for interval in flow_time_intervals.values():
+            common_interval = common_interval.intersect(interval)
+
+        adapted_flow_time_result = dict()
+        time_stride = np.arange(common_interval.start, common_interval.stop, 100)
+        for
+        packet_num_result = list(flow_time_result[flow_name].keys())
+        packet_num_result.sort()
+        # time_result_in_ms = list(i/1000 for i in packet_num_result)
 
             # график задержек
             latency_result = list()
