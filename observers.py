@@ -1,5 +1,6 @@
 import matplotlib
 import numpy as np
+from mpl_toolkits.mplot3d import axes3d
 import matplotlib.pyplot as plt
 import matplotlib as mp
 # mp.use('agg')
@@ -633,4 +634,116 @@ class IPTrafficObserver:
         # time.sleep(1)
         # plt.show()
         fig.savefig(result_dir + 'packets.png', bbox_inches='tight')
+        plt.close(fig)
+
+
+class MassTrafficObserver:
+
+    def __init__(self, time_ranges_to_show):
+        self.name = 'Mass packet visualizer'
+        self.observer_result_list = list()
+        self.observer_result = dict()
+        if not time_ranges_to_show:
+            self.time_ranges_to_show = [[1000, 2000]]
+        else:
+            self.time_ranges_to_show = time_ranges_to_show
+
+        self.time_horisont = 0
+        for time_range in self.time_ranges_to_show:
+            new_horisont = max(time_range)
+            if self.time_horisont < new_horisont:
+                self.time_horisont = new_horisont
+
+    def notice(self, events, cur_time):
+        time_range = self.time_ranges_to_show[0]
+        time_interval = Interval(time_range[0], time_range[1])
+        if cur_time not in time_interval:
+            return
+        # passed_schedule = {cur_time: events}
+
+        for event in events:
+            if event['state'] == 'defrag':
+                # dev, packet, port = event['dev'], event['sig'], event['port']
+                # alloc = packet['alloc_id']
+                # if alloc not in self.observer_result:
+                #     self.observer_result[alloc] = dict()
+                # if cur_time not in self.observer_result[alloc]:
+                #     self.observer_result[alloc][cur_time] = list()
+                # self.observer_result[alloc][cur_time].append(packet)
+                self.observer_result_list.append((cur_time, event))
+
+        # for event in passed_schedule[cur_time]:
+        #     if event['state'] == 'defrag':
+        #         dev, packet, port = event['dev'], event['sig'], event['port']
+        #         alloc = packet['alloc_id']
+        #         if alloc not in self.observer_result:
+        #             self.observer_result[alloc] = dict()
+        #         if cur_time not in self.observer_result[alloc]:
+        #             self.observer_result[alloc][cur_time] = list()
+        #         self.observer_result[alloc][cur_time].append(packet)
+        return
+
+    # def notice(self, schedule, cur_time):
+    #     sched = dict()
+    #     for t in schedule:
+    #         if t <= cur_time:
+    #             for ev in schedule[t]:
+    #                 if ev['state'] is 'defrag':
+    #                     if t not in sched:
+    #                         sched[t] = list()
+    #                     sched[t].append(ev)
+    #     # sched.update(schedule)
+    #     if len(sched) > 0:
+    #         self.observer_result_list.append((cur_time, sched))
+
+    def cook_result(self):
+        for time_ev_tup in self.observer_result_list:
+            cur_time = time_ev_tup[0]
+            event = time_ev_tup[1]
+
+            if event['state'] == 'defrag':
+                dev, packet, port = event['dev'], event['sig'], event['port']
+                alloc = packet['alloc_id']
+                # {alloc : {время: [пакеты]}}
+                if alloc not in self.observer_result:
+                    self.observer_result[alloc] = dict()
+                if cur_time not in self.observer_result[alloc]:
+                    self.observer_result[alloc][cur_time] = list()
+                self.observer_result[alloc][cur_time].append(packet)
+
+    def make_results(self):
+        self.cook_result()
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        flow_time_result = self.observer_result
+        # fig = plt.figure(1, figsize=(15, 20))
+        fig.show()
+
+        number_of_flows = len(self.observer_result)
+        subplot_index = 1
+        for flow_name in flow_time_result:
+            # список пакетов
+            packet_num_result = list(flow_time_result[flow_name].keys())
+            packet_num_result.sort()
+            # time_result_in_ms = list(i/1000 for i in packet_num_result)
+
+            # график задержек
+            latency_result = list()
+            for pack_num in packet_num_result:
+                packet = flow_time_result[flow_name][pack_num]
+                # for packet in flow_packet_result[flow_name][pack_num]:
+                    # if 'born_time' in packet:
+                latency_result.append(packet['dead_time'] - packet['born_time'])
+            ax = fig.add_subplot(number_of_flows, 3, subplot_index)
+            subplot_index += 1
+            plt.ylabel(flow_name)
+            ax.plot(packet_num_result, latency_result, 'ro')
+            max_latency = max(latency_result)
+            ax.set_ylim(bottom=0, top=max_latency+100)
+            fig.canvas.draw()
+
+        # ax.plot_wireframe(X, Y, Z, rstride=10, cstride=10)
+        fig.canvas.draw()
+        # plt.show()
+        fig.savefig(result_dir + '3d_packets.png', bbox_inches='tight')
         plt.close(fig)
