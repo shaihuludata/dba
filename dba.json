@@ -1,5 +1,5 @@
 {
-    "horisont" : 10000,
+    "horisont" : 5000,
     "observers" : {
         "flow": {
             "report": false,
