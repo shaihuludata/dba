@@ -7,9 +7,10 @@ import matplotlib as mp
 import time
 import json
 from sympy import Interval, FiniteSet
+from matplotlib import cm
+from matplotlib.ticker import LinearLocator, FormatStrFormatter
 
 result_dir = './result/'
-
 
 def append_to_json(_dict, path):
     with open(path, 'a+') as f:
@@ -733,23 +734,36 @@ class MassTrafficObserver:
             if type(interval) != FiniteSet:
                 common_interval = common_interval.intersect(interval)
 
-        adapted_flow_time_result = dict()
+        interpolated_flow_time_result = dict()
+        interpolated_flow_functions = dict()
         # stride_step = (common_interval.end - common_interval.start) / 20
-        time_stride = np.arange(float(common_interval.start), float(common_interval.end), 150)
+        time_stride = np.arange(float(common_interval.start), float(common_interval.end), 125)
         for flow_name in flow_time_result:
             current_flow_res = flow_time_result[flow_name]
             if len(current_flow_res) > 1:
                 arg_list = list(t for t in current_flow_res.keys() if t in common_interval)
                 latency_args = np.array(arg_list)
-                func_list = list(current_flow_res[t][0]['born_time'] for t in current_flow_res.keys() if t in common_interval)
+                # func_list = list(current_flow_res[t][0]['born_time'] for t in current_flow_res.keys() if t in common_interval)
+                for t in current_flow_res.keys():
+                    if t in common_interval:
+                        current_flow_res[t][0]['dead_time'] = t
+                func_list = list(current_flow_res[t][0]['dead_time'] - current_flow_res[t][0]['born_time']
+                                 for t in current_flow_res.keys() if t in common_interval)
                 latency_func = np.array(func_list)
                 interpolated_func = np.interp(time_stride, latency_args, latency_func)
-                adapted_flow_time_result[flow_name] = interpolated_func
+                interpolated_flow_functions[flow_name] = interpolated_func
+                t_stride = list()
+                t_stride = time_stride.tolist()
+                for t in t_stride:
+                    t_index = t_stride.index(t)
+                    if flow_name not in interpolated_flow_time_result:
+                        interpolated_flow_time_result[flow_name] = dict()
+                    interpolated_flow_time_result[flow_name][t] = interpolated_func[t_index]
 
         flow_index = 1
         flow_index_dict = dict()
         flow_index_list = list()
-        for flow_name in adapted_flow_time_result:
+        for flow_name in interpolated_flow_time_result:
             flow_index_dict[flow_index] = flow_name
             flow_index_list.append(flow_index)
             flow_index += 1
@@ -757,34 +771,34 @@ class MassTrafficObserver:
 
         time_stride, flow_index_list = np.meshgrid(time_stride, flow_index_list)
         func_list = list()
-        func_map_list = list()
-        for t_string in time_stride:
-            func_string = list()
-            for flow_index_string in flow_index_list:
-                for t in t_string:
-                    for f_index in flow_index_string:
-                        flow_name = flow_index_dict[f_index]
-                        func_string.append(adapted_flow_time_result[flow_name][t])
-            func_map_list.append(func_string)
-        func_map = np.array(func_map_list)
+        for x in range(0, time_stride.shape[0]):
+            f_string_list = list()
+            for y in range(0, time_stride.shape[1]):
+                t = time_stride[x][y]
+                f = flow_index_list[x][y]
+                flow_name = flow_index_dict[f]
+                f_string_list.append(interpolated_flow_time_result[flow_name][t])
+            func_list.append(f_string_list)
+        func_map_list = np.array(func_list)
 
+        surf = ax.plot_surface(flow_index_list, time_stride, func_map_list, cmap=cm.coolwarm, linewidth=0, antialiased=False)
         # график задержек
-        latency_result = list()
-        for pack_num in packet_num_result:
-            packet = flow_time_result[flow_name][pack_num]
-            # for packet in flow_packet_result[flow_name][pack_num]:
-                # if 'born_time' in packet:
-            latency_result.append(packet['dead_time'] - packet['born_time'])
-        ax = fig.add_subplot(number_of_flows, 3, subplot_index)
-        subplot_index += 1
-        plt.ylabel(flow_name)
-        ax.plot(packet_num_result, latency_result, 'ro')
-        max_latency = max(latency_result)
-        ax.set_ylim(bottom=0, top=max_latency+100)
-        fig.canvas.draw()
+        # latency_result = list()
+        # for pack_num in packet_num_result:
+        #     packet = flow_time_result[flow_name][pack_num]
+        #     # for packet in flow_packet_result[flow_name][pack_num]:
+        #         # if 'born_time' in packet:
+        #     latency_result.append(packet['dead_time'] - packet['born_time'])
+        # ax = fig.add_subplot(number_of_flows, 3, subplot_index)
+        # subplot_index += 1
+        # plt.ylabel(flow_name)
+        # ax.plot(packet_num_result, latency_result, 'ro')
+        # max_latency = max(latency_result)
+        # ax.set_ylim(bottom=0, top=max_latency+100)
+        # fig.canvas.draw()
 
         # ax.plot_wireframe(X, Y, Z, rstride=10, cstride=10)
-        fig.canvas.draw()
-        # plt.show()
+        # fig.canvas.draw()
+        plt.show()
         fig.savefig(result_dir + '3d_packets.png', bbox_inches='tight')
         plt.close(fig)
