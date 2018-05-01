@@ -12,15 +12,15 @@
     "service": "voip",
     "send_interval": 125,
     "distribution": "deterministic",
-    "size_of_packet": 300,
+    "size_of_packet": 500,
     "max_queue_size": 10
   },
   "type2": {
     "class": 3,
     "service": "best_effort",
-    "send_interval": 250,
+    "send_interval": 750,
     "distribution": "deterministic",
-    "size_of_packet": 2000,
+    "size_of_packet": 10000,
     "max_queue_size": 2
   }
-}
+}nbxz

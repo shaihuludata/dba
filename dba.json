@@ -1,5 +1,5 @@
 {
-    "horisont" : 5000,
+    "horisont" : 10000,
     "observers" : {
         "flow": {
             "report": false,
@@ -14,7 +14,7 @@
             "time_ranges": [[0, 60000]]
         },
         "IPtraffic": {
-            "report": false,
+            "report": true,
             "time_ranges": [[0, 60000]]
         },
         "mass_traffic": {
