@@ -18,7 +18,7 @@ class Traffic:
         else:
             raise NotImplemented
 
-    def new_message(self, time):
+    def new_message(self, time: float):
         if time - self.last_packet_born >= self.send_interval:
             self.last_packet_born = time
             self.packet_counter += 1
