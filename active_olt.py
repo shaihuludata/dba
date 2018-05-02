@@ -113,8 +113,8 @@ class Olt(ActiveDevice):
                         packet_id = packet['packet_id']
                         if packet_id not in self.defragmentation_buffer:
                             self.defragmentation_buffer[packet_id] = list()
-                        self.dba.register_packet(alloc, packet['size'])
                         self.defragmentation_buffer[packet_id].append(packet)
+                    self.dba.register_packet(alloc, sig.data[alloc])
             ret = self.defragmentation()
             # набор пакетов после дефрагментации регистрируется в планировщике как событие типа "defrag"
             return ret
