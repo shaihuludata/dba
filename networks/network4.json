@@ -2,6 +2,7 @@
   "OLT":
   {
     "dba_type": "static_allocs",
+    "possible_dba_types": ["static", "static_allocs", "traffic_monitoring", "status_report"],
     "maximum_ont_amount": "32",
     "upstream_interframe_interval": 200,
     "transmitter_power": "1",

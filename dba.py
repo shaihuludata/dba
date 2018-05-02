@@ -4,7 +4,7 @@ class Dba:
     def __init__(self, config):
         self.global_bwmap = dict()  # {time: intra_cycle_bwmap}
         self.next_cycle_start = 0
-
+        self.ont_discovered = dict()
         self.cycle_duration = config['cycle_duration']
 
         self.upstream_interframe_interval = config['upstream_interframe_interval']
@@ -16,7 +16,7 @@ class Dba:
         elif config["transmitter_type"] == "2G":
             self.maximum_allocation_start_time = 38878
 
-    def bwmap(self, requests, cur_time):
+    def bwmap(self, cur_time):
         pass
 
     def sn_request(self):
@@ -31,12 +31,18 @@ class Dba:
         self.global_bwmap[self.next_cycle_start + self.cycle_duration] = bwmap
         return bwmap
 
+    def register_new_ont(self, s_number, allocs):
+        self.ont_discovered[s_number] = allocs
+
+    def register_packet(self, alloc, size):
+        pass
 
 class DbaStatic(Dba):
     def __init__(self, config):
         Dba.__init__(self, config)
 
-    def bwmap(self, requests, cur_time):
+    def bwmap(self, cur_time):
+        requests = self.ont_discovered
         alloc_timer = 0  # in bytes
         bwmap = list()
         onts = len(requests)
@@ -70,7 +76,9 @@ class DbaStaticAllocs(Dba):
     def __init__(self, config):
         Dba.__init__(self, config)
 
-    def bwmap(self, requests, cur_time):
+    def bwmap(self, cur_time):
+        requests = self.ont_discovered
+
         alloc_timer = 0  # in bytes
         bwmap = list()
         onts = list()
@@ -106,7 +114,8 @@ class DbaSR(Dba):
     def __init__(self, config):
         Dba.__init__(self, config)
 
-    def bwmap(self, requests, cur_time):
+    def bwmap(self, cur_time):
+        requests = self.ont_discovered
         alloc_timer = 0  # in bytes
         bwmap = list()
         onts = len(requests)
@@ -120,8 +129,18 @@ class DbaSR(Dba):
 class DbaTM(Dba):
     def __init__(self, config):
         Dba.__init__(self, config)
+        # минимальный размер гранта при утилизации 0
+        self.min_grant = 10
+        self.mem_size = 10
+        # для хранения текущих значений утилизации
+        self.alloc_utilisation = dict()
+        # для хранения информации о выданных грантах
+        self.alloc_grants = dict()
+        # для хранения информации о размерах полученных пакетов
+        self.alloc_bandwidth = dict()
 
-    def bwmap(self, requests, cur_time):
+    def bwmap(self, cur_time):
+        requests = self.ont_discovered
         alloc_timer = 0  # in bytes
         bwmap = list()
         onts = len(requests)
@@ -130,3 +149,23 @@ class DbaTM(Dba):
             print(requests[ont])
 
         return bwmap
+
+    def register_new_ont(self, s_number, allocs: list()):
+        self.ont_discovered[s_number] = allocs
+        for alloc in allocs:
+            self.alloc_utilisation[alloc] = 1
+            self.alloc_grants[alloc] = list()
+            self.alloc_bandwidth[alloc] = list()
+
+    def register_packet(self, alloc, size):
+        if len(self.alloc_bandwidth[alloc]) > self.mem_size:
+            self.alloc_bandwidth[alloc].pop(0)
+        self.alloc_bandwidth[alloc].append(size)
+        self.recalculate_utilisation(alloc)
+
+    def recalculate_utilisation(self, alloc):
+        total_bw = self.alloc_bandwidth[alloc]
+        total_grant = self.alloc_grants[alloc]
+        self.alloc_utilisation[alloc] = sum(total_bw) / sum(total_grant)
+
+

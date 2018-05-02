@@ -664,38 +664,8 @@ class MassTrafficObserver:
 
         for event in events:
             if event['state'] == 'defrag':
-                # dev, packet, port = event['dev'], event['sig'], event['port']
-                # alloc = packet['alloc_id']
-                # if alloc not in self.observer_result:
-                #     self.observer_result[alloc] = dict()
-                # if cur_time not in self.observer_result[alloc]:
-                #     self.observer_result[alloc][cur_time] = list()
-                # self.observer_result[alloc][cur_time].append(packet)
                 self.observer_result_list.append((cur_time, event))
-
-        # for event in passed_schedule[cur_time]:
-        #     if event['state'] == 'defrag':
-        #         dev, packet, port = event['dev'], event['sig'], event['port']
-        #         alloc = packet['alloc_id']
-        #         if alloc not in self.observer_result:
-        #             self.observer_result[alloc] = dict()
-        #         if cur_time not in self.observer_result[alloc]:
-        #             self.observer_result[alloc][cur_time] = list()
-        #         self.observer_result[alloc][cur_time].append(packet)
         return
-
-    # def notice(self, schedule, cur_time):
-    #     sched = dict()
-    #     for t in schedule:
-    #         if t <= cur_time:
-    #             for ev in schedule[t]:
-    #                 if ev['state'] is 'defrag':
-    #                     if t not in sched:
-    #                         sched[t] = list()
-    #                     sched[t].append(ev)
-    #     # sched.update(schedule)
-    #     if len(sched) > 0:
-    #         self.observer_result_list.append((cur_time, sched))
 
     def cook_result(self):
         for time_ev_tup in self.observer_result_list:
