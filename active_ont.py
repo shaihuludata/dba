@@ -27,9 +27,8 @@ class Ont(ActiveDevice):
                 self.current_allocations[tg.id] = None
         if "0" not in config['Alloc']:
             alloc_type = 'type0'
-            tg = Traffic(self.name, "0", alloc_type)
-            self.current_allocations[tg.id] = None
-        pass
+            # tg = Traffic(self.name, "0", alloc_type)
+            # self.current_allocations[tg.id] = None
 
     def plan_next_act(self, time):
         self.time = time
@@ -117,7 +116,8 @@ class Ont(ActiveDevice):
         elif self.STATE == 'Operation':
             # 'Alloc-ID'
             avg_half_rtt = sum(self.range_time_delta)/len(self.range_time_delta)
-            for allocation in sig.data['bwmap']:
+            bwmap = sig.data['bwmap']
+            for allocation in bwmap:
                 name = self.name
                 alloc_id = allocation['Alloc-ID']
                 for dev_alloc in self.current_allocations:
@@ -126,11 +126,12 @@ class Ont(ActiveDevice):
                         allocation_start = allocation['StartTime']
                         allocation_stop = allocation['StopTime']
                         grant_size = allocation_stop - allocation_start
-                        intra_cycle_s_start = round(8*1000000*allocation_start / self.transmitter_speed, 1)
-                        intra_cycle_e_start = round(8*1000000*allocation_stop / self.transmitter_speed, 1)
+                        intra_cycle_s_start = round(8*1000000*allocation_start / self.transmitter_speed, 2)
+                        intra_cycle_e_start = round(8*1000000*allocation_stop / self.transmitter_speed, 2)
                         planned_s_time = self.next_cycle_start + intra_cycle_s_start - 2*avg_half_rtt + self.cycle_duration
                         planned_e_time = self.next_cycle_start + intra_cycle_e_start - 2*avg_half_rtt + self.cycle_duration
-                        planned_delta = planned_e_time - planned_s_time  # полезно для отладки
+                        # полезно для отладки
+                        planned_delta = planned_e_time - planned_s_time
                         if planned_s_time < self.time:
                             raise Exception('Текущее время {} меньше запланированного {}'.format(self.time, planned_s_time))
 
@@ -146,10 +147,6 @@ class Ont(ActiveDevice):
                                             break
                                         send_time = time + message['interval']
                                         traf_class = message['traf_class']
-                                        # if 'ONT2' in message['alloc_id'] and message['packet_num'] == 30:
-                                        #     print('543')
-                                        # if 'ONT2' in message['alloc_id']:
-                                        #     print('765')
                                         send_size = message['size']
                                         packet = dict()
                                         packet.update(message)
@@ -194,4 +191,3 @@ class Ont(ActiveDevice):
         if self.STATE != 'Offline':
             self.counters.ingress_unicast += 1
         return {}
-

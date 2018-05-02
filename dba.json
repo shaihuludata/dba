@@ -18,7 +18,7 @@
             "time_ranges": [[0, 60000]]
         },
         "mass_traffic": {
-            "report": true,
+            "report": false,
             "time_ranges": [[0, 60000]]
         }
     }

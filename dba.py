@@ -67,8 +67,6 @@ class DbaStatic(Dba):
             self.global_bwmap[self.next_cycle_start] = bwmap
         else:
             bwmap = self.global_bwmap[self.next_cycle_start]
-        if len(bwmap) > 0:
-            pass
         return bwmap
 
 
@@ -140,24 +138,79 @@ class DbaTM(Dba):
         self.alloc_bandwidth = dict()
 
     def bwmap(self, cur_time):
-        requests = self.ont_discovered
-        alloc_timer = 0  # in bytes
+        ont_alloc_dict = self.ont_discovered
         bwmap = list()
-        onts = len(requests)
+        requests = dict()
         max_time = self.maximum_allocation_start_time
-        for ont in requests:
-            print(requests[ont])
+        if (self.next_cycle_start not in self.global_bwmap)\
+                or len(self.global_bwmap[self.next_cycle_start]) == 0:
+            for ont in ont_alloc_dict:
+                allocs = ont_alloc_dict[ont]
+                for alloc in allocs:
+                    self.alloc_bandwidth[alloc].reverse()
+                    if len(self.alloc_bandwidth[alloc]) > 0:
+                        current_bw = self.alloc_bandwidth[alloc][0]
+                    else:
+                        current_bw = self.min_grant
+                    self.alloc_bandwidth[alloc].reverse()
+                    current_uti = self.alloc_utilisation[alloc]
+                    alloc_size = self.generate_alloc(current_bw, current_uti)
+                    if alloc not in requests:
+                        requests[alloc] = alloc_size
+                    else:
+                        raise Exception('Странная какая-то ошибка')
 
+            total_size = sum(requests.values())
+            if total_size > max_time:
+                ratio = total_size / max_time + 0.08
+                for alloc in requests:
+                    requests[alloc] /= ratio
+
+            total_size = sum(requests.values())
+            if total_size > 19400:
+                raise Exception('ошибка DBA')
+
+            alloc_timer = 0  # in bytes
+            for ont in ont_alloc_dict:
+                if alloc_timer < max_time:
+                    allocs = ont_alloc_dict[ont]
+                    for alloc in allocs:
+                        alloc_structure = {'Alloc-ID': alloc,  # 'Flags': 0,
+                                           'StartTime': alloc_timer, 'StopTime': None}  # , 'CRC': None}
+                        alloc_size = round(requests[alloc])
+                        alloc_timer += alloc_size
+                        alloc_structure['StopTime'] = alloc_timer
+                        bwmap.append(alloc_structure)
+                    alloc_timer += self.upstream_interframe_interval
+            self.global_bwmap[self.next_cycle_start] = bwmap
+        else:
+            bwmap = self.global_bwmap[self.next_cycle_start]
+        if len(bwmap) > 0:
+            pass
         return bwmap
+
+    # def exponential_fit(x, a, b, c):
+    #     return a * np.exp(-b * x) + c
+
+    def generate_alloc(self, bw, uti):
+        alloc_size = int()
+        if uti > 0.9:
+            alloc_size = round(bw * 5 + 0.5)
+        else:
+            alloc_size = round(bw * 0.5 + 0.5)
+        return alloc_size
 
     def register_new_ont(self, s_number, allocs: list()):
         self.ont_discovered[s_number] = allocs
         for alloc in allocs:
             self.alloc_utilisation[alloc] = 1
-            self.alloc_grants[alloc] = list()
+            self.alloc_grants[alloc] = [self.min_grant]
             self.alloc_bandwidth[alloc] = list()
 
-    def register_packet(self, alloc, size):
+    def register_packet(self, alloc, packets: list()):
+        size = int()
+        for packet in packets:
+            size += packet['size']
         if len(self.alloc_bandwidth[alloc]) > self.mem_size:
             self.alloc_bandwidth[alloc].pop(0)
         self.alloc_bandwidth[alloc].append(size)
@@ -167,5 +220,4 @@ class DbaTM(Dba):
         total_bw = self.alloc_bandwidth[alloc]
         total_grant = self.alloc_grants[alloc]
         self.alloc_utilisation[alloc] = sum(total_bw) / sum(total_grant)
-
 
