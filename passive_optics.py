@@ -86,8 +86,3 @@ class Fiber(Splitter):
                 transitted_signals[out_port] = {"sig": out_sig, "delay": self.delay}
         return transitted_signals
 
-    # def r_end(self, sig, port: int):
-    #     #output = {"sig": sig, "delay": 0}
-    #     output = self.r_start(sig, port)
-    #     return output
-

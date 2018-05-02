@@ -2,7 +2,7 @@ from passive_optics import Splitter, Fiber
 from active_olt import Olt
 from active_ont import Ont
 from observers import *
-#schedule = {time : [event]}
+# schedule = {time : [event]}
 
 
 class Schedule:
@@ -65,11 +65,6 @@ class ModelScheduler:
             elif 'Fiber' in dev:
                 self.devices[dev] = Fiber(name=dev, config=net[dev])
 
-        # if 'time_ranges' in config:
-        #     time_ranges = config['time_ranges']
-        # else:
-        #     time_ranges = [[0, time_horisont]]
-
         self.observers = list()
         self.traf_observers = list()
         if config["observers"]["flow"]["report"]:
@@ -113,7 +108,6 @@ class ModelScheduler:
         print(self.olt.counters.export_to_console())
 
     def track_the_packet(self, sched):
-        # track = dict()
         for t in sched.events:
             events = sched.events[t]
             for ev in events:
@@ -137,7 +131,6 @@ class ModelScheduler:
         # track = self.track_the_packet()
         sorted_events = list()
         # надо отсортировать, первые события должны быть 'r_end'
-        # а вообще-то это лучше сделать ниже, в case-if стиле
         for ev_state in ['defrag', 'r_end', 's_end', 'r_start', 's_start']:
             for event in current_events:
                 if event['state'] == ev_state:
@@ -151,25 +144,14 @@ class ModelScheduler:
             # if 'OLT' in l_dev.name:
             #     if state == 'r_end':
             #         print('Time {}, device {} {}, sig {}, '.format(cur_time, l_dev.name, state, sig.id))
-            # if 'Fiber' in l_dev.name:
-            #     print('')
             if state == 'r_end':
                 if 'ONT' in l_dev.name or 'OLT' in l_dev.name:
                     time_sig_dict = l_dev.r_end(sig, l_port)
                     if len(time_sig_dict) > 0:
                         new_sched.upd_schedule(time_sig_dict)
-                    # for port in port_sig_dict:
-                    #     sig = port_sig_dict[port]['sig']
-                    #     if sig.physics['type'] == 'electric':
-                    #         print('Сигнал {} доставлен и принят {}'.format(sig.id, l_dev.name))
-                    #     new_event = {'dev': l_dev, 'state': 's_start',
-                    #                  'sig': port_sig_dict[port]['sig'], 'port': port}
-                    #     delay = port_sig_dict[port]['delay']
                 else:
                     port_sig_dict = l_dev.r_end(sig, l_port)
                     for port in port_sig_dict:
-                        # r_device, r_port = self.net[l_dev.name]['ports'][str(port)].split("::")
-                        # r_dev = self.devices[r_device]
                         cur_sig = port_sig_dict[port]['sig']
                         new_event = {'dev': l_dev, 'state': 's_end',
                                      'sig': cur_sig, 'port': port}

@@ -24,9 +24,8 @@ class Olt(ActiveDevice):
         self.serial_number_request_interval = self.config['sn_request_interval']
         self.sn_request_last_time = 0 - self.serial_number_request_interval + 250
         self.sn_request_quiet_interval_end = 0
-        self.ont_discovered = dict()
         self.maximum_ont_amount = int(self.config['maximum_ont_amount'])
-        self.counters.ont_discovered = int()
+        self.counters.number_of_ont = int()
         self.defragmentation_buffer = dict()
 
         dba_config = dict()
@@ -79,7 +78,7 @@ class Olt(ActiveDevice):
             bwmap = self.dba.sn_request()
             return {'bwmap': bwmap, 'sn_request': sn_request, 's_timestamp': self.dba.next_cycle_start}
         else:
-            bwmap = self.dba.bwmap(requests=self.ont_discovered, cur_time=time)
+            bwmap = self.dba.bwmap(cur_time=time)
             return {'bwmap': bwmap, 's_timestamp': self.dba.next_cycle_start, 'cycle_num': self.counters.cycle_number}
 
     def r_end(self, sig, port: int):
@@ -95,16 +94,18 @@ class Olt(ActiveDevice):
                 break
 
         sig = self.oe_transform(sig)
+        # проверка на содержание ответов на запросы регистрации в сообщении
         if 'sn_response' in sig.data and self.time < self.sn_request_quiet_interval_end:
-            # self.ont_discovered.append(sig.data['sn_response'])
             s_number = sig.data['sn_response'][0]
             allocs = sig.data['sn_response'][1]
-            self.ont_discovered[s_number] = allocs
-            self.counters.ont_discovered = len(self.ont_discovered)
+            self.dba.register_new_ont(s_number, allocs)
+            self.counters.number_of_ont = len(self.dba.ont_discovered)
             if 'sn_ack' not in self.data_to_send:
                 self.data_to_send['sn_ack'] = list()
             self.data_to_send['sn_ack'].extend(allocs)
-        # output = {"sig": sig, "delay": delay}
+            # output = {"sig": sig, "delay": delay}
+            return {}
+        # нормальный приём сообщения
         else:
             for alloc in sig.data:
                 if 'ONT' in alloc:
@@ -112,44 +113,50 @@ class Olt(ActiveDevice):
                         packet_id = packet['packet_id']
                         if packet_id not in self.defragmentation_buffer:
                             self.defragmentation_buffer[packet_id] = list()
+                        self.dba.register_packet(alloc, packet['size'])
                         self.defragmentation_buffer[packet_id].append(packet)
+            ret = self.defragmentation()
+            # набор пакетов после дефрагментации регистрируется в планировщике как событие типа "defrag"
+            return ret
 
-            # дефрагментация накопленных в буффере пакетов
-            ids_to_delete_from_buffer = list()
-            for pack in self.defragmentation_buffer:
-                fragments = self.defragmentation_buffer[pack]
-                defragmented = EmptySet()
-                for fragment in fragments:
-                    cur_start = fragment['fragment_offset']
-                    cur_end = cur_start + fragment['size']
-                    total_size = fragment['total_size']
-                    if cur_start == 0:
-                        cur_fragment = Interval(cur_start, cur_end)
-                    else:
-                        cur_fragment = Interval.Lopen(cur_start, cur_end)
-                    if defragmented.intersect(cur_fragment) is EmptySet():
-                        defragmented = defragmented.union(cur_fragment)
-                    else:
-                        raise Exception('Ошибка дефрагментации')
-                    if defragmented.measure == total_size:
-                        # if self.time not in self.received_packets:
-                        #     self.received_packets[self.time] = list()
-                        # self.received_packets[self.time].append(defragmented)
-                        self.counters.ingress_unicast += 1
-                        if self.time not in ret:
-                            ret[self.time] = list()
-                        fragment['fragment_offset'] = 0
-                        fragment['size'] = total_size
-                        defrag_packet = dict()
-                        defrag_packet.update(fragment)
-                        ret[self.time].append({"dev": self, "state": "defrag", "sig": defrag_packet, "port": 0})
-                        ids_to_delete_from_buffer.append(fragment['packet_id'])
-            # теперь надо удалить из self.defragmentation_buffer всё, что похоже на 'packet_id'
-            for id in ids_to_delete_from_buffer:
-                self.defragmentation_buffer.pop(id)
+    def defragmentation(self):
+        # дефрагментация накопленных в буффере пакетов
+        ret = dict()
+        ids_to_delete_from_buffer = list()
+        for pack in self.defragmentation_buffer:
+            fragments = self.defragmentation_buffer[pack]
+            defragmented = EmptySet()
+            for fragment in fragments:
+                cur_start = fragment['fragment_offset']
+                cur_end = cur_start + fragment['size']
+                total_size = fragment['total_size']
+                if cur_start == 0:
+                    cur_fragment = Interval(cur_start, cur_end)
+                else:
+                    cur_fragment = Interval.Lopen(cur_start, cur_end)
+                if defragmented.intersect(cur_fragment) is EmptySet():
+                    defragmented = defragmented.union(cur_fragment)
+                else:
+                    raise Exception('Ошибка дефрагментации')
+                if defragmented.measure == total_size:
+                    # if self.time not in self.received_packets:
+                    #     self.received_packets[self.time] = list()
+                    # self.received_packets[self.time].append(defragmented)
+                    self.counters.ingress_unicast += 1
+                    if self.time not in ret:
+                        ret[self.time] = list()
+                    fragment['fragment_offset'] = 0
+                    fragment['size'] = total_size
+                    defrag_packet = dict()
+                    defrag_packet.update(fragment)
+                    ret[self.time].append({"dev": self, "state": "defrag", "sig": defrag_packet, "port": 0})
+                    ids_to_delete_from_buffer.append(fragment['packet_id'])
+        # теперь надо удалить из self.defragmentation_buffer всё, что похоже на 'packet_id'
+        for id in ids_to_delete_from_buffer:
+            self.defragmentation_buffer.pop(id)
         return ret
 
     def export_counters(self):
-        # self.counters.ont_discovered = len(self.ont_discovered)
+        # self.counters.number_of_ont = len(self.dba.ont_discovered)
         return self.counters.export_to_console()
 
