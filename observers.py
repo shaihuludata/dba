@@ -349,6 +349,7 @@ class ReceivedTrafficObserver:
     def __init__(self, time_ranges_to_show):
         self.name = 'Traffic visualizer'
         self.observer_result = dict()
+        self.utilization_result = dict()
         if not time_ranges_to_show:
             self.time_ranges_to_show = [[1000, 2000]]
         else:
@@ -360,19 +361,6 @@ class ReceivedTrafficObserver:
             if self.time_horisont < new_horisont:
                 self.time_horisont = new_horisont
 
-    # def notice(self, schedule, cur_time):
-    #     sched = dict()
-    #     for t in schedule:
-    #         if t <= cur_time:
-    #             for ev in schedule[t]:
-    #                 if ev['state'] is 'defrag':
-    #                     if t not in sched:
-    #                         sched[t] = list()
-    #                     sched[t].append(ev)
-    #     # sched.update(schedule)
-    #     # if len(sched) > 0:
-    #     #     self.observer_result_list.append((cur_time, sched))
-
     def notice(self, events, cur_time):
         passed_schedule = dict()
         time_range = self.time_ranges_to_show[0]
@@ -383,8 +371,9 @@ class ReceivedTrafficObserver:
 
         for event in passed_schedule[cur_time]:
             state = event['state']
+            dev = event['dev']
             if state == 'defrag':
-                dev, packet, port = event['dev'], event['sig'], event['port']
+                packet, port = event['sig'], event['port']
                 alloc = packet['alloc_id']
                 # {alloc : {время: [пакеты]}}
                 if alloc not in self.observer_result:
@@ -392,28 +381,19 @@ class ReceivedTrafficObserver:
                 if cur_time not in self.observer_result[alloc]:
                     self.observer_result[alloc][cur_time] = list()
                 self.observer_result[alloc][cur_time].append(packet)
+            elif 'OLT' in dev.name:
+                sig, port = event['sig'], event['port']
+                if 'bwmap' in sig.data:
+                    bwmap = sig.data['bwmap']
+                    for alloc in bwmap:
+                        alloc_name = alloc['Alloc-ID']
+                        alloc_size = alloc['StopTime'] - alloc['StartTime']
+                        if alloc_name not in self.utilization_result:
+                            self.utilization_result[alloc_name] = dict()
+                        if cur_time not in self.utilization_result[alloc_name]:
+                            self.utilization_result[alloc_name][cur_time] = list()
+                        self.utilization_result[alloc_name][cur_time].append(alloc_size)
         return
-
-    # def notice(self, schedule, cur_time):
-    #     passed_schedule = dict()
-    #     for time_range in self.time_ranges_to_show:
-    #         time_interval = Interval(time_range[0], time_range[1])
-    #         passed_schedule.update({t: schedule[t] for t in schedule
-    #                                 if (t in time_interval) and (t <= cur_time)})
-    #
-    #     for ev_time in passed_schedule:
-    #         for event in passed_schedule[ev_time]:
-    #             state = event['state']
-    #             if state == 'defrag':
-    #                 dev, packet, port = event['dev'], event['sig'], event['port']
-    #                 alloc = packet['alloc_id']
-    #                 # {alloc : {время: [пакеты]}}
-    #                 if alloc not in self.observer_result:
-    #                     self.observer_result[alloc] = dict()
-    #                 if ev_time not in self.observer_result[alloc]:
-    #                     self.observer_result[alloc][ev_time] = list()
-    #                 self.observer_result[alloc][ev_time].append(packet)
-    #     return
 
     def cook_result(self):
         flow_time_result = dict()
@@ -437,8 +417,9 @@ class ReceivedTrafficObserver:
         number_of_flows = len(self.observer_result)
         subplot_index = 1
         for flow_name in flow_time_result:
-            time_result, throughput_result = list(), list()
+            throughput_result, alloc_result = list(), list()
             time_throughput_result = dict()
+            time_alloc_result = self.utilization_result[flow_name]
             for time_d in self.observer_result[flow_name]:
                 packets = flow_time_result[flow_name][time_d]
                 throughput = list()
@@ -446,18 +427,27 @@ class ReceivedTrafficObserver:
                     throughput.append(packet['size'])
                 time_throughput_result[time_d] = (sum(throughput))
 
-            # теперь надо пронормировать пришедшее количество байт на временной интервал
-            time_result = list(time_throughput_result.keys())
-            time_result.sort()
+            # теперь надо пронормировать количество байт на временной интервал
+            # для пропускной способности
+            time_result_bw = list(time_throughput_result.keys())
+            time_result_bw.sort()
             last_time_d = int()
-            for time_d in time_result:
+            for time_d in time_result_bw:
                 throughput_result.append(8 * time_throughput_result[time_d] / (time_d - last_time_d))
+                last_time_d = time_d
+            # для текущих значений alloc
+            time_result_al = list(time_alloc_result.keys())
+            time_result_al.sort()
+            last_time_d = int()
+            for time_d in time_result_al:
+                alloc_result.append(8 * sum(time_alloc_result[time_d]) / (time_d - last_time_d))
                 last_time_d = time_d
 
             ax = fig.add_subplot(number_of_flows, 1, subplot_index)
             subplot_index += 1
             plt.ylabel(flow_name)
-            ax.plot(time_result, throughput_result)
+            ax.plot(time_result_bw, throughput_result)
+            ax.plot(time_result_al, alloc_result)
             fig.canvas.draw()
             time.sleep(1)
 

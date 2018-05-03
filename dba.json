@@ -10,7 +10,7 @@
             "time_ranges": [[3000, 5000]]
         },
         "traffic": {
-            "report": false,
+            "report": true,
             "time_ranges": [[0, 60000]]
         },
         "IPtraffic": {
