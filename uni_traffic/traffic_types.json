@@ -3,24 +3,40 @@
     "class": 0,
     "service": "basic",
     "send_interval": 0,
-    "distribution": "deterministic",
+    "send_interval_distribution": "deterministic",
     "size_of_packet": 0,
+    "size_of_packet_distribution": "deterministic",
     "max_queue_size": 0
   },
   "type1": {
     "class": 0,
     "service": "voip",
     "send_interval": 125,
-    "distribution": "deterministic",
+    "send_interval_distribution": "deterministic",
     "size_of_packet": 500,
+    "size_of_packet_distribution": "deterministic",
     "max_queue_size": 10
   },
   "type2": {
     "class": 3,
     "service": "best_effort",
     "send_interval": 750,
-    "distribution": "deterministic",
+    "send_interval_distribution": "deterministic",
     "size_of_packet": 20000,
+    "size_of_packet_distribution": "deterministic",
     "max_queue_size": 2
+  },
+  "type3": {
+    "class": 3,
+    "service": "best_effort",
+    "send_interval": 125,
+    "send_interval_distribution": "deterministic",
+    "size_of_packet": 100,
+    "size_of_packet_distribution": "deterministic",
+    "activity_interval": 1000,
+    "activity_interval_distribution": "deterministic",
+    "silence_interval": 1000,
+    "silence_interval_distribution": "deterministic",
+    "max_queue_size": 5
   }
 }

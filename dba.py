@@ -220,4 +220,3 @@ class DbaTM(Dba):
         total_bw = self.alloc_bandwidth[alloc]
         total_grant = self.alloc_grants[alloc]
         self.alloc_utilisation[alloc] = sum(total_bw) / sum(total_grant)
-

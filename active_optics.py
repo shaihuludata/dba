@@ -64,8 +64,9 @@ class ActiveDevice(PonDevice):
                 if 'sn_response' in i.data:
                     sn = True
             if not sn:
-                # print('плохая коллизия')
-                raise Exception('плохая коллизия')
+                print('плохая коллизия')
+                print(list(sig.id for sig in self.receiving_sig))
+                # raise Exception('плохая коллизия')
 
             sig.physics['collision'] = True
             for rec_sig in self.receiving_sig:
