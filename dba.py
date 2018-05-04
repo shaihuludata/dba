@@ -1,4 +1,5 @@
-
+import numpy as np
+from sympy import Interval
 
 class Dba:
     def __init__(self, config):
@@ -161,14 +162,19 @@ class DbaTM(Dba):
                         raise Exception('Странная какая-то ошибка')
 
             total_size = sum(requests.values())
-            if total_size > max_time:
+            # while total_size > 19300:
+            while total_size > max_time:
+                # if total_size > max_time:
                 ratio = total_size / max_time + 0.08
                 for alloc in requests:
-                    requests[alloc] /= ratio
+                    current_req = requests[alloc]
+                    new_req = round(requests[alloc] / ratio)
+                    requests[alloc] = new_req
+                total_size = sum(requests.values())
 
-            total_size = sum(requests.values())
-            if total_size > 19400:
-                raise Exception('ошибка DBA')
+            # total_size = sum(requests.values())
+            # if total_size > 19400:
+            #     raise Exception('ошибка DBA')
 
             alloc_timer = 0  # in bytes
             for ont in ont_alloc_dict:
@@ -189,15 +195,12 @@ class DbaTM(Dba):
             pass
         return bwmap
 
-    # def exponential_fit(x, a, b, c):
-    #     return a * np.exp(-b * x) + c
-
     def generate_alloc(self, bw, uti):
         alloc_size = int()
-        if uti > 0.9:
-            alloc_size = round(bw * 5 + 0.5)
-        else:
+        if uti < 0.9:
             alloc_size = round(bw * 0.5 + 0.5)
+        else:  # if uti in Interval(0.9, 1):
+            alloc_size = round(bw * 5 + 0.5)
         return alloc_size
 
     def register_new_ont(self, s_number, allocs: list()):
@@ -220,3 +223,13 @@ class DbaTM(Dba):
         total_bw = self.alloc_bandwidth[alloc]
         total_grant = self.alloc_grants[alloc]
         self.alloc_utilisation[alloc] = sum(total_bw) / sum(total_grant)
+
+
+class DbaTM_extrapolated(DbaTM):
+    def generate_alloc(self, bw, uti):
+        q = np.poly1d([4.34470329e+03, -9.89671083e+03, 8.30071007e+03,
+                       -3.16340293e+03, 5.35889941e+02, -2.12260766e+01, 3.03372901e-02])
+        alloc_size = round(bw * q(uti) + 0.5)
+        return alloc_size
+
+

@@ -9,6 +9,7 @@ import json
 from sympy import Interval, FiniteSet
 from matplotlib import cm
 from matplotlib.ticker import LinearLocator, FormatStrFormatter
+import statistics
 
 result_dir = './result/'
 
@@ -416,6 +417,7 @@ class ReceivedTrafficObserver:
         flow_time_result = self.cook_result()
         number_of_flows = len(self.observer_result)
         subplot_index = 1
+        flow_utilization_dict = dict()
         for flow_name in flow_time_result:
             throughput_result, alloc_result = list(), list()
             time_throughput_result = dict()
@@ -443,18 +445,44 @@ class ReceivedTrafficObserver:
                 alloc_result.append(8 * sum(time_alloc_result[time_d]) / (time_d - last_time_d))
                 last_time_d = time_d
 
-            ax = fig.add_subplot(number_of_flows, 1, subplot_index)
+            ax = fig.add_subplot(number_of_flows, 2, subplot_index)
             subplot_index += 1
             plt.ylabel(flow_name)
             ax.plot(time_result_bw, throughput_result)
             ax.plot(time_result_al, alloc_result)
             fig.canvas.draw()
+            # time.sleep(1)
+
+            # теперь есть 2 функции:
+            # time_result_bw и throughput_result, time_result_al и alloc_result
+            # надо их вычесть друг из друга, получится график утилизации
+            bw_interval = Interval(min(time_result_bw), max(time_result_bw))
+            al_interval = Interval(min(time_result_al), max(time_result_al))
+            common_interval = bw_interval.intersect(al_interval)
+            if type(common_interval) is not FiniteSet:
+                time_stride = np.arange(float(common_interval.start), float(common_interval.end), 125)
+                bw_interpolated = np.interp(time_stride, time_result_bw, throughput_result)
+                al_interpolated = np.interp(time_stride, time_result_al, alloc_result)
+                utilization_result = bw_interpolated / al_interpolated
+                ax = fig.add_subplot(number_of_flows, 2, subplot_index)
+                ax.plot(time_stride, utilization_result)
+                fig.canvas.draw()
+            subplot_index += 1
+            # plt.xlabel("Утилизация")
             time.sleep(1)
 
-        # ax.set_xticklabels(points_to_watch)
+            total_bw = np.trapz(throughput_result, time_result_bw)
+            total_al = np.trapz(time_result_al, alloc_result)
+            total_utilization = total_bw / total_al
+            if total_utilization < 0:
+                print('странно')
+            flow_utilization_dict[flow_name] = total_utilization
+        print(flow_utilization_dict)
+        mean_utilization = statistics.mean(flow_utilization_dict.values())
+        disp_utilization = statistics.variance(flow_utilization_dict.values())
+        print('mean_utilization {}, dispersion {}'.format(mean_utilization, disp_utilization))
+
         fig.canvas.draw()
-        # time.sleep(1)
-        # plt.show()
         fig.savefig(result_dir + 'bandwidth.png', bbox_inches='tight')
         plt.close(fig)
 

@@ -24,7 +24,7 @@ def main():  # *args, **kwargs):
     else:
         time_horisont = 1000
 
-    net = json.load(open('./networks/network4.json'))
+    net = json.load(open('./networks/network6.json'))
     print('Net description: ', net)
     sched = ModelScheduler(net, config)
     cur_time = 0
