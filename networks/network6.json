@@ -9,7 +9,7 @@
     "sn_request_interval": 5000,
     "cycle_duration": 125,
     "transmitter_wavelength": "1550",
-    "transmitter_type": "1G",
+    "transmitter_type": "2G",
     "ports": {"0": "Fiber0::0"}
   },
   "Fiber0":
@@ -23,7 +23,7 @@
     "ports": {"0": "Fiber1::0"},
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
-    "transmitter_type": "1G",
+    "transmitter_type": "2G",
     "activation_time": 0,
     "Alloc": {"1": "type1", "2": "type1"}
   },
@@ -38,7 +38,7 @@
     "ports": {"0": "Fiber2::0"},
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
-    "transmitter_type": "1G",
+    "transmitter_type": "2G",
     "activation_time": 0,
     "Alloc": {"1": "type2", "2": "type2"}
   },
@@ -53,7 +53,7 @@
     "ports": {"0": "Fiber3::0"},
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
-    "transmitter_type": "1G",
+    "transmitter_type": "2G",
     "activation_time": 0,
     "Alloc": {"1": "type3", "2": "type3"}
   },
@@ -68,7 +68,7 @@
     "ports": {"0": "Fiber4::0"},
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
-    "transmitter_type": "1G",
+    "transmitter_type": "2G",
     "activation_time": 0,
     "Alloc": {"1": "type3", "2": "type3"}
   },

@@ -29,14 +29,14 @@
   "type3": {
     "class": 3,
     "service": "best_effort",
-    "send_interval": 125,
+    "send_interval": 250,
     "send_interval_distribution": "deterministic",
-    "size_of_packet": 100,
+    "size_of_packet": 1000,
     "size_of_packet_distribution": "deterministic",
-    "activity_interval": 1000,
+    "activity_interval": 500,
     "activity_interval_distribution": "deterministic",
     "silence_interval": 1000,
     "silence_interval_distribution": "deterministic",
-    "max_queue_size": 5
+    "max_queue_size": 3
   }
 }
