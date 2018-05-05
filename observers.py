@@ -471,7 +471,7 @@ class ReceivedTrafficObserver:
             # plt.xlabel("Утилизация")
             time.sleep(1)
 
-            total_bw = np.trapz(throughput_result, time_result_bw)
+            total_bw = np.trapz(time_result_bw, throughput_result)
             total_al = np.trapz(time_result_al, alloc_result)
             total_utilization = total_bw / total_al
             if total_utilization < 0:
