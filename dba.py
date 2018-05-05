@@ -155,6 +155,8 @@ class DbaTM(Dba):
                         current_bw = self.min_grant
                     self.alloc_bandwidth[alloc].reverse()
                     current_uti = self.alloc_utilisation[alloc]
+                    if current_uti > 0:
+                        print()
                     alloc_size = self.generate_alloc(current_bw, current_uti)
                     if alloc not in requests:
                         requests[alloc] = alloc_size
@@ -201,14 +203,16 @@ class DbaTM(Dba):
             alloc_size = round(bw * 0.5 + 0.5)
         else:  # if uti in Interval(0.9, 1):
             alloc_size = round(bw * 5 + 0.5)
+        if alloc_size < self.min_grant:
+            alloc_size = self.min_grant
         return alloc_size
 
     def register_new_ont(self, s_number, allocs: list()):
         self.ont_discovered[s_number] = allocs
         for alloc in allocs:
-            self.alloc_utilisation[alloc] = 1
+            self.alloc_utilisation[alloc] = 0
             self.alloc_grants[alloc] = [self.min_grant]
-            self.alloc_bandwidth[alloc] = list()
+            self.alloc_bandwidth[alloc] = [0]
 
     def register_packet(self, alloc, packets: list()):
         size = int()
@@ -225,11 +229,14 @@ class DbaTM(Dba):
         self.alloc_utilisation[alloc] = sum(total_bw) / sum(total_grant)
 
 
-class DbaTM_extrapolated(DbaTM):
+class DbaTM_extra(DbaTM):
     def generate_alloc(self, bw, uti):
         q = np.poly1d([4.34470329e+03, -9.89671083e+03, 8.30071007e+03,
                        -3.16340293e+03, 5.35889941e+02, -2.12260766e+01, 3.03372901e-02])
-        alloc_size = round(bw * q(uti) + 0.5)
+        multi = q(uti)
+        alloc_size = round(bw * multi + 0.5)
+        if alloc_size < self.min_grant:
+            alloc_size = self.min_grant
+        if alloc_size > 10:
+            print()
         return alloc_size
-
-

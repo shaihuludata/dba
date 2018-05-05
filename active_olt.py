@@ -2,8 +2,9 @@ from active_optics import ActiveDevice
 from collections import OrderedDict
 from signal import Signal
 import copy
-from dba import DbaStatic, DbaStaticAllocs, DbaSR, DbaTM
+from dba import DbaStatic, DbaStaticAllocs, DbaSR, DbaTM, DbaTM_extra
 from sympy import Interval, Union, EmptySet
+
 
 dumb_event = {'dev': None, 'state': 'dumb_event', 'sig': None, 'port': None}
 
@@ -41,6 +42,8 @@ class Olt(ActiveDevice):
             self.dba = DbaStaticAllocs(dba_config)
         elif config['dba_type'] == 'traffic_monitoring':
             self.dba = DbaTM(dba_config)
+        elif config['dba_type'] == 'traffic_monitoring_extra':
+            self.dba = DbaTM_extra(dba_config)
         elif config['dba_type'] == 'status_report':
             self.dba = DbaSR(dba_config)
 
