@@ -27,6 +27,7 @@ fig.show()
 # y = [3, 4, 6, None]
 x = np.array([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.9, 1])
 y = np.array([0, 1, 2, 3, 4, 5, 6, 20, 100])
+# y = np.array([  0,   5,  10,  15,  20,  25,  30, 100, 500])
 
 ax = fig.add_subplot(1, 1, 1)
 z = np.polyfit(x, y, 6)
