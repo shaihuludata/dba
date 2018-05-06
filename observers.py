@@ -6,7 +6,7 @@ import matplotlib as mp
 # mp.use('agg')
 import time
 import json
-from sympy import Interval, FiniteSet
+from sympy import Interval, FiniteSet, EmptySet
 from matplotlib import cm
 from matplotlib.ticker import LinearLocator, FormatStrFormatter
 import statistics
@@ -459,7 +459,7 @@ class ReceivedTrafficObserver:
             bw_interval = Interval(min(time_result_bw), max(time_result_bw))
             al_interval = Interval(min(time_result_al), max(time_result_al))
             common_interval = bw_interval.intersect(al_interval)
-            if type(common_interval) is not FiniteSet:
+            if type(common_interval) not in [FiniteSet, EmptySet]:
                 time_stride = np.arange(float(common_interval.start), float(common_interval.end), 125)
                 bw_interpolated = np.interp(time_stride, time_result_bw, throughput_result)
                 al_interpolated = np.interp(time_stride, time_result_al, alloc_result)
@@ -471,8 +471,8 @@ class ReceivedTrafficObserver:
             # plt.xlabel("Утилизация")
             time.sleep(1)
 
-            total_bw = np.trapz(time_result_bw, throughput_result)
-            total_al = np.trapz(time_result_al, alloc_result)
+            total_bw = np.trapz(throughput_result, time_result_bw)
+            total_al = np.trapz(alloc_result, time_result_al)
             total_utilization = total_bw / total_al
             if total_utilization < 0:
                 print('странно')

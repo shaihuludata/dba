@@ -104,8 +104,6 @@ class DbaStaticAllocs(Dba):
             self.global_bwmap[self.next_cycle_start] = bwmap
         else:
             bwmap = self.global_bwmap[self.next_cycle_start]
-        if len(bwmap) > 0:
-            pass
         return bwmap
 
 
@@ -129,7 +127,7 @@ class DbaTM(Dba):
     def __init__(self, config):
         Dba.__init__(self, config)
         # минимальный размер гранта при утилизации 0
-        self.min_grant = 10
+        self.min_grant = 50
         self.mem_size = 10
         # для хранения текущих значений утилизации
         self.alloc_utilisation = dict()
@@ -155,9 +153,12 @@ class DbaTM(Dba):
                         current_bw = self.min_grant
                     self.alloc_bandwidth[alloc].reverse()
                     current_uti = self.alloc_utilisation[alloc]
-                    if current_uti > 0:
-                        print()
                     alloc_size = self.generate_alloc(current_bw, current_uti)
+                    if alloc_size > 10:
+                        pass
+                    if len(self.alloc_grants[alloc]) >= self.mem_size:
+                        self.alloc_grants[alloc].pop(0)
+                    self.alloc_grants[alloc].append(alloc_size)
                     if alloc not in requests:
                         requests[alloc] = alloc_size
                     else:
@@ -174,10 +175,6 @@ class DbaTM(Dba):
                     requests[alloc] = new_req
                 total_size = sum(requests.values())
 
-            # total_size = sum(requests.values())
-            # if total_size > 19400:
-            #     raise Exception('ошибка DBA')
-
             alloc_timer = 0  # in bytes
             for ont in ont_alloc_dict:
                 if alloc_timer < max_time:
@@ -193,8 +190,6 @@ class DbaTM(Dba):
             self.global_bwmap[self.next_cycle_start] = bwmap
         else:
             bwmap = self.global_bwmap[self.next_cycle_start]
-        if len(bwmap) > 0:
-            pass
         return bwmap
 
     def generate_alloc(self, bw, uti):
@@ -218,7 +213,7 @@ class DbaTM(Dba):
         size = int()
         for packet in packets:
             size += packet['size']
-        if len(self.alloc_bandwidth[alloc]) > self.mem_size:
+        if len(self.alloc_bandwidth[alloc]) >= self.mem_size:
             self.alloc_bandwidth[alloc].pop(0)
         self.alloc_bandwidth[alloc].append(size)
         self.recalculate_utilisation(alloc)
@@ -226,17 +221,21 @@ class DbaTM(Dba):
     def recalculate_utilisation(self, alloc):
         total_bw = self.alloc_bandwidth[alloc]
         total_grant = self.alloc_grants[alloc]
-        self.alloc_utilisation[alloc] = sum(total_bw) / sum(total_grant)
+        mean_total_bw = sum(total_bw) / len(total_bw)
+        mean_total_grant = sum(total_grant) / len(total_grant)
+        current_uti = mean_total_bw / mean_total_grant
+        # current_uti = total_bw[-1] / total_grant[-1]
+        if 'ONT1_1' in alloc:
+            self.alloc_utilisation[alloc] = current_uti
+        self.alloc_utilisation[alloc] = current_uti
 
 
 class DbaTM_extra(DbaTM):
     def generate_alloc(self, bw, uti):
-        q = np.poly1d([4.34470329e+03, -9.89671083e+03, 8.30071007e+03,
+        q = 0.5*np.poly1d([4.34470329e+03, -9.89671083e+03, 8.30071007e+03,
                        -3.16340293e+03, 5.35889941e+02, -2.12260766e+01, 3.03372901e-02])
         multi = q(uti)
         alloc_size = round(bw * multi + 0.5)
         if alloc_size < self.min_grant:
             alloc_size = self.min_grant
-        if alloc_size > 10:
-            print()
         return alloc_size

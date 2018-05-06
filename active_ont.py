@@ -132,6 +132,8 @@ class Ont(ActiveDevice):
                         planned_e_time = self.next_cycle_start + intra_cycle_e_start - 2*avg_half_rtt + self.cycle_duration
                         # полезно для отладки
                         planned_delta = planned_e_time - planned_s_time
+                        if planned_delta == 0:
+                            break
                         if planned_s_time < self.time:
                             raise Exception('Текущее время {} меньше запланированного {}'.format(self.time, planned_s_time))
 
