@@ -70,7 +70,7 @@
     "transmitter_wavelength": "1310",
     "transmitter_type": "2G",
     "activation_time": 0,
-    "Alloc": {"1": "type3", "2": "type3"}
+    "Alloc": {"1": "type4", "2": "type4"}
   },
   "Fiber4":
   {
