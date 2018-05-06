@@ -166,7 +166,7 @@ class DbaTM(Dba):
 
             total_size = sum(requests.values())
             # while total_size > 19300:
-            while total_size > max_time:
+            while total_size > max_time-200:
                 # if total_size > max_time:
                 ratio = total_size / max_time + 0.08
                 for alloc in requests:
@@ -239,3 +239,4 @@ class DbaTM_extra(DbaTM):
         if alloc_size < self.min_grant:
             alloc_size = self.min_grant
         return alloc_size
+
