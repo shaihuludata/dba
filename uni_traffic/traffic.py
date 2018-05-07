@@ -51,7 +51,8 @@ class Traffic:
         current_part = time - self.last_activity
         if current_part >= full_period:
             self.last_activity = time
-            # тут надо будет вставить пересчёт параметров для недетерминированных переменных
+            # тут надо будет вставить пересчёт параметров
+            # для недетерминированных переменных
             return False
         elif current_part >= self.activity_interval:
             # self.last_end_of_silence = time
@@ -78,3 +79,4 @@ class Traffic:
                 'packet_id': self.id + '_{}'.format(time),
                 'packet_num': self.packet_counter,
                 }
+

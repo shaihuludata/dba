@@ -2,7 +2,7 @@ from active_optics import ActiveDevice
 from collections import OrderedDict
 from signal import Signal
 import copy
-from dba import DbaStatic, DbaStaticAllocs, DbaSR, DbaTM, DbaTM_extra
+from dba import DbaStatic, DbaStaticAllocs, DbaSR, DbaTM, DbaTM_extra, DbaTM_linear
 from sympy import Interval, Union, EmptySet
 
 
@@ -44,6 +44,8 @@ class Olt(ActiveDevice):
             self.dba = DbaTM(dba_config)
         elif config['dba_type'] == 'traffic_monitoring_extra':
             self.dba = DbaTM_extra(dba_config)
+        elif config['dba_type'] == 'DbaTM_linear':
+            self.dba = DbaTM_linear(dba_config)
         elif config['dba_type'] == 'status_report':
             self.dba = DbaSR(dba_config)
 

@@ -153,9 +153,9 @@ class DbaTM(Dba):
                         current_bw = self.min_grant
                     self.alloc_bandwidth[alloc].reverse()
                     current_uti = self.alloc_utilisation[alloc]
+                    if current_uti > 1:
+                        print()
                     alloc_size = self.generate_alloc(current_bw, current_uti)
-                    if alloc_size > 10:
-                        pass
                     if len(self.alloc_grants[alloc]) >= self.mem_size:
                         self.alloc_grants[alloc].pop(0)
                     self.alloc_grants[alloc].append(alloc_size)
@@ -236,6 +236,17 @@ class DbaTM_extra(DbaTM):
                        -3.16340293e+03, 5.35889941e+02, -2.12260766e+01, 3.03372901e-02])
         multi = q(uti)
         alloc_size = round(bw * multi + 0.5)
+        if alloc_size < self.min_grant:
+            alloc_size = self.min_grant
+        return alloc_size
+
+class DbaTM_linear(DbaTM):
+    def generate_alloc(self, bw, uti):
+        # q = 0.5*np.poly1d([4.34470329e+03, -9.89671083e+03, 8.30071007e+03,
+        #                -3.16340293e+03, 5.35889941e+02, -2.12260766e+01, 3.03372901e-02])
+        # multi = q(uti)
+        multi = 2
+        alloc_size = round(bw * uti * multi + 0.5)
         if alloc_size < self.min_grant:
             alloc_size = self.min_grant
         return alloc_size
