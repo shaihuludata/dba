@@ -1,5 +1,10 @@
 import numpy as np
 from sympy import Interval
+import collections
+from addict import Dict
+
+#traf_classes = collections.defaultdict({'voice': 0, 'video': 1, 'data': 2, 'best_effort': 3})
+traf_classes = Dict({'voice': 0, 'video': 1, 'data': 2, 'best_effort': 3})
 
 class Dba:
     def __init__(self, config):
@@ -136,9 +141,10 @@ class DbaTM(Dba):
         # для хранения информации о размерах полученных пакетов
         self.alloc_bandwidth = dict()
 
+        self.alloc_class = dict()
+
     def bwmap(self, cur_time):
         ont_alloc_dict = self.ont_discovered
-        bwmap = list()
         requests = dict()
         max_time = self.maximum_allocation_start_time
         if (self.next_cycle_start not in self.global_bwmap)\
@@ -146,15 +152,11 @@ class DbaTM(Dba):
             for ont in ont_alloc_dict:
                 allocs = ont_alloc_dict[ont]
                 for alloc in allocs:
-                    self.alloc_bandwidth[alloc].reverse()
                     if len(self.alloc_bandwidth[alloc]) > 0:
-                        current_bw = self.alloc_bandwidth[alloc][0]
+                        current_bw = self.alloc_bandwidth[alloc][-1]
                     else:
                         current_bw = self.min_grant
-                    self.alloc_bandwidth[alloc].reverse()
                     current_uti = self.alloc_utilisation[alloc]
-                    if current_uti > 1:
-                        print()
                     alloc_size = self.generate_alloc(current_bw, current_uti)
                     if len(self.alloc_grants[alloc]) >= self.mem_size:
                         self.alloc_grants[alloc].pop(0)
@@ -163,33 +165,38 @@ class DbaTM(Dba):
                         requests[alloc] = alloc_size
                     else:
                         raise Exception('Странная какая-то ошибка')
-
-            total_size = sum(requests.values())
-            # while total_size > 19300:
-            while total_size > max_time-200:
-                # if total_size > max_time:
-                ratio = total_size / max_time + 0.08
-                for alloc in requests:
-                    current_req = requests[alloc]
-                    new_req = round(requests[alloc] / ratio)
-                    requests[alloc] = new_req
-                total_size = sum(requests.values())
-
-            alloc_timer = 0  # in bytes
-            for ont in ont_alloc_dict:
-                if alloc_timer < max_time:
-                    allocs = ont_alloc_dict[ont]
-                    for alloc in allocs:
-                        alloc_structure = {'Alloc-ID': alloc,  # 'Flags': 0,
-                                           'StartTime': alloc_timer, 'StopTime': None}  # , 'CRC': None}
-                        alloc_size = round(requests[alloc])
-                        alloc_timer += alloc_size
-                        alloc_structure['StopTime'] = alloc_timer
-                        bwmap.append(alloc_structure)
-                    alloc_timer += self.upstream_interframe_interval
+            requests = self.crop_allocations(requests, max_time)
+            bwmap = self.compose_bwmap_message(requests, ont_alloc_dict, max_time)
             self.global_bwmap[self.next_cycle_start] = bwmap
         else:
             bwmap = self.global_bwmap[self.next_cycle_start]
+        return bwmap
+
+    def crop_allocations(self, requests: dict, max_time):
+        total_size = sum(requests.values())
+        while total_size > max_time - 200:
+            ratio = total_size / max_time + 0.08
+            for alloc in requests:
+                current_req = requests[alloc]
+                new_req = round(requests[alloc] / ratio)
+                requests[alloc] = new_req
+            total_size = sum(requests.values())
+        return requests
+
+    def compose_bwmap_message(self, requests, ont_alloc_dict, max_time):
+        bwmap = list()
+        alloc_timer = 0  # in bytes
+        for ont in ont_alloc_dict:
+            if alloc_timer < max_time:
+                allocs = ont_alloc_dict[ont]
+                for alloc in allocs:
+                    alloc_structure = {'Alloc-ID': alloc,  # 'Flags': 0,
+                                       'StartTime': alloc_timer, 'StopTime': None}  # , 'CRC': None}
+                    alloc_size = round(requests[alloc])
+                    alloc_timer += alloc_size
+                    alloc_structure['StopTime'] = alloc_timer
+                    bwmap.append(alloc_structure)
+                alloc_timer += self.upstream_interframe_interval
         return bwmap
 
     def generate_alloc(self, bw, uti):
@@ -203,11 +210,12 @@ class DbaTM(Dba):
         return alloc_size
 
     def register_new_ont(self, s_number, allocs: list()):
-        self.ont_discovered[s_number] = allocs
+        self.ont_discovered[s_number] = list(allocs.keys())
         for alloc in allocs:
             self.alloc_utilisation[alloc] = 0
             self.alloc_grants[alloc] = [self.min_grant]
             self.alloc_bandwidth[alloc] = [0]
+            self.alloc_class[alloc] = allocs[alloc]
 
     def register_packet(self, alloc, packets: list()):
         size = int()
@@ -240,14 +248,31 @@ class DbaTM_extra(DbaTM):
             alloc_size = self.min_grant
         return alloc_size
 
+
 class DbaTM_linear(DbaTM):
     def generate_alloc(self, bw, uti):
         # q = 0.5*np.poly1d([4.34470329e+03, -9.89671083e+03, 8.30071007e+03,
         #                -3.16340293e+03, 5.35889941e+02, -2.12260766e+01, 3.03372901e-02])
         # multi = q(uti)
-        multi = 2
+        multi = 3
         alloc_size = round(bw * uti * multi + 0.5)
         if alloc_size < self.min_grant:
             alloc_size = self.min_grant
         return alloc_size
 
+    def crop_allocations(self, requests: dict, max_time):
+        total_size = sum(requests.values())
+        if total_size > max_time - 200:
+            be_dict = {i: requests[i] for i in self.alloc_class if self.alloc_class == traf_classes.best_effort}
+            while total_size > max_time - 200:
+                delta_size = total_size - (max_time - 200)
+                total_be_size = sum(list(be_dict.values()))
+                if total_be_size > delta_size:
+                    ratio = total_be_size / delta_size
+                else:
+                    raise NotImplemented
+                for alloc in be_dict:
+                    new_req = round(requests[alloc] / ratio)
+                    requests[alloc] = new_req
+                total_size = sum(requests.values())
+        return requests
