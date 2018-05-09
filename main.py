@@ -3,6 +3,7 @@ from time import sleep
 import time
 from scheduler import ModelScheduler
 import cProfile
+import pprint
 
 # python3 -m cProfile -o ./proceed.prof ./main.py
 # gprof2dot -f pstats proceed.prof | dot -Tpng -o proceed.png

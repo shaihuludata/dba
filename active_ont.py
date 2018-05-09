@@ -24,7 +24,7 @@ class Ont(ActiveDevice):
                 alloc_type = config['Alloc'][alloc_id]
                 tg = Traffic(self.name, alloc_id, alloc_type)
                 self.traffic_generators[self.name + '_' + alloc_id] = tg
-                self.current_allocations[tg.id] = None
+                self.current_allocations[tg.id] = tg.traf_class
         if "0" not in config['Alloc']:
             alloc_type = 'type0'
             # tg = Traffic(self.name, "0", alloc_type)
@@ -86,7 +86,7 @@ class Ont(ActiveDevice):
                 planned_e_time = planned_s_time + 2
                 sig_id = '{}:{}:{}'.format(planned_s_time, self.name, planned_e_time)
                 resp_sig = Signal(sig_id, {}, source=self.name)
-                alloc_ids = list(self.current_allocations.keys())
+                alloc_ids = self.current_allocations  # list(self.current_allocations.keys())
                 resp_sig.data['sn_response'] = (self.name, alloc_ids)
                 self.planned_events.update({
                     planned_s_time: [{"dev": self, "state": "s_start", "sig": resp_sig, "port": 0}],
