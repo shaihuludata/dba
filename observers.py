@@ -411,12 +411,54 @@ class ReceivedTrafficObserver:
                 flow_time_result[alloc][time_r] = packet
         return flow_time_result
 
+    def cook_result2(self, flow_time_result):
+        time_bw_result = dict()
+        for flow in flow_time_result:
+            time_result = flow_time_result[flow]
+            for t in time_result:
+                bw = 0
+                for p in time_result[t]:
+                    bw += p['size']
+                if t in time_bw_result:
+                    time_bw_result[t] += bw
+                else:
+                    time_bw_result[t] = bw
+
+        time_list = list(time_bw_result.keys())
+        time_list.sort()
+        last_time = min(time_list)
+        end_time = max(time_list)
+        bw_list = list()
+        time_stride = list()
+        # for t in time_list:
+        #     bw_t = (abs(time_bw_result[last_time] - time_bw_result[t])) / (t - last_time)
+        #     bw_list.append(bw_t)
+        #     last_time = t
+        time_step = 125
+        while end_time - last_time > 0:
+            current_min_time = last_time
+            current_max_time = last_time + time_step
+            time_stride.append(current_max_time)
+            bw_t = 0
+            for tim in time_list:
+                if current_min_time < tim <= current_max_time:
+                    bw_t += time_bw_result[tim]
+            bw_list.append(8 * bw_t/time_step)
+            last_time += time_step
+        return time_stride, bw_list
+
     def make_results(self):
         fig = plt.figure(1, figsize=(15, 15))
         fig.show()
         flow_time_result = self.cook_result()
-        number_of_flows = len(self.observer_result)
+        number_of_flows = len(self.observer_result) + 1
         subplot_index = 1
+        time_result, bw_result = self.cook_result2(flow_time_result)
+        ax = fig.add_subplot(number_of_flows, 2, subplot_index)
+        plt.ylabel('total_bw')
+        ax.plot(time_result, bw_result)
+
+        subplot_index += 2
         flow_utilization_dict = dict()
         for flow_name in flow_time_result:
             throughput_result, alloc_result = list(), list()

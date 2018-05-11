@@ -13,44 +13,44 @@
     "service": "voice",
     "send_interval": 125,
     "send_interval_distribution": "poisson",
-    "size_of_packet": 500,
+    "size_of_packet": 100,
     "sigma_sop": 100,
     "size_of_packet_distribution": "normal",
-    "max_queue_size": 10
+    "max_queue_size": 30
   },
   "type2": {
     "class": 3,
     "service": "best_effort",
     "send_interval": 750,
     "send_interval_distribution": "deterministic",
-    "size_of_packet": 20000,
+    "size_of_packet": 15000,
     "size_of_packet_distribution": "deterministic",
     "max_queue_size": 10
   },
   "type3": {
     "class": 0,
-    "service": "voice",
+    "service": "video",
     "send_interval": 125,
     "send_interval_distribution": "deterministic",
-    "size_of_packet": 500,
+    "size_of_packet": 200,
     "size_of_packet_distribution": "deterministic",
     "activity_interval": 1000,
     "activity_interval_distribution": "deterministic",
     "silence_interval": 1000,
     "silence_interval_distribution": "deterministic",
-    "max_queue_size": 10
+    "max_queue_size": 30
   },
   "type4": {
     "class": 3,
     "service": "best_effort",
     "send_interval": 250,
     "send_interval_distribution": "deterministic",
-    "size_of_packet": 1000,
+    "size_of_packet": 8000,
     "size_of_packet_distribution": "deterministic",
     "activity_interval": 1000,
     "sigma_ai": 100,
     "activity_interval_distribution": "normal",
-    "silence_interval": 1000,
+    "silence_interval": 500,
     "sigma_silence": 100,
     "silence_interval_distribution": "normal",
     "max_queue_size": 10
