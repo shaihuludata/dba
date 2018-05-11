@@ -264,17 +264,21 @@ class DbaTM_linear(DbaTM):
         for traf in ['best_effort', 'data', 'video', 'voice']:
             total_size = sum(requests.values())
             if total_size > max_time - 200:
-                traf_dict = {i: requests[i] for i in self.alloc_class if self.alloc_class == traf_classes[traf]}
+                traf_dict = {i: requests[i] for i in self.alloc_class if self.alloc_class[i] == traf_classes[traf]}
                 delta_size = total_size - (max_time - 200)
                 total_traf_size = sum(list(traf_dict.values()))
                 if total_traf_size > delta_size:
-                    ratio = total_traf_size / delta_size
+                    ratio = total_traf_size / delta_size + 0.01
                     for alloc in traf_dict:
-                        new_req = round(requests[alloc] / ratio)
+                        new_req = int(round(requests[alloc] / ratio))
                         requests[alloc] = new_req
                 else:
                     for alloc in traf_dict:
                         requests[alloc] = 0
+                total_size = sum(requests.values())
+            if total_size > max_time - 200:
+                delta_size = total_size - (max_time - 200)
+                print('упс. дельта {}'.format(delta_size))
             else:
                 break
         return requests

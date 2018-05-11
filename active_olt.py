@@ -132,9 +132,9 @@ class Olt(ActiveDevice):
             fragments = self.defragmentation_buffer[pack]
             defragmented = EmptySet()
             for fragment in fragments:
-                cur_start = fragment['fragment_offset']
-                cur_end = cur_start + fragment['size']
-                total_size = fragment['total_size']
+                cur_start = int(fragment['fragment_offset'])
+                cur_end = int(cur_start + fragment['size'])
+                total_size = int(fragment['total_size'])
                 if cur_start == 0:
                     cur_fragment = Interval(cur_start, cur_end)
                 else:
