@@ -132,4 +132,3 @@ class Traffic:
                 'packet_id': self.id + '_{}'.format(time),
                 'packet_num': self.packet_counter,
                 }
-

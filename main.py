@@ -18,6 +18,23 @@ def profile(func):
     return wrapper
 
 
+def bandwidth_prognosis(net):
+    max_bw_prognose = float()
+    allocs = list()
+    bws = list()
+    for dev in net:
+        if 'ONT' in dev:
+            allocs.extend(net[dev]["Alloc"].values())
+    typs = json.load(open('./uni_traffic/traffic_types.json'))
+    for typ_name in allocs:
+        typ = typs[typ_name]
+        bw = round(8 * 1 * typ["size_of_packet"] / typ["send_interval"], 3)
+        bws.append(bw)
+        print(typ_name, bw)
+    max_bw_prognose = round(sum(bws), 3)
+    return max_bw_prognose
+
+
 def main():  # *args, **kwargs):
     config = json.load(open('./dba.json'))
     if "horisont" in config:
@@ -28,6 +45,8 @@ def main():  # *args, **kwargs):
     net = json.load(open('./networks/network6.json'))
     print('Net description: ', net)
     sched = ModelScheduler(net, config)
+    max_bw = bandwidth_prognosis(net)
+    print('Максимальная прогнозная нагрузка {} Мбит/с'.format(max_bw))
     cur_time = 0
 
     cur_report = 0
@@ -48,9 +67,12 @@ def main():  # *args, **kwargs):
             profile(sched.proceed_schedule(cur_time))
         else:
             sched.proceed_schedule(cur_time)
-        # sleep(10)
 
     # print(times)
+    # for t in sched.olt.dba.global_bwmap:
+    #     map = sched.olt.dba.global_bwmap[t]
+    #     print('{} {}'.format(t, map))
+
     print('End of simulation... Preparing results.')
     sched.make_results()
 

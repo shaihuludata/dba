@@ -176,6 +176,7 @@ class Ont(ActiveDevice):
                                         data_to_send[alloc_id].append(packet)
                                 break
                         data_to_send.update({'cycle_num': sig.data['cycle_num']})
+                        data_to_send.update({'allocation': allocation})
 
                         sig_id = '{}:{}:{}'.format(planned_s_time, self.name, planned_e_time)
                         if sig_id not in self.sending_sig.values():
