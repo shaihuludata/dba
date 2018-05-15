@@ -82,6 +82,9 @@ class ModelScheduler:
         if config["observers"]["mass_traffic"]["report"]:
             time_ranges = config["observers"]["mass_traffic"]["time_ranges"]
             self.observers.append(MassTrafficObserver(time_ranges_to_show=time_ranges))
+        if config["observers"]["BufferObserver"]["report"]:
+            time_ranges = config["observers"]["BufferObserver"]["time_ranges"]
+            self.observers.append(BufferObserver(time_ranges_to_show=time_ranges))
 
         # self.dba_algorithm = algorithm
         self.current_requests = list()
@@ -94,6 +97,8 @@ class ModelScheduler:
         for observer in self.observers:
             if observer.name in ['Traffic visualizer', 'Mass packet visualizer']:
                 observer.notice(self.schedule.events[self.time], self.time)
+            elif observer.name in ['BufferObserver']:
+                observer.notice(self.onts, self.time)
             else:
                 observer.notice(self.schedule.events, self.time)
 

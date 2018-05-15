@@ -730,6 +730,62 @@ class ReceivedTrafficObserver:
         plt.close(fig)
 
 
+class BufferObserver:
+
+    def __init__(self, time_ranges_to_show):
+        self.name = 'BufferObserver'
+        self.observer_result = dict()
+        if not time_ranges_to_show:
+            self.time_ranges_to_show = [[1000, 2000]]
+        else:
+            self.time_ranges_to_show = time_ranges_to_show
+
+        self.time_horisont = 0
+        for time_range in self.time_ranges_to_show:
+            new_horisont = max(time_range)
+            if self.time_horisont < new_horisont:
+                self.time_horisont = new_horisont
+
+    def notice(self, onts: list, cur_time):
+        for ont in onts:
+            for tg_id in ont.traffic_generators:
+                tg = ont.traffic_generators[tg_id]
+                if tg.id not in self.observer_result:
+                    self.observer_result[tg.id] = dict()
+                buf_size = len(tg.queue)
+                if cur_time not in self.observer_result[tg.id]:
+                    self.observer_result[tg.id][cur_time] = buf_size
+                elif self.observer_result[tg.id][cur_time] < buf_size:
+                    self.observer_result[tg.id][cur_time] = buf_size
+
+    def make_results(self):
+        flow_time_result = self.observer_result
+        fig = plt.figure(1, figsize=(15, 20))
+        fig.show()
+
+        number_of_flows = len(self.observer_result)
+        subplot_index = 1
+        for flow_name in flow_time_result:
+            time_result = flow_time_result[flow_name]
+            times = list(time_result.keys())
+            times.sort()
+            buf_loads = list()
+            for t in times:
+                buf_loads.append(time_result[t])
+
+            ax = fig.add_subplot(number_of_flows, 1, subplot_index)
+            subplot_index += 1
+            plt.ylabel(flow_name)
+            ax.plot(times, buf_loads)
+            # max_latency = max(latency_result)
+            # ax.set_ylim(bottom=0, top=max_latency+100)
+            fig.canvas.draw()
+            time.sleep(1)
+
+        fig.savefig(result_dir + 'buffers.png', bbox_inches='tight')
+        plt.close(fig)
+
+
 class IPTrafficObserver:
 
     def __init__(self, time_ranges_to_show):
