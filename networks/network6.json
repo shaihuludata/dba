@@ -14,7 +14,7 @@
   },
   "Fiber0":
   {
-    "length": "5",
+    "length": "9",
     "type": "G657",
     "ports": {"0": "OLT::0", "1": "Splitter1::0"}
   },
@@ -29,7 +29,7 @@
   },
   "Fiber1":
   {
-    "length": "5",
+    "length": "1",
     "type": "G657",
     "ports": {"0": "ONT1::0", "1": "Splitter1::1"}
   },
@@ -59,7 +59,7 @@
   },
   "Fiber3":
   {
-    "length": "5",
+    "length": "8",
     "type": "G657",
     "ports": {"0": "ONT3::0", "1": "Splitter1::3"}
   },
@@ -74,7 +74,7 @@
   },
   "Fiber4":
   {
-    "length": "5",
+    "length": "10",
     "type": "G657",
     "ports": {"0": "ONT4::0", "1": "Splitter1::4"}
   },
