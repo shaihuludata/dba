@@ -1,3 +1,5 @@
+# https://www.grotto-networking.com/DiscreteEventPython.html
+
 """
     A bit more detailed set of components to use in packet switching
     queueing experiments.
