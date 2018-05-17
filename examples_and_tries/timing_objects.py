@@ -7,20 +7,21 @@ class Clock:
 class Sched:
     def __init__(self, t: float, objects):
         clock = Clock(t)
-        self.t = clock.t
+        self._clock = clock
+        self.t = self._clock.t
         self.devs = list()
         self.attr = dict()
-        self.attr['time'] = 0
 
         for o_name in objects:
-            o = A(o_name)
-            o.t = clock.t
+            o = A(o_name, clock)
             self.devs.append(o)
 
 
 class A:
-    def __init__(self, o_name):
+    def __init__(self, o_name, clock):
         self.t = float()
+        self._clock = clock
+        self.t = self._clock.t
         self.name = o_name
         self.attr = dict()
 
