@@ -16,6 +16,7 @@ def distSize():
 
 
 env = simpy.Environment()  # Create the SimPy environment
+
 # Create the packet generators and sink
 ps = PacketSink(env, debug=True)  # debugging enable for simple output
 pg = PacketGenerator(env, "EE283", constArrival, distSize)
