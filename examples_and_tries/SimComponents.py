@@ -338,6 +338,7 @@ class TrTCM(object):
         # Send marked packet on its way
         self.out.put(pkt)
 
+
 class SnoopSplitter(object):
     """ A snoop port like splitter. Sends the original packet out port 1
         and sends a copy of the packet out port 2.
