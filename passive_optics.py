@@ -40,7 +40,7 @@ class Splitter(PassiveDevice):
     def s_start(self, sig, port):
         return self.name, port, sig
 
-    def r_start(self, sig, port:int):
+    def r_start(self, sig, port):
         transitted_signals = dict()
         matrix_ratios = self.power_matrix[port]
         for out_port in range(len(matrix_ratios)):
@@ -52,7 +52,7 @@ class Splitter(PassiveDevice):
         return transitted_signals
 
     def s_end(self, sig, port: int):
-        output = (self.name, port, sig)  # , "delay": 0}
+        output = (self.name, port, sig)
         return output
 
     def r_end(self, sig, port: int):
