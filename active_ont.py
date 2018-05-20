@@ -3,6 +3,7 @@ import random
 from signal import Signal
 from uni_traffic.traffic import Traffic
 
+
 class Ont(ActiveDevice):
     # TO1 = 0 #Serial number acquisition and ranging timer
     # TO2 = 0 #POPUP timer
@@ -17,7 +18,7 @@ class Ont(ActiveDevice):
         self.STATE = 'Offline'
         self.range_time_delta = list()
         self.traffic_generators = dict()
-        self.current_allocations = dict() #key alloc_id : value grant_size
+        self.current_allocations = dict()  # key alloc_id : value grant_size
 
         if 'Alloc' in config:
             for alloc_id in config['Alloc']:
