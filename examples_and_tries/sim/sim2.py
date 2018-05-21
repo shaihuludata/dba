@@ -5,10 +5,55 @@ from addict import Dict
 import json
 import random
 import logging
+import re
+
+
+class Timer:
+    def __init__(self, env, timeout, func, args, condition="once"):
+        self.env = env
+        self.timeout = timeout
+        self.func = func
+        self.args = args
+        if condition == "periodic":
+            self.run = self.periodic
+        elif condition == "once":
+            self.run = self.once
+        else: raise NotImplemented
+        self.action = env.process(self.run())
+
+    def periodic(self):
+        done = False
+        while not done:
+            yield self.env.timeout(self.timeout)
+            self.func(*self.args)
+            done = True
+
+    def once(self):
+        done = False
+        while not done:
+            yield self.env.timeout(self.timeout)
+            self.func(*self.args)
+            done = True
+
+
+class Counters:
+    def __init__(self):
+        self.ingress_unicast = int()
+        self.ingress_collision = int()
+        self.cycle_number = int()
+        self.number_of_ont = int()
+
+    def export_to_console(self):
+        print(self.__dict__)
+        # for counter in self.__dict__:
+        #     if counter is not None:
+        #         print('{} = {}'.format(counter, self.__dict__[counter]))
 
 
 class Signal:
-    def __init__(self, env, name, data: dict, source, source_port, delay):
+    def __init__(self, env, name, data: dict,
+                 source, source_port, delay,
+                 sig_physics=None):
         self.env = env
         self.name = name
         self.alive = True
@@ -22,12 +67,19 @@ class Signal:
         self.source = source
         self.source_port = source_port
         self.action = env.process(self.run())
+        if sig_physics != None:
+            self.physics.update(sig_physics)
 
     def run(self):
         while self.alive:
             l_dev, l_port = self.source, self.source_port
             r_dev, sig, r_port = l_dev.s_start(self, l_port)
-            r_dev.r_start(sig, r_port)
+            new_sig_args = r_dev.r_start(sig, r_port)
+            if new_sig_args is not None:
+                for timer_data in new_sig_args:
+                    timeout, args = timer_data
+                    func = Signal
+                    Timer(self.env, timeout, func, args, condition="once")
             yield self.env.timeout(self.delay - 1e-14)
             l_dev.s_end(self, l_port)
             r_dev.r_end(sig, r_port)
@@ -150,8 +202,8 @@ class ActiveDev(Dev):
         for port in config["ports"]:
             self.rec_port_sig[int(port)] = list()
         for port in config["ports"]:
-            self.snd_port_sig[int(port)] = dict()
-        # self.counters = Counters()
+            self.snd_port_sig[int(port)] = list()
+        self.counters = Counters()
         self.action = env.process(self.run())
 
         if "transmitter_type" in self.config:
@@ -182,6 +234,7 @@ class ActiveDev(Dev):
 
     def r_start(self, sig, port):
         logging.debug("{} : {} : recv {}".format(round(self.env.now, 2), self.name, sig.name))
+        # print("{} : {} : recv {}".format(round(self.env.now, 2), self.name, sig.name))
         self.rec_port_sig[port].append(sig)
         rec_sigs = self.rec_port_sig[port]
         num_of_sigs = len(rec_sigs)
@@ -200,7 +253,7 @@ class ActiveDev(Dev):
 
             for i in rec_sigs:
                 i.physics["collision"] = True
-        return 0
+        return
 
     def r_end(self, sig, port: int):
         rec_sig = self.rec_port_sig[port]
@@ -254,15 +307,19 @@ class Ont(ActiveDev):
                 self.STATE = "Initial"
             elif self.STATE == "Initial":
                 yield self.env.timeout(self.cycle_duration)
-            elif self.STATE == "Standby":
+            elif self.STATE in ["Standby", "Operation"]:
                 l_port = 0
-                planned = self.snd_port_sig[l_port]
+                planned = dict()
+                if len(self.snd_port_sig[l_port]) > 0:
+                    planned = self.snd_port_sig[l_port].pop(0)
                 if "s_time" in planned and "args" in planned:
                     planned_s_time = planned["s_time"]
                     args = planned["args"]
-                    yield self.env.timeout(planned_s_time)
+                    timeout = planned_s_time - self.env.now
+                    yield self.env.timeout(timeout)
+                    s_time = planned_s_time
+                    now = self.env.now
                     Signal(*args)
-                    self.snd_port_sig[l_port] = {}
                 else:
                     yield self.env.timeout(self.cycle_duration)
             else:
@@ -272,12 +329,15 @@ class Ont(ActiveDev):
         # обработка на случай коллизии
         assert sig in self.rec_port_sig[port]
         self.rec_port_sig[port].remove(sig)
-        # if rec_sig.physics["collision"]:
-        #     self.counters.ingress_collision += 1
-        #     return {}
+        if sig.physics["collision"]:
+            self.counters.ingress_collision += 1
+            return {}
 
         sig = self.oe_transform(sig)
         logging.debug("{} : {} : принят {}".format(self.env.now, self.name, sig.name))
+        self.next_cycle_start = self.env.now  # + self.cycle_duration
+        if self.STATE == "Offline":
+            return
         if self.STATE == "Initial":
             self.STATE = "Standby"
         if self.STATE == "Standby":
@@ -290,7 +350,7 @@ class Ont(ActiveDev):
                 sig_id = "{}:{}:{}".format(planned_s_time, self.name, planned_e_time)
                 alloc_ids = self.current_allocations
                 data = {"sn_response": (self.name, alloc_ids)}
-                self.snd_port_sig[port] = {"s_time": planned_s_time, "args": [self.env, sig_id, data, self, port, 2]}
+                self.snd_port_sig[port].append({"s_time": planned_s_time, "args": [self.env, sig_id, data, self, port, 2]})
             if "sn_ack" in sig.data:
                 for alloc in sig.data["sn_ack"]:
                     if alloc in self.current_allocations:
@@ -327,11 +387,15 @@ class Ont(ActiveDev):
                         intra_cycle_s_start = round(8*1000000*allocation_start / self.transmitter_speed, 2)
                         intra_cycle_e_start = round(8*1000000*allocation_stop / self.transmitter_speed, 2)
                         planned_s_time = self.next_cycle_start + intra_cycle_s_start - 2*avg_half_rtt + self.cycle_duration
+                        planned_s_time = round(planned_s_time, 2)
                         planned_e_time = self.next_cycle_start + intra_cycle_e_start - 2*avg_half_rtt + self.cycle_duration
+                        planned_e_time = round(planned_e_time, 2)
                         # полезно для отладки
                         planned_delta = planned_e_time - planned_s_time
                         if planned_delta <= 0:
                             break
+                        s_time = planned_s_time
+                        now = self.env.now
                         assert planned_s_time >= self.env.now
 
                         # for tg_name in self.traffic_generators:
@@ -375,23 +439,17 @@ class Ont(ActiveDev):
                         # data_to_send.update({"cycle_num": sig.data["cycle_num"]})
                         # data_to_send.update({"allocation": allocation})
 
-                        # self.snd_port_sig[port] = {"s_time": planned_s_time,
-                        #                            "args": [self.env, sig_id, data, self, port, 2]}
+                        data = {}
                         sig_id = "{}:{}:{}".format(planned_s_time, self.name, planned_e_time)
-                        if sig_id not in self.sending_sig.values():
-                            self.sending_sig[planned_s_time] = sig_id
-                            req_sig = Signal(sig_id, data_to_send, source=self.name)
-                            if planned_s_time not in self.planned_events:
-                                self.planned_events[planned_s_time] = list()
-                            if planned_e_time not in self.planned_events:
-                                self.planned_events[planned_e_time] = list()
-                            self.planned_events[planned_s_time].append({"dev": self, "state": "s_start", "sig": req_sig, "port": 0})
-                            self.planned_events[planned_e_time].append({"dev": self, "state": "s_end", "sig": req_sig, "port": 0})
+                        a = len(self.snd_port_sig[port])
+                        # assert len(self.snd_port_sig[port]) == 0
+                        self.snd_port_sig[port].append({"s_time": planned_s_time,
+                                                   "args": [self.env, sig_id, data, self, port, planned_delta]})
                         break
         else:
             raise Exception("State {} not implemented".format(self.STATE))
-        # if self.STATE != "Offline":
-        #     self.counters.ingress_unicast += 1
+        if self.STATE != "Offline":
+            self.counters.ingress_unicast += 1
         return {}
 
 
@@ -403,7 +461,6 @@ class Olt(ActiveDev):
         self.sn_request_next = 0
         self.sn_request_quiet_interval_end = 0
         self.maximum_ont_amount = int(self.config["maximum_ont_amount"])
-        # self.counters.number_of_ont = int()
         # self.defragmentation_buffer = dict()
         dba_config = dict()
         # self.upstream_interframe_interval = self.config["upstream_interframe_interval"]  # 10 # in bytes
@@ -412,6 +469,7 @@ class Olt(ActiveDev):
             if dba_par in config:
                 dba_config[dba_par] = config[dba_par]
 
+        self.snd_port_sig[0] = dict()
         if config["dba_type"] == "static":
             self.dba = DbaStatic(env, dba_config, self.snd_port_sig[0])
 
@@ -432,9 +490,19 @@ class Olt(ActiveDev):
             if self.STATE == "SN_request":
                 l_port = 0
                 bwmap = self.dba.sn_request()
-                data = {"bwmap": bwmap, "sn_request": True, "s_timestamp": self.dba.next_cycle_start}
-                data.update(self.snd_port_sig[l_port])
-                self.snd_port_sig[l_port].clear()
+                data = {"bwmap": bwmap, "sn_request": True, "s_timestamp": self.env.now}
+                # тут лучше сделать таймер
+                # data.update(self.snd_port_sig[l_port])
+                # self.snd_port_sig[l_port].clear()
+                start = round(self.env.now, 2)
+                delay = self.cycle_duration
+                end = start + delay
+                sig_id = "{}:{}:{}".format(start, self.name, end)
+                Signal(self.env, sig_id, data, self, l_port, delay)
+                yield self.env.timeout(self.cycle_duration + 1e-12)
+                bwmap = self.dba.sn_request()
+                data = {"bwmap": bwmap, "s_timestamp": self.env.now}
+                # data.update(self.snd_port_sig[l_port])
                 start = round(self.env.now, 2)
                 delay = self.cycle_duration
                 end = start + delay
@@ -460,18 +528,19 @@ class Olt(ActiveDev):
         for r_sig in self.rec_port_sig[port]:
             if r_sig.name == sig.name:
                 self.rec_port_sig[port].remove(r_sig)
-                # if rec_sig.physics["collision"]:
-                #     self.counters.ingress_collision += 1
-                #     return {}
+                if r_sig.physics["collision"]:
+                    self.counters.ingress_collision += 1
+                    return {}
                 break
 
+        logging.debug("{} : {} : принят {}".format(self.env.now, self.name, sig.name))
         self.oe_transform(sig)
         if "sn_response" in sig.data and self.env.now <= self.sn_request_quiet_interval_end:
             # проверка на содержание ответов на запросы регистрации в сообщении
             s_number = sig.data["sn_response"][0]
             allocs = sig.data["sn_response"][1]
             self.dba.register_new_ont(s_number, allocs)
-            # self.counters.number_of_ont = len(self.dba.ont_discovered)
+            self.counters.number_of_ont = len(self.dba.ont_discovered)
             if "sn_ack" not in self.snd_port_sig[port]:
                 self.snd_port_sig[port]["sn_ack"] = list()
             self.snd_port_sig[port]["sn_ack"].extend(allocs)
@@ -491,7 +560,52 @@ class Olt(ActiveDev):
             return ret
 
 
-class Splitter(Dev):
+import math
+light_velocity = 2*10**8
+
+
+class PassiveDev(Dev):
+    def __init__(self, env, name, config):
+        Dev.__init__(self, env, name, config)
+        self.delay = 0
+        self.length = 0
+        self.power_matrix = [[0]]
+
+    def s_start(self, sig, l_port):
+        r_port, r_dev = self.out[l_port]
+        return r_dev, sig, r_port
+
+    def r_start(self, sig, port):
+        matrix_ratios = self.power_matrix[port]
+        out_sig_args = list()  # of tuples
+        for l_port in range(len(matrix_ratios)):
+            ratio = matrix_ratios[l_port]
+            out_sig_arg = self.multiply_power(sig, ratio, l_port)
+            if out_sig_arg is not False:
+                out_sig_args.append((self.delay, out_sig_arg))
+        return out_sig_args
+
+    def s_end(self, sig, port):
+        return
+
+    def r_end(self, sig, port):
+        return
+
+    def multiply_power(self, sig, ratio, l_port):
+        new_power = sig.physics["power"] * ratio
+        if new_power > 0:
+            data_to_send = sig.data
+            sig_name = sig.name + ":{}:{}".format(self.name, l_port)
+            delay = sig.delay
+            sig_physics = {"type": "optic",
+                           "power": new_power,
+                           "distance_passed": sig.physics["distance_passed"] + self.length}
+            sig_arg = [self.env, sig_name, data_to_send, self, l_port, delay, sig_physics]
+            return sig_arg
+        return False
+
+
+class Splitter(PassiveDev):
     def __init__(self, env, name, config):
         Dev.__init__(self, env, name, config)
         self.delay = 0
@@ -510,41 +624,24 @@ class Splitter(Dev):
         else:
             raise Exception("Unknown splitter type {}".format(typ))
 
-    def multiply_power(self, sig, ratio, l_port):
-        new_power = sig.physics["power"] * ratio
-        if new_power > 0:
-            data_to_send = sig.data
-            sig_id = sig.name
-            delay = sig.delay
-            new_sig = Signal(self.env, sig_id, data_to_send, self, l_port, delay)
-            new_sig.physics["type"] = "optic"
-            new_sig.physics["power"] = new_power
-            new_sig.physics["distance_passed"] += self.length
-            return new_sig
-        return False
 
-    def s_start(self, sig, l_port):
-        r_port, r_dev = self.out[l_port]
-        return r_dev, sig, r_port
-
-    def s_end(self, sig, port):
-        return
-
-    def r_start(self, sig, port):
-        matrix_ratios = self.power_matrix[port]
-        for l_port in range(len(matrix_ratios)):
-            ratio = matrix_ratios[l_port]
-            splitted_sig = self.multiply_power(sig, ratio, l_port)
-            if splitted_sig is not False:
-                splitted_sig.name += ":{}:{}".format(self.name, l_port)
-        return self.delay
-
-    def r_end(self, sig, port):
-        return
+class Fiber(PassiveDev):
+    def __init__(self, env, name, config):
+        PassiveDev.__init__(self, env, name, config)
+        self.type = self.config['type']
+        self.length = float(self.config['length'])
+        self.delay = int(round(10**6 * 1000 * self.length / light_velocity))
+        if self.type == "G657":
+            self.att = 0.22
+        else:
+            raise Exception('Fiber type {} not implemented'.format(self.type))
+        ratio = math.exp(- self.att * self.length / 4.34)
+        self.power_matrix = [[0, ratio],
+                             [ratio, 0]]
 
 
 def NetFabric(net, env):
-    classes = {"OLT": Olt, "ONT": Ont, "Splitter": Splitter}
+    classes = {"OLT": Olt, "ONT": Ont, "Splitter": Splitter, "Fiber": Fiber}
     devices = dict()
     connection = dict()
     # Create devices
@@ -565,17 +662,23 @@ def NetFabric(net, env):
             r_dev = devices[r_dev_name]
             l_port = int(l_port)
             l_dev.out[l_port] = (int(r_port), r_dev)
+    return devices
 
 
 def main():
-    config = Dict({"horizont": 1500})
-    net = json.load(open("network2.json"))
+    config = Dict({"horizont": 10000})
+    net = json.load(open("network3.json"))
 
     env = simpy.Environment()
-    NetFabric(net, env)
+    devices = NetFabric(net, env)
     env.run(until=config.horizont)
 
     print("{} End of simulation... Preparing results.".format(env.now))
+    for dev_name in devices:
+        if re.search("[ON|LT]", dev_name) is not None:
+            dev = devices[dev_name]
+            print(dev_name)
+            dev.counters.export_to_console()
     # make_results()
 
 
