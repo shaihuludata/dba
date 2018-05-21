@@ -1,11 +1,148 @@
-from random import expovariate
 import simpy
-from examples_and_tries.SimComponents import PacketGenerator, PacketSink
 from addict import Dict
 import json
 import random
 import logging
 import re
+import time
+import random
+
+
+class Packet(object):
+    """ A very simple class that represents a packet.
+        This packet will run through a queue at a switch output port.
+        We use a float to represent the size of the packet in bytes so that
+        we can compare to ideal M/M/1 queues.
+
+        Parameters
+        ----------
+        time : float
+            the time the packet arrives at the output queue.
+        size : float
+            the size of the packet in bytes
+        id : int
+            an identifier for the packet
+        src, dst : int
+            identifiers for source and destination
+        flow_id : int
+            small integer that can be used to identify a flow
+    """
+    def __init__(self, time, size, id, src="a", dst="z", flow_id=0):
+    # def __init__(self, dev_name, id, type):
+    #     configs = json.load(open('./uni_traffic/traffic_types.json'))
+    #     config = configs[type]
+    #     self.id = dev_name + '_' + id
+    #     self.queue = list()
+    #     self.traf_class = config["class"]
+    #     self.service = config["service"]
+    #     self.packet_counter = 0
+    #     self.max_queue_size = config["max_queue_size"]  # in number_of_packets
+
+        self.time = time
+        self.size = size
+        self.id = id
+        self.src = src
+        self.dst = dst
+        self.flow_id = flow_id
+
+    def __repr__(self):
+        return "id: {}, src: {}, time: {}, size: {}".\
+            format(self.id, self.src, self.time, self.size)
+
+
+class PacketGenerator(object):
+    """ Generates packets with given inter-arrival time distribution.
+        Set the "out" member variable to the entity to receive the packet.
+
+        Parameters
+        ----------
+        env : simpy.Environment
+            the simulation environment
+        adist : function
+            a no parameter function that returns the successive inter-arrival times of the packets
+        sdist : function
+            a no parameter function that returns the successive sizes of the packets
+        initial_delay : number
+            Starts generation after an initial delay. Default = 0
+        finish : number
+            Stops generation at the finish time. Default is infinite
+
+
+    """
+    def __init__(self, env, id,  adist, sdist, initial_delay=0, finish=float("inf"), flow_id=0):
+        self.id = id
+        self.env = env
+        self.adist = adist
+        self.sdist = sdist
+        self.initial_delay = initial_delay
+        self.finish = finish
+        self.out = None
+        self.packets_sent = 0
+        self.action = env.process(self.run())  # starts the run() method as a SimPy process
+        self.flow_id = flow_id
+
+    def run(self):
+        """The generator function used in simulations.
+        """
+        yield self.env.timeout(self.initial_delay)
+        while self.env.now < self.finish:
+            # wait for next transmission
+            yield self.env.timeout(self.adist())
+            self.packets_sent += 1
+            p = Packet(self.env.now, self.sdist(), self.packets_sent, src=self.id, flow_id=self.flow_id)
+            self.out.put(p)
+
+
+class PacketSink(object):
+    """ Receives packets and collects delay information into the
+        waits list. You can then use this list to look at delay statistics.
+
+        Parameters
+        ----------
+        env : simpy.Environment
+            the simulation environment
+        debug : boolean
+            if true then the contents of each packet will be printed as it is received.
+        rec_arrivals : boolean
+            if true then arrivals will be recorded
+        absolute_arrivals : boolean
+            if true absolute arrival times will be recorded, otherwise the time between consecutive arrivals
+            is recorded.
+        rec_waits : boolean
+            if true waiting time experienced by each packet is recorded
+        selector: a function that takes a packet and returns a boolean
+            used for selective statistics. Default none.
+
+    """
+    def __init__(self, env, rec_arrivals=False, absolute_arrivals=False, rec_waits=True, debug=False, selector=None):
+        self.store = simpy.Store(env)
+        self.env = env
+        self.rec_waits = rec_waits
+        self.rec_arrivals = rec_arrivals
+        self.absolute_arrivals = absolute_arrivals
+        self.waits = []
+        self.arrivals = []
+        self.debug = debug
+        self.packets_rec = 0
+        self.bytes_rec = 0
+        self.selector = selector
+        self.last_arrival = 0.0
+
+    def put(self, pkt):
+        if not self.selector or self.selector(pkt):
+            now = self.env.now
+            if self.rec_waits:
+                self.waits.append(self.env.now - pkt.time)
+            if self.rec_arrivals:
+                if self.absolute_arrivals:
+                    self.arrivals.append(now)
+                else:
+                    self.arrivals.append(now - self.last_arrival)
+                self.last_arrival = now
+            self.packets_rec += 1
+            self.bytes_rec += pkt.size
+            if self.debug:
+                print(pkt)
 
 
 class Timer:
@@ -18,7 +155,8 @@ class Timer:
             self.run = self.periodic
         elif condition == "once":
             self.run = self.once
-        else: raise NotImplemented
+        else:
+            raise NotImplemented
         self.action = env.process(self.run())
 
     def periodic(self):
@@ -45,9 +183,6 @@ class Counters:
 
     def export_to_console(self):
         print(self.__dict__)
-        # for counter in self.__dict__:
-        #     if counter is not None:
-        #         print('{} = {}'.format(counter, self.__dict__[counter]))
 
 
 class Signal:
@@ -67,7 +202,7 @@ class Signal:
         self.source = source
         self.source_port = source_port
         self.action = env.process(self.run())
-        if sig_physics != None:
+        if sig_physics is not None:
             self.physics.update(sig_physics)
 
     def run(self):
@@ -210,7 +345,6 @@ class ActiveDev(Dev):
             trans_type = self.config["transmitter_type"]
             if trans_type == "1G":
                 self.transmitter_speed = 1244160000
-                # self.transmitter_speed = 1000000000
                 self.maximum_allocation_start_time = 19438
             elif trans_type == "2G":
                 self.transmitter_speed = 2488320000
@@ -241,16 +375,16 @@ class ActiveDev(Dev):
         if num_of_sigs > 1:
             print("{} : {} : ИНТЕРФЕРЕНЦИОННАЯ КОЛЛИЗИЯ. Сигналов: {}!!!"
                   .format(self.env.now, self.name, num_of_sigs))
-            sn = False
+            sn = True
             for i in rec_sigs:
-                if "sn_response" in i.data:
-                    sn = True
+                sn = False if "sn_response" not in i.data else sn*True
             if not sn:
                 print("плохая коллизия")
-                #print(list((sig.name, sig.data["cycle_num"]) for sig in rec_sigs))
-                print(list(sig.name for sig in rec_sigs))
+                print(list((sig.name, sig.data["cycle_num"]) for sig in rec_sigs))
+                # print(list(sig.name for sig in rec_sigs))
                 # raise Exception("плохая коллизия")
-
+            else:
+                pass
             for i in rec_sigs:
                 i.physics["collision"] = True
         return
@@ -286,7 +420,7 @@ class Ont(ActiveDev):
 
         self.STATE = "Offline"
         self.range_time_delta = list()
-        # self.traffic_generators = dict()
+        self.traffic_generators = dict()
         self.current_allocations = dict()  # key alloc_id : value grant_size
 
         if "Alloc" in config:
@@ -335,7 +469,7 @@ class Ont(ActiveDev):
 
         sig = self.oe_transform(sig)
         logging.debug("{} : {} : принят {}".format(self.env.now, self.name, sig.name))
-        self.next_cycle_start = self.env.now  # + self.cycle_duration
+        self.next_cycle_start = self.env.now + self.cycle_duration
         if self.STATE == "Offline":
             return
         if self.STATE == "Initial":
@@ -344,7 +478,7 @@ class Ont(ActiveDev):
             if "sn_request" in sig.data:
                 # из принятого от OLT сигнала распознаём sn_request и планируем ответ на момент planned_s_time
                 # delay = random.randrange(34, 36, 1) + random.randrange(0, 50, 1)
-                delay = random.randrange(0, 80, 1) + self.cycle_duration
+                delay = random.randrange(0, 80, 1) + 2*self.cycle_duration
                 planned_s_time = round(self.env.now + delay, 2)
                 planned_e_time = planned_s_time + 2
                 sig_id = "{}:{}:{}".format(planned_s_time, self.name, planned_e_time)
@@ -436,10 +570,9 @@ class Ont(ActiveDev):
                         #                     data_to_send[alloc_id] = list()
                         #                 data_to_send[alloc_id].append(packet)
                         #         break
-                        # data_to_send.update({"cycle_num": sig.data["cycle_num"]})
-                        # data_to_send.update({"allocation": allocation})
-
                         data = {}
+                        data.update({"cycle_num": sig.data["cycle_num"]})
+                        data.update({"allocation": allocation})
                         sig_id = "{}:{}:{}".format(planned_s_time, self.name, planned_e_time)
                         a = len(self.snd_port_sig[port])
                         # assert len(self.snd_port_sig[port]) == 0
@@ -490,7 +623,7 @@ class Olt(ActiveDev):
             if self.STATE == "SN_request":
                 l_port = 0
                 bwmap = self.dba.sn_request()
-                data = {"bwmap": bwmap, "sn_request": True, "s_timestamp": self.env.now}
+                data = {"bwmap": bwmap, "sn_request": True, "s_timestamp": self.env.now, "cycle_num": self.counters.cycle_number}
                 # тут лучше сделать таймер
                 # data.update(self.snd_port_sig[l_port])
                 # self.snd_port_sig[l_port].clear()
@@ -500,8 +633,9 @@ class Olt(ActiveDev):
                 sig_id = "{}:{}:{}".format(start, self.name, end)
                 Signal(self.env, sig_id, data, self, l_port, delay)
                 yield self.env.timeout(self.cycle_duration + 1e-12)
+                self.counters.cycle_number += 1
                 bwmap = self.dba.sn_request()
-                data = {"bwmap": bwmap, "s_timestamp": self.env.now}
+                data = {"bwmap": bwmap, "s_timestamp": self.env.now, "cycle_num": self.counters.cycle_number}
                 # data.update(self.snd_port_sig[l_port])
                 start = round(self.env.now, 2)
                 delay = self.cycle_duration
@@ -509,9 +643,11 @@ class Olt(ActiveDev):
                 sig_id = "{}:{}:{}".format(start, self.name, end)
                 Signal(self.env, sig_id, data, self, l_port, delay)
                 yield self.env.timeout(self.cycle_duration + 1e-12)
+                self.counters.cycle_number += 1
                 self.STATE = "Normal"
             elif self.STATE == "Normal":
                 l_port = 0
+                data = {"cycle_num": self.counters.cycle_number}
                 data.update(self.snd_port_sig[l_port])
                 self.snd_port_sig[l_port].clear()
                 start = round(self.env.now, 2)
@@ -520,6 +656,7 @@ class Olt(ActiveDev):
                 sig_id = "{}:{}:{}".format(start, self.name, end)
                 Signal(self.env, sig_id, data, self, l_port, delay)
                 yield self.env.timeout(self.cycle_duration + 1e-12)
+                self.counters.cycle_number += 1
 
     def r_end(self, sig, port: int):
         ret = dict()
@@ -533,6 +670,7 @@ class Olt(ActiveDev):
                     return {}
                 break
 
+        self.counters.ingress_unicast += 1
         logging.debug("{} : {} : принят {}".format(self.env.now, self.name, sig.name))
         self.oe_transform(sig)
         if "sn_response" in sig.data and self.env.now <= self.sn_request_quiet_interval_end:
@@ -671,13 +809,15 @@ def main():
 
     env = simpy.Environment()
     devices = NetFabric(net, env)
+    t_start = time.time()
     env.run(until=config.horizont)
 
-    print("{} End of simulation... Preparing results.".format(env.now))
+    print("{} End of simulation in {}... ".format(env.now, round(time.time() - t_start, 2)),
+          "\n Preparing results.".format())
     for dev_name in devices:
         if re.search("[ON|LT]", dev_name) is not None:
             dev = devices[dev_name]
-            print(dev_name)
+            print(dev_name, end='')
             dev.counters.export_to_console()
     # make_results()
 
