@@ -1,9 +1,7 @@
 from random import expovariate
 import simpy
-from examples_and_tries.SimComponents import PacketGenerator, PacketSink
-from addict import Dict
-import json
-import copy
+from examples_and_tries.sim.SimComponents import PacketGenerator, PacketSink
+
 
 def constArrival():  # Constant arrival distribution for generator 1
     return 1.5

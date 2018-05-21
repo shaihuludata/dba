@@ -1,6 +1,4 @@
-from random import expovariate
 import simpy
-from examples_and_tries.SimComponents import PacketGenerator, PacketSink
 from addict import Dict
 import json
 import copy
