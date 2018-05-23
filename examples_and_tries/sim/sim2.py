@@ -153,8 +153,7 @@ class PacketSink(object):
         flow_id = pkt.flow_id
         total_size = pkt.t_size
         fragments = list(msg for msg in self.store.items)
-        defragment = EmptySet()
-        defragment.union(Interval(frg.f_offset, frg.f_offset + frg.size) for frg in fragments)
+        defragment = EmptySet().union(Interval(frg.f_offset, frg.f_offset + frg.size) for frg in fragments)
         if defragment.measure == total_size:
             for frg in fragments:
                 self.store.items.remove(frg)
@@ -394,6 +393,7 @@ class Dev(object):
         # self.rate = config["type"]
         self.env = env
         self.out = dict()
+        self.observer = None
 
     def s_start(self, sig, port):
         raise NotImplemented
@@ -879,26 +879,30 @@ class Fiber(PassiveDev):
                              [ratio, 0]]
 
 
-class Observer(Thread):
+class DevObserver(Thread):
     result_dir = './result/'
-    def __init__(self, time_ranges_to_show, source: list, ev_wait):
+
+    def __init__(self, config):
         Thread.__init__(self)
         self.name = "Traffic visualizer"
         # {dev.name + "::" + port: [(time, sig.__dict__)]}
         self.observer_result = dict()
+        time_ranges_to_show = config["observers"]["flow"]["time_ranges"]
         self.time_ranges_to_show = EmptySet().union(Interval(i[0], i[1]) for i in time_ranges_to_show)
         self.time_horisont = max(self.time_ranges_to_show.boundary)
-        # self.target = self.notice
-        self.source = source
-        self.
+        self.target = self.notice
+        # self.source = source
+        self.ev_wait = None
 
     def run(self):
+        while True:
+            print('ну привет. я %s', self.name)
+            self.ev_wait.wait()  # wait for event
+
+            self.ev_wait.clear()  # clean event for future
         pass
 
-    def notice(self, , cur_time):
-        ev_wait.wait()  # wait for event
-        ev_wait.clear()  # clean event for future
-        pass
+    def notice(self, cur_time, data):
         if cur_time not in self.time_ranges_to_show:
             return
 
@@ -960,10 +964,12 @@ class Observer(Thread):
         fig.savefig(self.result_dir + "packets.png", bbox_inches="tight")
 
 
-def NetFabric(net, env):
+def NetFabric(net, env, sim_config):
     classes = {"OLT": Olt, "ONT": Ont, "Splitter": Splitter, "Fiber": Fiber}
     devices = dict()
     connection = dict()
+    obs = DevObserver(sim_config)
+    obs.start()
     # Create devices
     for dev_name in net:
         config = net[dev_name]
@@ -971,6 +977,7 @@ def NetFabric(net, env):
             if dev_type in dev_name:
                 constructor = classes[dev_type]
                 dev = constructor(env, dev_name, config)
+                dev.observer = obs
                 devices[dev_name] = dev
                 connection[dev_name] = config["ports"]
     # Interconnect devices
@@ -986,13 +993,14 @@ def NetFabric(net, env):
 
 
 def main():
-    config = Dict({"horizont": 10000})
+    sim_config = Dict(json.load(open('./dba.json')))
     net = json.load(open("network3.json"))
+    time_horizont = sim_config.horizont if "horizont" in sim_config else 1000
 
     env = simpy.Environment()
-    devices = NetFabric(net, env)
+    devices = NetFabric(net, env, sim_config)
     t_start = time.time()
-    env.run(until=config.horizont)
+    env.run(until=time_horizont)
 
     print("{} End of simulation in {}...".format(env.now, round(time.time() - t_start, 2)),
           "\n***Preparing results***".format())

@@ -1,0 +1,29 @@
+{
+    "horizont" : 10000,
+    "observers" : {
+        "flow": {
+            "report": false,
+            "time_ranges": [[500, 2000]]
+        },
+        "power": {
+            "report": true,
+            "time_ranges": [[3000, 5000]]
+        },
+        "traffic": {
+            "report": true,
+            "time_ranges": [[0, 60000]]
+        },
+        "IPtraffic": {
+            "report": true,
+            "time_ranges": [[0, 60000]]
+        },
+        "mass_traffic": {
+            "report": true,
+            "time_ranges": [[0, 60000]]
+        },
+        "BufferObserver": {
+            "report": true,
+            "time_ranges": [[0, 60000]]
+        }
+    }
+}
