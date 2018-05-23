@@ -5,7 +5,11 @@ import random
 import logging
 import re
 import time
+import copy
 import random
+from sympy import EmptySet, Interval
+import numpy as np
+import matplotlib.pyplot as plt
 
 
 class Packet(object):
@@ -27,33 +31,31 @@ class Packet(object):
         flow_id : int
             small integer that can be used to identify a flow
     """
-    def __init__(self, time, size, id, src="a", dst="z", flow_id=0):
-    # def __init__(self, dev_name, id, type):
-    #     configs = json.load(open('./uni_traffic/traffic_types.json'))
-    #     config = configs[type]
-    #     self.id = dev_name + '_' + id
-    #     self.queue = list()
-    #     self.traf_class = config["class"]
-    #     self.service = config["service"]
-    #     self.packet_counter = 0
-    #     self.max_queue_size = config["max_queue_size"]  # in number_of_packets
-
+    def __init__(self, time, size, id, src="a", dst="z", flow_id=0, cos_class=0, packet_num=0):
+        # "interval": self.send_interval,
         self.time = time
         self.size = size
+        self.t_size = size
+        self.f_offset = 0
+        self.num = packet_num
         self.id = id
         self.src = src
         self.dst = dst
+        self.cos = cos_class
         self.flow_id = flow_id
 
     def __repr__(self):
-        return "id: {}, src: {}, time: {}, size: {}".\
-            format(self.id, self.src, self.time, self.size)
+        return "id: {}, src: {}, time: {}, size: {}, t_size {}, f_offset: {},".\
+            format(self.id, self.src, self.time, self.size, self.t_size, self.f_offset)
+
+    def make_args_for_defragment(self):
+        args = [self.time, self.t_size, self.id, self.src, self.dst, self.flow_id, self.cos, self.num]
+        return args
 
 
 class PacketGenerator(object):
     """ Generates packets with given inter-arrival time distribution.
         Set the "out" member variable to the entity to receive the packet.
-
         Parameters
         ----------
         env : simpy.Environment
@@ -66,10 +68,12 @@ class PacketGenerator(object):
             Starts generation after an initial delay. Default = 0
         finish : number
             Stops generation at the finish time. Default is infinite
-
-
     """
     def __init__(self, env, id,  adist, sdist, initial_delay=0, finish=float("inf"), flow_id=0):
+        # self.traf_class = config["class"]
+        # self.service = config["service"]
+        # self.packet_counter = 0
+        # self.max_queue_size = config["max_queue_size"]  # in number_of_packets
         self.id = id
         self.env = env
         self.adist = adist
@@ -78,18 +82,17 @@ class PacketGenerator(object):
         self.finish = finish
         self.out = None
         self.packets_sent = 0
-        self.action = env.process(self.run())  # starts the run() method as a SimPy process
+        self.action = env.process(self.run())
         self.flow_id = flow_id
 
     def run(self):
-        """The generator function used in simulations.
-        """
         yield self.env.timeout(self.initial_delay)
         while self.env.now < self.finish:
             # wait for next transmission
-            yield self.env.timeout(self.adist())
+            send_interval = self.adist()
+            yield self.env.timeout(send_interval)
             self.packets_sent += 1
-            p = Packet(self.env.now, self.sdist(), self.packets_sent, src=self.id, flow_id=self.flow_id)
+            p = Packet(self.env.now, round(self.sdist()), self.packets_sent, src=self.id, flow_id=self.flow_id)
             self.out.put(p)
 
 
@@ -112,7 +115,6 @@ class PacketSink(object):
             if true waiting time experienced by each packet is recorded
         selector: a function that takes a packet and returns a boolean
             used for selective statistics. Default none.
-
     """
     def __init__(self, env, rec_arrivals=False, absolute_arrivals=False, rec_waits=True, debug=False, selector=None):
         self.store = simpy.Store(env)
@@ -141,8 +143,89 @@ class PacketSink(object):
                 self.last_arrival = now
             self.packets_rec += 1
             self.bytes_rec += pkt.size
+            self.store.put(pkt)
+            dfg_pkt = self.defragmentation(pkt)
             if self.debug:
-                print(pkt)
+                print(self.env.now, dfg_pkt)
+
+    def defragmentation(self, pkt: Packet):
+        flow_id = pkt.flow_id
+        total_size = pkt.t_size
+        fragments = list(msg for msg in self.store.items)
+        defragment = EmptySet()
+        defragment.union(Interval(frg.f_offset, frg.f_offset + frg.size) for frg in fragments)
+        if defragment.measure == total_size:
+            for frg in fragments:
+                self.store.items.remove(frg)
+        pkt = Packet(*pkt.make_args_for_defragment())
+        return pkt
+
+
+class UniPort(object):
+    """ Models a switch output port with a given rate and buffer size limit in bytes.
+        Set the "out" member variable to the entity to receive the packet.
+
+        Parameters
+        ----------
+        env : simpy.Environment
+            the simulation environment
+        rate : float
+            the bit rate of the port
+        qlimit : integer (or None)
+            a buffer size limit in bytes or packets for the queue (including items
+            in service).
+        limit_bytes : If true, the queue limit will be based on bytes if false the
+            queue limit will be based on packets.
+    """
+    def __init__(self, env, rate, qlimit=None, limit_bytes=True, debug=False):
+        self.store = simpy.Store(env)
+        self.rate = rate
+        self.env = env
+        self.packets_rec = 0
+        self.packets_drop = 0
+        self.qlimit = qlimit
+        self.limit_bytes = limit_bytes
+        self.byte_size = 0  # Current size of the queue in bytes
+        self.debug = debug
+        self.busy = 0  # Used to track if a packet is currently being sent
+
+    def get(self, size):
+        pkt_list = list()
+        tot_size_got = int()
+        for pkt in self.store.items:
+            if size == 0:
+                break
+            if size > pkt.size:
+                pkt_list.append(pkt)
+                self.store.items.remove(pkt)
+                size -= pkt.size
+                tot_size_got += pkt.size
+            else:
+                new_pkt = copy.deepcopy(pkt)
+                new_pkt.size = size
+                pkt_list.append(new_pkt)
+                pkt.size -= size
+                pkt.f_offset += size
+                size = 0
+                tot_size_got += new_pkt.size
+        self.byte_size -= tot_size_got
+        return pkt_list
+
+    def put(self, pkt):
+        self.packets_rec += 1
+        tmp_byte_count = self.byte_size + pkt.size
+
+        if self.qlimit is None:
+            self.byte_size = tmp_byte_count
+            return self.store.put(pkt)
+        if self.limit_bytes and tmp_byte_count > self.qlimit:
+            self.packets_drop += 1
+            return
+        elif not self.limit_bytes and len(self.store.items) >= self.qlimit-1:
+            self.packets_drop += 1
+        else:
+            self.byte_size = tmp_byte_count
+            return self.store.put(pkt)
 
 
 class Timer:
@@ -340,6 +423,8 @@ class ActiveDev(Dev):
             self.snd_port_sig[int(port)] = list()
         self.counters = Counters()
         self.action = env.process(self.run())
+        # env, rec_arrivals = False, absolute_arrivals = False, rec_waits = True, debug = False, selector = None)
+        self.p_sink = PacketSink(env, debug=True)
 
         if "transmitter_type" in self.config:
             trans_type = self.config["transmitter_type"]
@@ -410,6 +495,57 @@ class ActiveDev(Dev):
         return sig
 
 
+class TrafGeneratorBuilder:
+    # elif sid == "poisson":
+    #     (par, size)
+    # elif sid == "normal":
+    #     sigma = config["sigma_si"]
+    #     self.send_interval = (par, sigma, size)
+    def __init__(self):
+        self.traf_configs = json.load(open("traffic_types.json"))
+
+    def generate_distribution(self, distribution, parameters: list):
+        def configured_distr():
+            return distribution(*parameters)
+        return configured_distr
+
+    def packet_source(self, env, flow_id, traf_type):
+        def deterministic(parameter):
+            return parameter  # time interval
+        distribution = {"poisson": np.random.poisson, "normal": np.random.normal, "deterministic": deterministic}
+        if traf_type in self.traf_configs["traffic"]:
+            config = self.traf_configs["traffic"][traf_type]
+            adistrib = distribution[config["send_interval_distribution"]]
+            a_dist_params = list()
+            for par in ["send_interval", "sigma_si"]:
+                if par in config:
+                    a_dist_params.append(config[par])
+            adist = self.generate_distribution(adistrib, a_dist_params)
+            sdistrib = distribution[config["size_of_packet_distribution"]]
+            s_dist_params = list()
+            for par in ["size_of_packet", "sigma_sop"]:
+                if par in config:
+                    s_dist_params.append(config[par])
+            sdist = self.generate_distribution(sdistrib, s_dist_params)
+        else:
+            raise NotImplemented
+        # (env, id, adist, sdist, initial_delay = 0, finish = float("inf"), flow_id = 0
+        pg = PacketGenerator(env, flow_id, adist, sdist, flow_id=flow_id)
+        return pg
+
+    def uni_input_for_ont(self, env, pg, port_type=None):
+        if port_type in self.traf_configs["ports"]:
+            config = self.traf_configs["ports"][port_type]
+            rate, qlimit = config["rate"], config["qlimit"]
+        else:
+            rate = 1000000
+            qlimit = 65535
+        # env, rate, qlimit = None, limit_bytes = True, debug = False
+        uniport = UniPort(env, rate, qlimit)
+        pg.out = uniport
+        return uniport
+
+
 class Ont(ActiveDev):
     def __init__(self, env, name, config):
         ActiveDev.__init__(self, env, name, config)
@@ -423,23 +559,25 @@ class Ont(ActiveDev):
         self.traffic_generators = dict()
         self.current_allocations = dict()  # key alloc_id : value grant_size
 
+        tgb = TrafGeneratorBuilder()
         if "Alloc" in config:
-            for alloc_id in config["Alloc"]:
-                alloc_type = config["Alloc"][alloc_id]
-                # tg = Traffic(self.name, alloc_id, alloc_type)
-                # self.traffic_generators[self.name + "_" + alloc_id] = tg
+            for alloc_num in config["Alloc"]:
+                traf_type = config["Alloc"][alloc_num]
+                flow_id = self.name + "_" + alloc_num
+                pg = tgb.packet_source(env, flow_id, traf_type)
+                uni = tgb.uni_input_for_ont(env, pg, flow_id)
+                self.traffic_generators[flow_id] = uni
                 # self.current_allocations[tg.id] = tg.traf_class
-                alloc_name = self.name + "_" + alloc_id
-                self.current_allocations[alloc_name] = None
+                self.current_allocations[flow_id] = None
         if "0" not in config["Alloc"]:
             alloc_type = "type0"
 
     def run(self):
+        if self.STATE is "Offline":
+            yield self.env.timeout(self.time_activation)
+            self.STATE = "Initial"
         while True:
-            if self.STATE is "Offline":
-                yield self.env.timeout(self.time_activation)
-                self.STATE = "Initial"
-            elif self.STATE == "Initial":
+            if self.STATE == "Initial":
                 yield self.env.timeout(self.cycle_duration)
             elif self.STATE in ["Standby", "Operation"]:
                 l_port = 0
@@ -487,17 +625,15 @@ class Ont(ActiveDev):
                 self.snd_port_sig[port].append({"s_time": planned_s_time, "args": [self.env, sig_id, data, self, port, 2]})
             if "sn_ack" in sig.data:
                 for alloc in sig.data["sn_ack"]:
-                    if alloc in self.current_allocations:
-                        self.current_allocations[alloc] = "sn_ack"
+                    if alloc in self.traffic_generators:
+                        self.current_allocations[alloc] = self.traffic_generators[alloc]
                 allocs_acked = list(i for i in self.current_allocations.keys()
-                                    if self.current_allocations[i] == "sn_ack")
+                                    if self.current_allocations[i] is not None)
                 if len(allocs_acked) > 0:
-                    print("{} Авторизация на OLT подтверждена, allocs: {}".format(self.name, allocs_acked))
+                    logging.info("{} Авторизация на OLT подтверждена, allocs: {}".format(self.name, allocs_acked))
                 # Формально тут должно быть "SerialNumber"
                 # но без потери смысла для симуляции должно быть Ranging
                     self.STATE = "Ranging"
-                # print(sig)
-                # output = {"sig": sig, "delay": delay}
         elif self.STATE == "Ranging":
             if "s_timestamp" in sig.data:
                 s_timestamp = sig.data["s_timestamp"]
@@ -512,12 +648,13 @@ class Ont(ActiveDev):
             for allocation in bwmap:
                 name = self.name
                 alloc_id = allocation["Alloc-ID"]
-                for dev_alloc in self.current_allocations:
-                    if dev_alloc == alloc_id:
-                        data_to_send = dict()
-                        allocation_start = allocation["StartTime"]
-                        allocation_stop = allocation["StopTime"]
-                        grant_size = allocation_stop - allocation_start
+                if alloc_id in self.current_allocations:
+                    data_to_send = dict()
+                    allocation_start = allocation["StartTime"]
+                    allocation_stop = allocation["StopTime"]
+                    grant_size = allocation_stop - allocation_start
+                    data = {}
+                    if grant_size > 0:
                         intra_cycle_s_start = round(8*1000000*allocation_start / self.transmitter_speed, 2)
                         intra_cycle_e_start = round(8*1000000*allocation_stop / self.transmitter_speed, 2)
                         planned_s_time = self.next_cycle_start + intra_cycle_s_start - 2*avg_half_rtt + self.cycle_duration
@@ -532,53 +669,22 @@ class Ont(ActiveDev):
                         now = self.env.now
                         assert planned_s_time >= self.env.now
 
-                        # for tg_name in self.traffic_generators:
-                        #     tg = self.traffic_generators[tg_name]
-                        #     if tg.id == alloc_id:
-                        #         if len(tg.queue) == 0:
-                        #             break
-                        #         else:  # len(tg.queue) > 0:
-                        #             packets_to_send = list()
-                        #             for message in tg.queue:
-                        #                 if grant_size == 0:
-                        #                     break
-                        #                 send_time = time + message["interval"]
-                        #                 traf_class = message["traf_class"]
-                        #                 send_size = message["size"]
-                        #                 packet = dict()
-                        #                 packet.update(message)
-                        #                 if grant_size >= send_size:
-                        #                     # packets_to_send.append(packet)
-                        #                     message["size"] = 0
-                        #                 else:
-                        #                     packet["size"] = grant_size
-                        #                     message["size"] -= grant_size
-                        #                     message["fragment_offset"] += grant_size
-                        #                 packets_to_send.append(packet)
-                        #                 grant_size -= packet["size"]
-                        #                 # print("planned_s_time {}, packet_id {}, size {}"
-                        #                 #       .format(planned_s_time, packet["packet_id"], packet["size"]))
-                        #                 packet_alloc = packet["alloc_id"]
-                        #             for packet in packets_to_send:
-                        #                 for packet_q in tg.queue:
-                        #                     packet_id = packet["packet_id"]
-                        #                     if packet_id == packet_q["packet_id"]:
-                        #                         if packet_q["size"] == 0:
-                        #                             self.traffic_generators[alloc_id].queue.remove(packet_q)
-                        #                             break
-                        #                 if alloc_id not in data_to_send:
-                        #                     data_to_send[alloc_id] = list()
-                        #                 data_to_send[alloc_id].append(packet)
-                        #         break
-                        data = {}
+                        tg = self.traffic_generators[alloc_id]
+                        # assert tg.id == alloc_id
+                        pkts = list()
+                        if len(tg.store.items) == 0:
+                            pass
+                        else:  # len(tg.queue) > 0:
+                            pkts = tg.get(grant_size)
+                        data.update({alloc_id: pkts})
                         data.update({"cycle_num": sig.data["cycle_num"]})
                         data.update({"allocation": allocation})
                         sig_id = "{}:{}:{}".format(planned_s_time, self.name, planned_e_time)
                         a = len(self.snd_port_sig[port])
                         # assert len(self.snd_port_sig[port]) == 0
                         self.snd_port_sig[port].append({"s_time": planned_s_time,
-                                                   "args": [self.env, sig_id, data, self, port, planned_delta]})
-                        break
+                                               "args": [self.env, sig_id, data, self, port, planned_delta]})
+                    break
         else:
             raise Exception("State {} not implemented".format(self.STATE))
         if self.STATE != "Offline":
@@ -594,7 +700,6 @@ class Olt(ActiveDev):
         self.sn_request_next = 0
         self.sn_request_quiet_interval_end = 0
         self.maximum_ont_amount = int(self.config["maximum_ont_amount"])
-        # self.defragmentation_buffer = dict()
         dba_config = dict()
         # self.upstream_interframe_interval = self.config["upstream_interframe_interval"]  # 10 # in bytes
         for dba_par in ["cycle_duration", "transmitter_type",
@@ -658,7 +763,7 @@ class Olt(ActiveDev):
                 yield self.env.timeout(self.cycle_duration + 1e-12)
                 self.counters.cycle_number += 1
 
-    def r_end(self, sig, port: int):
+    def r_end(self, sig, port):
         ret = dict()
         # обработка интерференционной коллизии
         # каждый принимаемый сигнал должен быть помечен как коллизирующий
@@ -686,15 +791,10 @@ class Olt(ActiveDev):
             # нормальный приём сообщения
             ont_allocs = list(alloc for alloc in sig.data if "ONT" in alloc)
             for alloc in ont_allocs:
-                for packet in sig.data[alloc]:
-                    pass
-                    # ret_upd = self.defragmentation(packet)
-                    # for t in ret_upd:
-                    #     evs = ret_upd[t]
-                    #     if t not in ret:
-                    #         ret[t] = list()
-                    #     ret[t].extend(evs)
-                # self.dba.register_packet(alloc, sig.data[alloc])
+                pkts = sig.data[alloc]
+                for pkt in pkts:
+                    self.p_sink.put(pkt)
+                    self.dba.register_packet(alloc, sig.data[alloc])
             return ret
 
 
@@ -766,16 +866,88 @@ class Splitter(PassiveDev):
 class Fiber(PassiveDev):
     def __init__(self, env, name, config):
         PassiveDev.__init__(self, env, name, config)
-        self.type = self.config['type']
-        self.length = float(self.config['length'])
+        self.type = self.config["type"]
+        self.length = float(self.config["length"])
         self.delay = int(round(10**6 * 1000 * self.length / light_velocity))
         if self.type == "G657":
             self.att = 0.22
         else:
-            raise Exception('Fiber type {} not implemented'.format(self.type))
+            raise Exception("Fiber type {} not implemented".format(self.type))
         ratio = math.exp(- self.att * self.length / 4.34)
         self.power_matrix = [[0, ratio],
                              [ratio, 0]]
+
+
+class Observer:
+    result_dir = './result/'
+    def __init__(self, time_ranges_to_show):
+        self.name = "Traffic visualizer"
+        self.observer_result = dict()
+        # # {dev.name + "::" + port: [(time, sig.__dict__)]}
+        self.time_ranges_to_show = EmptySet().union(Interval(i[0], i[1]) for i in time_ranges_to_show)
+        self.time_horisont = max(self.time_ranges_to_show.boundary)
+
+    def notice(self, schedule, cur_time):
+        if cur_time not in self.time_ranges_to_show:
+            return
+
+        # for ev_time in passed_schedule:
+        #     for event in passed_schedule[ev_time]:
+        #         dev, state, sig, port = event["dev"], event["state"], event["sig"], event["port"]
+        #         # if sig.physics["type"] == "electric":
+        #         if "OLT" in dev.name and state == "r_end":
+        #             if sig.name not in self.observer_result:
+        #                 self.observer_result[sig.name] = dict()
+        #             data = dict()
+        #             data.update(sig.data)
+        #             # for dev_name in ["OLT"]:  # , "OLT"]
+        #             # if dev_name in dev.name:
+        #             self.observer_result[sig.name][ev_time] = data
+        #         # {имя сигнала : {время: данные сигнала}}
+        return
+
+    def cook_result(self):
+        flow_time_result = dict()
+        for dev_name in self.observer_result:
+            time_data_result = self.observer_result[dev_name]
+            for time_r in time_data_result:
+                tcont_data = time_data_result[time_r]
+                for alloc in tcont_data:
+                    if dev_name in alloc:
+                        if alloc not in flow_time_result:
+                            flow_time_result[alloc] = dict()
+                        if time_r not in flow_time_result[alloc]:
+                            flow_time_result[alloc][time_r] = tcont_data[alloc]
+        return flow_time_result
+
+    def make_results(self):
+        fig = plt.figure(1, figsize=(15, 15))
+        fig.show()
+
+        # number_of_sigs = len(self.observer_result)
+        flow_time_result = self.cook_result()
+        number_of_flows = len(flow_time_result)
+        flow_index = 1
+        for flow_name in flow_time_result:
+            time_result, latency_result = list(), list()
+            for time_r in flow_time_result[flow_name]:
+                packet_data = flow_time_result[flow_name][time_r]
+                if "born_time" in packet_data:
+                    time_result.append(time_r)
+                    latency_result.append(time_r - packet_data["born_time"])
+            ax = fig.add_subplot(number_of_flows, 1, flow_index)
+            flow_index += 1
+            plt.ylabel(flow_name)
+            ax.plot(time_result, latency_result)
+            fig.canvas.draw()
+            time.sleep(1)
+
+        # ax.set_xticklabels(points_to_watch)
+        fig.canvas.draw()
+        # time.sleep(1)
+        # plt.show()
+        fig.savefig(self.result_dir + "packets.png", bbox_inches="tight")
+
 
 
 def NetFabric(net, env):
@@ -812,12 +984,12 @@ def main():
     t_start = time.time()
     env.run(until=config.horizont)
 
-    print("{} End of simulation in {}... ".format(env.now, round(time.time() - t_start, 2)),
-          "\n Preparing results.".format())
+    print("{} End of simulation in {}...".format(env.now, round(time.time() - t_start, 2)),
+          "\n***Preparing results***".format())
     for dev_name in devices:
         if re.search("[ON|LT]", dev_name) is not None:
             dev = devices[dev_name]
-            print(dev_name, end='')
+            print(dev_name, end="")
             dev.counters.export_to_console()
     # make_results()
 
