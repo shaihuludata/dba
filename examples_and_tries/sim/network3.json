@@ -40,7 +40,7 @@
     "transmitter_wavelength": "1310",
     "transmitter_type": "2G",
     "activation_time": 0.2,
-    "Alloc": {"1": "type1", "2": "type1"}
+    "Alloc": {"1": "type2", "2": "type2"}
   },
   "Fiber2":
   {
@@ -55,7 +55,7 @@
     "transmitter_wavelength": "1310",
     "transmitter_type": "2G",
     "activation_time": 0.3,
-    "Alloc": {"1": "type1", "2": "type1"}
+    "Alloc": {"1": "type3", "2": "type3"}
   },
   "Fiber3":
   {
@@ -70,7 +70,7 @@
     "transmitter_wavelength": "1310",
     "transmitter_type": "2G",
     "activation_time": 0.4,
-    "Alloc": {"1": "type1", "2": "type1"}
+    "Alloc": {"1": "type4", "2": "type4"}
   },
   "Fiber4":
   {
