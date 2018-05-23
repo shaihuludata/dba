@@ -10,6 +10,7 @@ import random
 from sympy import EmptySet, Interval
 import numpy as np
 import matplotlib.pyplot as plt
+from threading import Thread, Event
 
 
 class Packet(object):
@@ -878,16 +879,26 @@ class Fiber(PassiveDev):
                              [ratio, 0]]
 
 
-class Observer:
+class Observer(Thread):
     result_dir = './result/'
-    def __init__(self, time_ranges_to_show):
+    def __init__(self, time_ranges_to_show, source: list, ev_wait):
+        Thread.__init__(self)
         self.name = "Traffic visualizer"
+        # {dev.name + "::" + port: [(time, sig.__dict__)]}
         self.observer_result = dict()
-        # # {dev.name + "::" + port: [(time, sig.__dict__)]}
         self.time_ranges_to_show = EmptySet().union(Interval(i[0], i[1]) for i in time_ranges_to_show)
         self.time_horisont = max(self.time_ranges_to_show.boundary)
+        # self.target = self.notice
+        self.source = source
+        self.
 
-    def notice(self, schedule, cur_time):
+    def run(self):
+        pass
+
+    def notice(self, , cur_time):
+        ev_wait.wait()  # wait for event
+        ev_wait.clear()  # clean event for future
+        pass
         if cur_time not in self.time_ranges_to_show:
             return
 
@@ -947,7 +958,6 @@ class Observer:
         # time.sleep(1)
         # plt.show()
         fig.savefig(self.result_dir + "packets.png", bbox_inches="tight")
-
 
 
 def NetFabric(net, env):
