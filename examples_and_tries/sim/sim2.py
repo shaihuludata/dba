@@ -10,7 +10,8 @@ import random
 from sympy import EmptySet, Interval
 import numpy as np
 import matplotlib.pyplot as plt
-from threading import Thread, Event
+from threading import Thread
+from threading import Event as ThEvent
 
 
 class Packet(object):
@@ -93,7 +94,10 @@ class PacketGenerator(object):
             send_interval = self.adist()
             yield self.env.timeout(send_interval)
             self.packets_sent += 1
-            p = Packet(self.env.now, round(self.sdist()), self.packets_sent, src=self.id, flow_id=self.flow_id)
+            p = Packet(self.env.now,
+                       round(self.sdist()),
+                       self.packets_sent,
+                       src=self.id, flow_id=self.flow_id, packet_num=self.packets_sent)
             self.out.put(p)
 
 
@@ -265,7 +269,7 @@ class Counters:
         self.number_of_ont = int()
 
     def export_to_console(self):
-        print(self.__dict__)
+        return self.__dict__
 
 
 class Signal:
@@ -292,15 +296,11 @@ class Signal:
         while self.alive:
             l_dev, l_port = self.source, self.source_port
             r_dev, sig, r_port = l_dev.s_start(self, l_port)
-            new_sig_args = r_dev.r_start(sig, r_port)
-            if new_sig_args is not None:
-                for timer_data in new_sig_args:
-                    timeout, args = timer_data
-                    func = Signal
-                    Timer(self.env, timeout, func, args, condition="once")
+            assert self is sig
+            r_dev.r_start(self, r_port)
             yield self.env.timeout(self.delay - 1e-14)
             l_dev.s_end(self, l_port)
-            r_dev.r_end(sig, r_port)
+            r_dev.r_end(self, r_port)
             self.alive = False
 
 
@@ -386,14 +386,130 @@ class DbaStatic(Dba):
             yield self.env.timeout(self.cycle_duration)
 
 
+class DevObserver(Thread):
+    result_dir = './result/'
+
+    def __init__(self, config):
+        Thread.__init__(self)
+        self.name = "Traffic visualizer"
+        # {dev.name + "::" + port: [(time, sig.__dict__)]}
+        time_ranges_to_show = config["observers"]["flow"]["time_ranges"]
+        self.time_ranges_to_show = EmptySet().union(Interval(i[0], i[1]) for i in time_ranges_to_show)
+        self.match_conditions = [self.traf_vis_cond]
+        self.result_makers = [self.traf_vis_res_make]
+        self.time_horisont = max(self.time_ranges_to_show.boundary)
+        # self.target = self.notice
+        self.new_data = list()
+        self.observer_result = dict()
+        self.traf_mon_result = dict()
+        self.traf_mon_result_new_data = dict()
+        self.traf_mon_flow_indexes = dict()
+        self.ev_wait = ThEvent()
+
+    def run(self):
+        while True:
+            # print('ну привет. я {}'.format(self.name))
+            self.ev_wait.wait()  # wait for event
+            for i in self.new_data:
+                cur_time, sig, dev, operation = i
+                for matcher in self.match_conditions:
+                    matcher(*i)
+                # for res_make in self.result_makers:
+                #     res_make()
+                self.new_data.remove(i)
+            self.ev_wait.clear()  # clean event for future
+        pass
+
+    def notice(self, func):
+        def wrapped(dev, sig, port):
+            cur_time = sig.env.now
+            self.new_data.append((cur_time, sig, dev, func.__name__))
+            self.ev_wait.set()
+            return func(dev, sig, port)
+        return wrapped
+
+    def traf_vis_cond(self, cur_time, sig, dev, operation):
+        if cur_time not in self.time_ranges_to_show:
+            return False
+        if "OLT" not in dev.name:
+            return False
+        if operation is not "r_end":
+            return False
+        for flow_id in sig.data:
+            if "ONT" not in flow_id:
+                continue
+            if flow_id not in self.traf_mon_result:
+                self.traf_mon_result[flow_id] = dict()
+                cur_index = max(self.traf_mon_flow_indexes.values()) + 1\
+                    if len(self.traf_mon_flow_indexes) > 0\
+                    else 0
+                self.traf_mon_flow_indexes[flow_id] = cur_index
+            assert cur_time not in self.traf_mon_result[flow_id]
+            pkts = sig.data[flow_id]
+            self.traf_mon_result[flow_id][cur_time] = pkts
+            # self.traf_mon_result_new_data[flow_id][cur_time] = pkts
+            # {имя сигнала : {время: данные сигнала}}
+        return True
+
+    def cook_result(self):
+        flow_time_result = dict()
+        for dev_name in self.observer_result:
+            time_data_result = self.observer_result[dev_name]
+            for time_r in time_data_result:
+                tcont_data = time_data_result[time_r]
+                for alloc in tcont_data:
+                    if dev_name in alloc:
+                        if alloc not in flow_time_result:
+                            flow_time_result[alloc] = dict()
+                        if time_r not in flow_time_result[alloc]:
+                            flow_time_result[alloc][time_r] = tcont_data[alloc]
+        return flow_time_result
+
+    def traf_vis_res_make(self, fig):
+        # number_of_sigs = len(self.observer_result)
+        flow_time_result = self.traf_mon_result
+        number_of_flows = len(self.traf_mon_flow_indexes)
+        flow_index = 1
+        for flow_name in flow_time_result:
+            time_result = list(flow_time_result[flow_name].keys())
+            packet_nums = list()
+            time_result.sort()
+            latency_result = list()
+            for time_r in time_result:
+                pkts = flow_time_result[flow_name][time_r]
+                for pkt in pkts:
+                    packet_nums.append(pkt.num)
+                    latency_result.append(time_r - pkt.time)
+
+            ax = fig.add_subplot(number_of_flows, 1, flow_index)
+            flow_index += 1
+            plt.ylabel(flow_name)
+            ax.plot(packet_nums, latency_result, 'ro')
+            fig.canvas.draw()
+            time.sleep(1)
+        #
+        # # ax.set_xticklabels(points_to_watch)
+        # fig.canvas.draw()
+        # # time.sleep(1)
+        # # plt.show()
+        # fig.savefig(self.result_dir + "packets.png", bbox_inches="tight")
+
+    def make_results(self):
+        for res_make in self.result_makers:
+            fig = plt.figure(1, figsize=(15, 15))
+            fig.show()
+            res_make(fig)
+
+
 class Dev(object):
+    observer = DevObserver(json.load(open('./dba.json')))
+    observer.start()
     def __init__(self, env, name, config):
         self.config = config
         self.name = name
         # self.rate = config["type"]
         self.env = env
         self.out = dict()
-        self.observer = None
 
     def s_start(self, sig, port):
         raise NotImplemented
@@ -764,6 +880,7 @@ class Olt(ActiveDev):
                 yield self.env.timeout(self.cycle_duration + 1e-12)
                 self.counters.cycle_number += 1
 
+    @Dev.observer.notice
     def r_end(self, sig, port):
         ret = dict()
         # обработка интерференционной коллизии
@@ -816,13 +933,12 @@ class PassiveDev(Dev):
 
     def r_start(self, sig, port):
         matrix_ratios = self.power_matrix[port]
-        out_sig_args = list()  # of tuples
         for l_port in range(len(matrix_ratios)):
             ratio = matrix_ratios[l_port]
             out_sig_arg = self.multiply_power(sig, ratio, l_port)
             if out_sig_arg is not False:
-                out_sig_args.append((self.delay, out_sig_arg))
-        return out_sig_args
+                # надо породить новые сигналы на выходах
+                Timer(self.env, self.delay, Signal, out_sig_arg, condition="once")
 
     def s_end(self, sig, port):
         return
@@ -879,97 +995,12 @@ class Fiber(PassiveDev):
                              [ratio, 0]]
 
 
-class DevObserver(Thread):
-    result_dir = './result/'
-
-    def __init__(self, config):
-        Thread.__init__(self)
-        self.name = "Traffic visualizer"
-        # {dev.name + "::" + port: [(time, sig.__dict__)]}
-        self.observer_result = dict()
-        time_ranges_to_show = config["observers"]["flow"]["time_ranges"]
-        self.time_ranges_to_show = EmptySet().union(Interval(i[0], i[1]) for i in time_ranges_to_show)
-        self.time_horisont = max(self.time_ranges_to_show.boundary)
-        self.target = self.notice
-        # self.source = source
-        self.ev_wait = None
-
-    def run(self):
-        while True:
-            print('ну привет. я %s', self.name)
-            self.ev_wait.wait()  # wait for event
-
-            self.ev_wait.clear()  # clean event for future
-        pass
-
-    def notice(self, cur_time, data):
-        if cur_time not in self.time_ranges_to_show:
-            return
-
-        # for ev_time in passed_schedule:
-        #     for event in passed_schedule[ev_time]:
-        #         dev, state, sig, port = event["dev"], event["state"], event["sig"], event["port"]
-        #         # if sig.physics["type"] == "electric":
-        #         if "OLT" in dev.name and state == "r_end":
-        #             if sig.name not in self.observer_result:
-        #                 self.observer_result[sig.name] = dict()
-        #             data = dict()
-        #             data.update(sig.data)
-        #             # for dev_name in ["OLT"]:  # , "OLT"]
-        #             # if dev_name in dev.name:
-        #             self.observer_result[sig.name][ev_time] = data
-        #         # {имя сигнала : {время: данные сигнала}}
-        return
-
-    def cook_result(self):
-        flow_time_result = dict()
-        for dev_name in self.observer_result:
-            time_data_result = self.observer_result[dev_name]
-            for time_r in time_data_result:
-                tcont_data = time_data_result[time_r]
-                for alloc in tcont_data:
-                    if dev_name in alloc:
-                        if alloc not in flow_time_result:
-                            flow_time_result[alloc] = dict()
-                        if time_r not in flow_time_result[alloc]:
-                            flow_time_result[alloc][time_r] = tcont_data[alloc]
-        return flow_time_result
-
-    def make_results(self):
-        fig = plt.figure(1, figsize=(15, 15))
-        fig.show()
-
-        # number_of_sigs = len(self.observer_result)
-        flow_time_result = self.cook_result()
-        number_of_flows = len(flow_time_result)
-        flow_index = 1
-        for flow_name in flow_time_result:
-            time_result, latency_result = list(), list()
-            for time_r in flow_time_result[flow_name]:
-                packet_data = flow_time_result[flow_name][time_r]
-                if "born_time" in packet_data:
-                    time_result.append(time_r)
-                    latency_result.append(time_r - packet_data["born_time"])
-            ax = fig.add_subplot(number_of_flows, 1, flow_index)
-            flow_index += 1
-            plt.ylabel(flow_name)
-            ax.plot(time_result, latency_result)
-            fig.canvas.draw()
-            time.sleep(1)
-
-        # ax.set_xticklabels(points_to_watch)
-        fig.canvas.draw()
-        # time.sleep(1)
-        # plt.show()
-        fig.savefig(self.result_dir + "packets.png", bbox_inches="tight")
-
-
 def NetFabric(net, env, sim_config):
+    # obs = DevObserver(sim_config)
+    # obs.start()
     classes = {"OLT": Olt, "ONT": Ont, "Splitter": Splitter, "Fiber": Fiber}
     devices = dict()
     connection = dict()
-    obs = DevObserver(sim_config)
-    obs.start()
     # Create devices
     for dev_name in net:
         config = net[dev_name]
@@ -977,7 +1008,7 @@ def NetFabric(net, env, sim_config):
             if dev_type in dev_name:
                 constructor = classes[dev_type]
                 dev = constructor(env, dev_name, config)
-                dev.observer = obs
+                # dev.observer = obs
                 devices[dev_name] = dev
                 connection[dev_name] = config["ports"]
     # Interconnect devices
@@ -1007,9 +1038,9 @@ def main():
     for dev_name in devices:
         if re.search("[ON|LT]", dev_name) is not None:
             dev = devices[dev_name]
-            print(dev_name, end="")
-            dev.counters.export_to_console()
+            print('{} : {}'.format(dev_name, dev.counters.export_to_console()))
     # make_results()
+    Dev.observer.make_results()
 
 
 if __name__ == "__main__":
