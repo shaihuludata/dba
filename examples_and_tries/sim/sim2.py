@@ -35,7 +35,8 @@ class Packet(object):
     """
     def __init__(self, time, size, id, src="a", dst="z", flow_id=0, cos_class=0, packet_num=0):
         # "interval": self.send_interval,
-        self.time = time
+        self.s_time = time
+        self.e_time = 0
         self.size = size
         self.t_size = size
         self.f_offset = 0
@@ -48,10 +49,10 @@ class Packet(object):
 
     def __repr__(self):
         return "id: {}, src: {}, time: {}, size: {}, t_size {}, f_offset: {},".\
-            format(self.id, self.src, self.time, self.size, self.t_size, self.f_offset)
+            format(self.id, self.src, self.s_time, self.size, self.t_size, self.f_offset)
 
     def make_args_for_defragment(self):
-        args = [self.time, self.t_size, self.id, self.src, self.dst, self.flow_id, self.cos, self.num]
+        args = [self.s_time, self.t_size, self.id, self.src, self.dst, self.flow_id, self.cos, self.num]
         return args
 
 
@@ -139,7 +140,7 @@ class PacketSink(object):
         if not self.selector or self.selector(pkt):
             now = self.env.now
             if self.rec_waits:
-                self.waits.append(self.env.now - pkt.time)
+                self.waits.append(self.env.now - pkt.s_time)
             if self.rec_arrivals:
                 if self.absolute_arrivals:
                     self.arrivals.append(now)
@@ -468,26 +469,53 @@ class DevObserver(Thread):
     def traf_vis_res_make(self, fig):
         # number_of_sigs = len(self.observer_result)
         flow_time_result = self.traf_mon_result
-        number_of_flows = len(self.traf_mon_flow_indexes)
-        flow_index = 1
-        for flow_name in flow_time_result:
-            time_result = list(flow_time_result[flow_name].keys())
-            packet_nums = list()
-            time_result.sort()
-            latency_result = list()
+        flow_pack_result = dict()
+        for flow in flow_time_result:
+            time_result = flow_time_result[flow]
+            flow_pack_result[flow] = dict()
             for time_r in time_result:
-                pkts = flow_time_result[flow_name][time_r]
+                pkts = time_result[time_r]
                 for pkt in pkts:
-                    packet_nums.append(pkt.num)
-                    latency_result.append(time_r - pkt.time)
-
-            ax = fig.add_subplot(number_of_flows, 1, flow_index)
-            flow_index += 1
+                    pkt.e_time = time_r
+                    flow_pack_result[flow][pkt.num] = pkt
+        number_of_flows = len(self.traf_mon_flow_indexes)
+        subplot_index = 1
+        for flow_name in flow_pack_result:
+            # time_result = list(flow_time_result[flow_name].keys())
+            pack_res = flow_pack_result[flow_name]
+            pkt_nums = list(pack_res.keys())
+            pkt_nums.sort()
+            # график задержек
+            latency_result = list()
+            for pkt_num in pkt_nums:
+                pkt = pack_res[pkt_num]
+                latency_result.append(pkt.e_time - pkt.s_time)
+            ax = fig.add_subplot(number_of_flows, 2, subplot_index)
+            subplot_index += 1
             plt.ylabel(flow_name)
-            ax.plot(packet_nums, latency_result, 'ro')
+            ax.plot(pkt_nums, latency_result, 'ro')
             fig.canvas.draw()
             time.sleep(1)
-        #
+
+            # график вариации задержек
+            dv_result = list()
+            basis_latency = min(latency_result)
+            basis_latency = sum(latency_result) / len(latency_result)
+            for pkt_num in pkt_nums:
+                pkt = pack_res[pkt_num]
+                # if 'born_time' in packet:
+                dv = (pkt.e_time - pkt.s_time) / basis_latency
+                dv_result.append(dv)
+            ax = fig.add_subplot(number_of_flows, 2, subplot_index)
+            subplot_index += 1
+            # plt.ylabel(flow_name)
+            ax.plot(pkt_nums, dv_result, 'ro')
+            min_dv = min(dv_result)
+            max_dv = max(dv_result)
+            ax.set_ylim(bottom=min_dv - 1, top=max_dv + 1)
+            fig.canvas.draw()
+            time.sleep(1)
+
         # # ax.set_xticklabels(points_to_watch)
         # fig.canvas.draw()
         # # time.sleep(1)
