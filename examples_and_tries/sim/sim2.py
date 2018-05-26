@@ -406,11 +406,12 @@ class DevObserver(Thread):
         self.traf_mon_result_new_data = dict()
         self.traf_mon_flow_indexes = dict()
         self.ev_wait = ThEvent()
+        self.end_flag = False
 
     def run(self):
-        while True:
+        while not self.end_flag:
             # print('ну привет. я {}'.format(self.name))
-            self.ev_wait.wait()  # wait for event
+            self.ev_wait.wait(timeout=5)  # wait for event
             for i in self.new_data:
                 cur_time, sig, dev, operation = i
                 for matcher in self.match_conditions:
@@ -418,7 +419,7 @@ class DevObserver(Thread):
                 # for res_make in self.result_makers:
                 #     res_make()
                 self.new_data.remove(i)
-            self.ev_wait.clear()  # clean event for future
+                self.ev_wait.clear()  # clean event for future
         pass
 
     def notice(self, func):
@@ -483,6 +484,7 @@ class DevObserver(Thread):
         for flow_name in flow_pack_result:
             # time_result = list(flow_time_result[flow_name].keys())
             pack_res = flow_pack_result[flow_name]
+
             pkt_nums = list(pack_res.keys())
             pkt_nums.sort()
             # график задержек
@@ -490,12 +492,11 @@ class DevObserver(Thread):
             for pkt_num in pkt_nums:
                 pkt = pack_res[pkt_num]
                 latency_result.append(pkt.e_time - pkt.s_time)
-            ax = fig.add_subplot(number_of_flows, 2, subplot_index)
+            ax = fig.add_subplot(number_of_flows, 3, subplot_index)
             subplot_index += 1
             plt.ylabel(flow_name)
             ax.plot(pkt_nums, latency_result, 'ro')
             fig.canvas.draw()
-            time.sleep(1)
 
             # график вариации задержек
             dv_result = list()
@@ -506,7 +507,7 @@ class DevObserver(Thread):
                 # if 'born_time' in packet:
                 dv = (pkt.e_time - pkt.s_time) / basis_latency
                 dv_result.append(dv)
-            ax = fig.add_subplot(number_of_flows, 2, subplot_index)
+            ax = fig.add_subplot(number_of_flows, 3, subplot_index)
             subplot_index += 1
             # plt.ylabel(flow_name)
             ax.plot(pkt_nums, dv_result, 'ro')
@@ -514,13 +515,33 @@ class DevObserver(Thread):
             max_dv = max(dv_result)
             ax.set_ylim(bottom=min_dv - 1, top=max_dv + 1)
             fig.canvas.draw()
-            time.sleep(1)
 
-        # # ax.set_xticklabels(points_to_watch)
-        # fig.canvas.draw()
-        # # time.sleep(1)
-        # # plt.show()
-        # fig.savefig(self.result_dir + "packets.png", bbox_inches="tight")
+            # график коэффициента потерь
+            # каждое последующее значение зависит от предыдущего
+            # поэтому массив по времени должен быть отсортирован
+            packet_nums = list()
+            lr_result = list()
+            max_pack_num_got = int()
+            for pkt_num in pkt_nums:
+                pkt = pack_res[pkt_num]
+                packet_nums.append(pkt_num)
+                max_pack_num_got = pkt_num if pkt_num > max_pack_num_got else pkt_num
+                current_lr = (max_pack_num_got - len(packet_nums)) / max_pack_num_got
+                lr_result.append(current_lr)
+            ax = fig.add_subplot(number_of_flows, 3, subplot_index)
+            subplot_index += 1
+            # plt.ylabel(flow_name)
+            ax.plot(pkt_nums, lr_result, 'ro')
+            min_lr = min(lr_result)
+            max_lr = max(lr_result)
+            ax.set_ylim(bottom=min_lr, top=max_lr)
+            fig.canvas.draw()
+
+        # ax.set_xticklabels(points_to_watch)
+        fig.canvas.draw()
+        # time.sleep(1)
+        # plt.show()
+        fig.savefig(self.result_dir + "packets.png", bbox_inches="tight")
 
     def make_results(self):
         for res_make in self.result_makers:
@@ -1069,6 +1090,7 @@ def main():
             print('{} : {}'.format(dev_name, dev.counters.export_to_console()))
     # make_results()
     Dev.observer.make_results()
+    Dev.observer.end_flag = True
 
 
 if __name__ == "__main__":
