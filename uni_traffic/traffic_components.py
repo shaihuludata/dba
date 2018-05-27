@@ -8,7 +8,7 @@ import copy
 import random
 from sympy import EmptySet, Interval
 import numpy as np
-import matplotlib.pyplot as plt
+from uni_traffic.packet import Packet
 
 
 class PacketGenerator(object):
@@ -227,7 +227,7 @@ class TrafficGeneratorBuilder:
     #     self.send_interval = (par, sigma, size)
 
     def __init__(self):
-        self.traf_configs = json.load(open("traffic_types.json"))
+        self.traf_configs = json.load(open("./uni_traffic/traffic_types.json"))
 
     def generate_distribution(self, distribution, parameters: list):
         def configured_distr():

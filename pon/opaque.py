@@ -1,5 +1,7 @@
 from pon.dev_basic import Dev
 import math
+from pon.signal import Signal
+from support.timers import Timer
 light_velocity = 2*10**8
 
 

@@ -1,3 +1,4 @@
+from addict import Dict
 
 
 class Dba:
@@ -13,7 +14,7 @@ class Dba:
 
         self.upstream_interframe_interval = config["upstream_interframe_interval"]
 
-        if "maximum_allocation_start_time" in config:
+        if "maximum_allocation_start_time" in config and config["maximum_allocation_start_time"] is not None:
             self.maximum_allocation_start_time = config["maximum_allocation_start_time"]
         elif config["transmitter_type"] == "1G":
             self.maximum_allocation_start_time = 19438

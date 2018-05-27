@@ -1,5 +1,7 @@
 from pon.dev_basic import ActiveDev
 import random
+from pon.signal import Signal
+import logging
 
 
 class Ont(ActiveDev):
@@ -14,19 +16,6 @@ class Ont(ActiveDev):
         self.range_time_delta = list()
         self.traffic_generators = dict()
         self.current_allocations = dict()  # key alloc_id : value grant_size
-
-        tgb = TrafGeneratorBuilder()
-        if "Alloc" in config:
-            for alloc_num in config["Alloc"]:
-                traf_type = config["Alloc"][alloc_num]
-                flow_id = self.name + "_" + alloc_num
-                pg = tgb.packet_source(env, flow_id, traf_type)
-                uni = tgb.uni_input_for_ont(env, pg, flow_id)
-                self.traffic_generators[flow_id] = uni
-                self.current_allocations[flow_id] = uni.traf_class
-                # self.current_allocations[flow_id] = None
-        if "0" not in config["Alloc"]:
-            alloc_type = "type0"
 
     def run(self):
         if self.STATE is "Offline":
@@ -86,7 +75,7 @@ class Ont(ActiveDev):
                     if alloc in self.traffic_generators:
                         self.current_allocations[alloc] = self.traffic_generators[alloc]
                 allocs_acked = list(i for i in self.current_allocations.keys()
-                                    if type(self.current_allocations[i]) is UniPort)
+                                    if type(self.current_allocations[i]) is not int)
                 if len(allocs_acked) > 0:
                     print("{} Авторизация на OLT подтверждена, allocs: {}".format(self.name, allocs_acked))
                 # Формально тут должно быть "SerialNumber"
@@ -115,14 +104,12 @@ class Ont(ActiveDev):
                     if grant_size > 0:
                         intra_cycle_s_start = round(8*1000000*allocation_start / self.transmitter_speed, 2)
                         intra_cycle_e_start = round(8*1000000*allocation_stop / self.transmitter_speed, 2)
-                        planned_s_time = self.next_cycle_start + intra_cycle_s_start - 2*avg_half_rtt + self.cycle_duration
-                        planned_s_time = round(planned_s_time, 2)
-                        planned_e_time = self.next_cycle_start + intra_cycle_e_start - 2*avg_half_rtt + self.cycle_duration
-                        planned_e_time = round(planned_e_time, 2)
-                        # полезно для отладки
+                        correction = self.next_cycle_start - 2 * avg_half_rtt + self.cycle_duration
+                        planned_s_time = round(intra_cycle_s_start + correction, 2)
+                        planned_e_time = round(intra_cycle_e_start + correction, 2)
                         planned_delta = planned_e_time - planned_s_time
                         if planned_delta <= 0:
-                            break
+                            continue
                         s_time = planned_s_time
                         now = self.env.now
                         assert planned_s_time >= self.env.now
@@ -141,7 +128,8 @@ class Ont(ActiveDev):
                         a = len(self.snd_port_sig[port])
                         # assert len(self.snd_port_sig[port]) == 0
                         self.snd_port_sig[port].append({"s_time": planned_s_time,
-                                               "args": [self.env, sig_id, data, self, port, planned_delta - 1e-11]})
+                                                        "args": [self.env, sig_id, data,
+                                                                 self, port, planned_delta - 1e-11]})
         else:
             raise Exception("State {} not implemented".format(self.STATE))
         if self.STATE != "Offline":
