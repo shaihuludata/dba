@@ -1,4 +1,4 @@
-from pon_device import PonDevice
+from old.pon_device import PonDevice
 from support import Counters
 
 

@@ -1,7 +1,7 @@
-from active_optics import ActiveDevice
+from old.active_optics import ActiveDevice
 import random
 from signal import Signal
-from uni_traffic.traffic import Traffic
+from old.traffic import Traffic
 
 
 class Ont(ActiveDevice):

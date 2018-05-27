@@ -1,9 +1,12 @@
 import json
-from time import sleep
 import time
-from scheduler import ModelScheduler
 import cProfile
-import pprint
+import logging
+import simpy
+import re
+from pon.olt import Olt
+from pon.ont import Ont
+from pon.opaque import Fiber, Splitter
 
 # python3 -m cProfile -o ./proceed.prof ./main.py
 # gprof2dot -f pstats proceed.prof | dot -Tpng -o proceed.png
@@ -19,7 +22,7 @@ def profile(func):
 
 
 def bandwidth_prognosis(net):
-    max_bw_prognose = float()
+    max_bw_prognosis = float()
     allocs = list()
     bws = list()
     for dev in net:
@@ -31,45 +34,60 @@ def bandwidth_prognosis(net):
         bw = round(8 * 1 * typ["size_of_packet"] / typ["send_interval"], 3)
         bws.append(bw)
         print(typ_name, bw)
-    max_bw_prognose = round(sum(bws), 3)
-    return max_bw_prognose
+    max_bw_prognosis = round(sum(bws), 3)
+    return max_bw_prognosis
 
 
-def main():  # *args, **kwargs):
-    config = json.load(open('./dba.json'))
-    if "horisont" in config:
-        time_horisont = config["horisont"]
-    else:
-        time_horisont = 1000
+def net_fabric(net, env, sim_config):
+    # obs = Observer(sim_config)
+    # obs.start()
+    classes = {"OLT": Olt, "ONT": Ont, "Splitter": Splitter, "Fiber": Fiber}
+    devices = dict()
+    connection = dict()
+    # Create devices
+    for dev_name in net:
+        config = net[dev_name]
+        for dev_type in classes:
+            if dev_type in dev_name:
+                constructor = classes[dev_type]
+                dev = constructor(env, dev_name, config)
+                # dev.observer = obs
+                devices[dev_name] = dev
+                connection[dev_name] = config["ports"]
+    # Interconnect devices
+    for dev_name in connection:
+        l_dev = devices[dev_name]
+        con = connection[dev_name]
+        for l_port in con:
+            r_dev_name, r_port = con[l_port].split("::")
+            r_dev = devices[r_dev_name]
+            l_port = int(l_port)
+            l_dev.out[l_port] = (int(r_port), r_dev)
+    return devices
 
-    net = json.load(open('./networks/network6.json'))
-    print('Net description: ', net)
-    sched = ModelScheduler(net, config)
+
+def main():
+    sim_config = json.load(open("./dba.json"))
+    net = json.load(open("./networks/network6.json"))
+    time_horizon = sim_config["horizon"] if "horizon" in sim_config else 1000
+    logging.info("Net description: ", net)
     max_bw = bandwidth_prognosis(net)
-    print('Максимальная прогнозная нагрузка {} Мбит/с'.format(max_bw))
-    cur_time = 0
+    print("Максимальная прогнозная нагрузка {} Мбит/с".format(max_bw))
 
-    cur_report = 0
-    step_report = 1000
-    last_time = time.time()
-    times = list()
-    while cur_time < time_horisont and len(sched.schedule.events) > 0:
-        cur_time = min(sched.schedule.events)
-        if cur_time >= cur_report:
-            delta = round(time.time() - last_time, 2)
-            print('Time: {}, delta {}'.format(cur_report, delta))
-            cur_report += step_report
-            times.append(delta)
-            last_time = time.time()
-        # print('time: {}'.format(cur_time))
-        # print(sched.schedule)
-        if cur_time > 3000:
-            profile(sched.proceed_schedule(cur_time))
-        else:
-            sched.proceed_schedule(cur_time)
+    env = simpy.Environment()
+    devices = net_fabric(net, env, sim_config)
+    t_start = time.time()
+    env.run(until=time_horizon)
 
-    print('End of simulation... Preparing results.')
-    sched.make_results()
+    print("{} End of simulation in {}...".format(env.now, round(time.time() - t_start, 2)),
+          "\n***Preparing results***".format())
+    for dev_name in devices:
+        if re.search("[ON|LT]", dev_name) is not None:
+            dev = devices[dev_name]
+            print("{} : {}".format(dev_name, dev.counters.export_to_console()))
+
+    Dev.observer.make_results()
+    Dev.observer.end_flag = True
 
 
 if __name__ == '__main__':

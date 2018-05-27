@@ -292,6 +292,7 @@ class FlowDemux(object):
                 if self.default:
                     self.default.put(pkt)
 
+
 class TrTCM(object):
     """ A Two rate three color marker. Uses the flow_id packet field to
         mark the packet with green = 0, yellow = 1, red = 2.
@@ -366,7 +367,6 @@ class SnoopSplitter(object):
     Released under the MIT license
 """
 
-
 class StampedStorePut(base.Put):
     """ Put *item* into the store if possible or wait until it is.
         The item must be a tuple (stamp, contents) where the stamp is used to sort
@@ -438,7 +438,6 @@ class StampedStore(base.BaseResource):
     Copyright 2014 Dr. Greg Bernstein
     Released under the MIT license
 """
-
 
 class ShaperTokenBucket(object):
     """ Models an ideal token bucket shaper. Note the token bucket size should be greater than the

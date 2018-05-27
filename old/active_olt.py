@@ -1,9 +1,7 @@
-from active_optics import ActiveDevice
-from collections import OrderedDict
+from old.active_optics import ActiveDevice
 from signal import Signal
-import copy
 from dba import DbaStatic, DbaStaticAllocs, DbaSR, DbaTM, DbaTM_extra, DbaTM_linear
-from sympy import Interval, Union, EmptySet
+from sympy import Interval, EmptySet
 
 
 dumb_event = {'dev': None, 'state': 'dumb_event', 'sig': None, 'port': None}
