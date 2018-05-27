@@ -68,10 +68,6 @@ def main():  # *args, **kwargs):
         else:
             sched.proceed_schedule(cur_time)
 
-    # print(times)
-    # for t in sched.olt.dba.global_bwmap:
-    #     map = sched.olt.dba.global_bwmap[t]
-    #     print('{} {}'.format(t, map))
     print('End of simulation... Preparing results.')
     sched.make_results()
 

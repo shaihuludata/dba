@@ -329,7 +329,7 @@ class TrafficObserver:
         fig.canvas.draw()
         # time.sleep(1)
         # plt.show()
-        fig.savefig(result_dir + 'packets.png', bbox_inches='tight')
+        fig.savefig(result_dir + 'packets_static_allocs.png', bbox_inches='tight')
 
 
 # class ReceivedTrafficObserver:
@@ -951,7 +951,7 @@ class IPTrafficObserver:
         fig.canvas.draw()
         # time.sleep(1)
         # plt.show()
-        fig.savefig(result_dir + 'packets.png', bbox_inches='tight')
+        fig.savefig(result_dir + 'packets_static_allocs.png', bbox_inches='tight')
         plt.close(fig)
 
 

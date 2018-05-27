@@ -263,19 +263,16 @@ class DbaTM_extra(DbaTM):
         return alloc_size
 
 
-TM_linear_multi_dict = {0: {0.9: 1.1, 0: 0.7},
-                        1: {0.9: 1.5, 0: 0.7},
-                        2: {0.9: 3.0, 0: 0.7},
-                        3: {0.9: 3.0, 0: 0.7}}
-
-
 class DbaTM_linear(DbaTM):
-
+    TM_linear_multi_dict = {0: {0.9: 1.1, 0: 0.7},
+                            1: {0.9: 1.5, 0: 0.7},
+                            2: {0.9: 3.0, 0: 0.7},
+                            3: {0.9: 3.0, 0: 0.7}}
     def empty(self):
         pass
 
     def generate_alloc(self, bw, uti, alloc):
-        utis = TM_linear_multi_dict[self.alloc_class[alloc]]
+        utis = self.TM_linear_multi_dict[self.alloc_class[alloc]]
         multi = float()
         utis_list = list(utis.keys())
         utis_list.sort()
