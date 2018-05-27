@@ -180,6 +180,7 @@ class PacketSink(object):
                     print(round(self.env.now, 3), pkt)
                 self.ev_defrag.clear()  # clean event for future
 
+
     def defragmentation(self, pkt):
         flow_id = pkt.flow_id
         total_size = pkt.t_size
@@ -654,7 +655,7 @@ class DbaTrafficMonLinear(DbaTM):
         self.recalculate_utilisation(alloc)
 
 
-class DevObserver(Thread):
+class Observer(Thread):
     result_dir = "./result/"
 
     def __init__(self, config):
@@ -945,8 +946,9 @@ class DevObserver(Thread):
 
 
 class Dev(object):
-    observer = DevObserver(json.load(open("./dba.json")))
+    observer = Observer(json.load(open("./dba.json")))
     observer.start()
+
     def __init__(self, env, name, config):
         self.config = config
         self.name = name
@@ -1062,6 +1064,7 @@ class TrafGeneratorBuilder:
     # elif sid == "normal":
     #     sigma = config["sigma_si"]
     #     self.send_interval = (par, sigma, size)
+
     def __init__(self):
         self.traf_configs = json.load(open("traffic_types.json"))
 
@@ -1444,7 +1447,7 @@ class Fiber(PassiveDev):
 
 
 def NetFabric(net, env, sim_config):
-    # obs = DevObserver(sim_config)
+    # obs = Observer(sim_config)
     # obs.start()
     classes = {"OLT": Olt, "ONT": Ont, "Splitter": Splitter, "Fiber": Fiber}
     devices = dict()
