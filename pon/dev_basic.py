@@ -1,10 +1,12 @@
 from observer.observer import Observer
 import json
+from support.counters import Counters
+import logging
 
 
 class Dev(object):
-    observer = Observer(json.load(open("./dba.json")))
-    observer.start()
+    # observer = Observer(json.load(open("./dba.json")))
+    # observer.start()
 
     def __init__(self, env, name, config):
         self.config = config
@@ -43,7 +45,7 @@ class ActiveDev(Dev):
         self.counters = Counters()
         self.action = env.process(self.run())
         # env, rec_arrivals = False, absolute_arrivals = False, rec_waits = True, debug = False, selector = None)
-        self.p_sink = PacketSink(env, debug=True)
+        self.p_sink = None
 
         if "transmitter_type" in self.config:
             trans_type = self.config["transmitter_type"]
@@ -112,5 +114,3 @@ class ActiveDev(Dev):
         sig.physics["type"] = "electric"
         sig.physics.update(optic_parameters)
         return sig
-
-

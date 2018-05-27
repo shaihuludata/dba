@@ -1,6 +1,8 @@
 from threading import Thread
 from threading import Event as ThEvent
 from sympy import EmptySet, Interval
+import matplotlib.pyplot as plt
+
 
 class Observer(Thread):
     result_dir = "./result/"
@@ -13,7 +15,7 @@ class Observer(Thread):
         self.time_ranges_to_show = EmptySet().union(Interval(i[0], i[1]) for i in time_ranges_to_show)
         self.match_conditions = [self.traf_vis_cond]
         self.result_makers = [self.traf_vis_res_make]
-        self.time_horisont = max(self.time_ranges_to_show.boundary)
+        self.time_horizon = max(self.time_ranges_to_show.boundary)
         # self.target = self.notice
         self.new_data = list()
         self.observer_result = dict()
@@ -156,7 +158,7 @@ class DevObserverRealTime(Thread):
         self.time_ranges_to_show = EmptySet().union(Interval(i[0], i[1]) for i in time_ranges_to_show)
         self.match_conditions = [self.traf_vis_cond]
         self.result_makers = [self.traf_vis_res_rt]
-        self.time_horisont = max(self.time_ranges_to_show.boundary)
+        self.time_horizon = max(self.time_ranges_to_show.boundary)
         self.new_data = list()
         self.observer_result = dict()
         self.traf_mon_result = dict()

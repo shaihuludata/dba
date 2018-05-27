@@ -4,6 +4,7 @@ from old.active_ont import Ont
 from old.observers import *
 # schedule = {time : [event]}
 
+
 class ModelScheduler:
     def __init__(self, net, config):
         self.net = net
@@ -11,7 +12,7 @@ class ModelScheduler:
         self.devices = dict()
         self.temp_dict = dict()
         self.track = dict()
-        time_horisont = config['horisont']
+        time_horizon = config['horizon']
 
         for dev in net:
             if 'OLT' in dev:

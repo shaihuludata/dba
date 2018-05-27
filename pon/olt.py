@@ -1,7 +1,12 @@
 from pon.dev_basic import ActiveDev
+import logging
+from pon.signal import Signal
 
 
 class Olt(ActiveDev):
+    def observe(fn):
+        return fn
+
     def __init__(self, env, name, config):
         ActiveDev.__init__(self, env, name, config)
         self.sn_request_interval = config["sn_request_interval"]
@@ -9,17 +14,8 @@ class Olt(ActiveDev):
         self.sn_request_next = 0
         self.sn_request_quiet_interval_end = 0
         self.maximum_ont_amount = int(self.config["maximum_ont_amount"])
-        dba_config = dict()
-        # self.upstream_interframe_interval = self.config["upstream_interframe_interval"]  # 10 # in bytes
-        for dba_par in ["cycle_duration", "transmitter_type",
-                        "maximum_allocation_start_time", "upstream_interframe_interval"]:
-            if dba_par in config:
-                dba_config[dba_par] = config[dba_par]
-
         self.snd_port_sig[0] = dict()
-        olt_dba_dict = {"static": DbaStatic, "static_allocs": DbaStaticAllocs,
-                        "tm_basic": DbaTM, "tm_linear_traftype_aware": DbaTrafficMonLinear}
-        self.dba = olt_dba_dict[config["dba_type"]](env, dba_config, self.snd_port_sig[0])
+        self.dba = None
 
     def run(self):
         while True:
@@ -73,7 +69,7 @@ class Olt(ActiveDev):
                 yield self.env.timeout(self.cycle_duration + 1e-11)
                 self.counters.cycle_number += 1
 
-    @Dev.observer.notice
+    @observe
     def r_end(self, sig, port):
         ret = dict()
         # обработка интерференционной коллизии
