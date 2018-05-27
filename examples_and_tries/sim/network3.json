@@ -1,7 +1,8 @@
 {
   "OLT0":
   {
-    "dba_type": "static",
+    "dba_type": "tm_basic",
+    "possible_dba_types": ["static", "static_allocs", "tm_basic", "tm_linear_traftype_aware", "status_report"],
     "maximum_ont_amount": "32",
     "upstream_interframe_interval": 100,
     "sn_request_interval": 3000,

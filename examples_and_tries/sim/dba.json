@@ -1,9 +1,9 @@
 {
-    "horizont" : 10000,
+    "horizont" : 20000,
     "observers" : {
         "flow": {
             "report": false,
-            "time_ranges": [[0, 10000]]
+            "time_ranges": [[0, 60000]]
         },
         "power": {
             "report": true,
