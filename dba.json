@@ -3,7 +3,7 @@
     "observers" : {
         "flow": {
             "report": false,
-            "time_ranges": [[500, 2000]]
+            "time_ranges": [[0, 60000]]
         },
         "power": {
             "report": true,

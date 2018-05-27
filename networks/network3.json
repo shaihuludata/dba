@@ -1,10 +1,15 @@
 {
-  "OLT":
+  "OLT0":
   {
-    "dba_type": "static",
+    "dba_type": "tm_basic",
+    "possible_dba_types": ["static", "static_allocs", "tm_basic", "tm_linear_traftype_aware", "status_report"],
     "maximum_ont_amount": "32",
-    "transmitter_power": "1",
+    "upstream_interframe_interval": 100,
     "sn_request_interval": 3000,
+    "sn_quiet_interval": 400,
+    "cycle_duration": 125,
+    "transmitter_power": "1",
+    "transmitter_type": "2G",
     "transmitter_wavelength": "1550",
     "ports": {"0": "Fiber0::0"}
   },
@@ -12,15 +17,16 @@
   {
     "length": "1",
     "type": "G657",
-    "ports": {"0": "OLT::0", "1": "Splitter1::0"}
+    "ports": {"0": "OLT0::0", "1": "Splitter1::0"}
   },
   "ONT1":
   {
     "ports": {"0": "Fiber1::0"},
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
+    "transmitter_type": "2G",
     "activation_time": 0,
-    "Alloc": ["even::even", "even::even"]
+    "Alloc": {"1": "type1", "2": "type1"}
   },
   "Fiber1":
   {
@@ -33,12 +39,13 @@
     "ports": {"0": "Fiber2::0"},
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
+    "transmitter_type": "2G",
     "activation_time": 0.2,
-    "Alloc": ["even::even", "even::even"]
+    "Alloc": {"1": "type2", "2": "type2"}
   },
   "Fiber2":
   {
-    "length": "10",
+    "length": "5",
     "type": "G657",
     "ports": {"0": "ONT2::0", "1": "Splitter1::2"}
   },
@@ -47,12 +54,13 @@
     "ports": {"0": "Fiber3::0"},
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
+    "transmitter_type": "2G",
     "activation_time": 0.3,
-    "Alloc": ["even::even", "even::even"]
+    "Alloc": {"1": "type3", "2": "type3"}
   },
   "Fiber3":
   {
-    "length": "15",
+    "length": "10",
     "type": "G657",
     "ports": {"0": "ONT3::0", "1": "Splitter1::3"}
   },
@@ -61,12 +69,13 @@
     "ports": {"0": "Fiber4::0"},
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
+    "transmitter_type": "2G",
     "activation_time": 0.4,
-    "Alloc": ["even::even", "even::even"]
+    "Alloc": {"1": "type4", "2": "type4"}
   },
   "Fiber4":
   {
-    "length": "20",
+    "length": "10",
     "type": "G657",
     "ports": {"0": "ONT4::0", "1": "Splitter1::4"}
   },

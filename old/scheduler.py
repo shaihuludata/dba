@@ -1,46 +1,8 @@
-from passive_optics import Splitter, Fiber
-from active_olt import Olt
-from active_ont import Ont
-from observers import *
+from old.passive_optics import Splitter, Fiber
+from old.active_olt import Olt
+from old.active_ont import Ont
+from old.observers import *
 # schedule = {time : [event]}
-
-
-class Schedule:
-    events = dict()
-
-    def upd_schedule(self, new_events: dict):
-        start_schedule = dict()
-        start_schedule.update(self.events)
-        new_time_schedule = dict()
-        for time in new_events:
-            if time not in self.events:
-                new_time_schedule.update({time: new_events[time]})
-            elif self.events[time] is None:
-                new_time_schedule.update({time: new_events[time]})
-            else:
-                old_events = self.events[time]
-                events = new_events[time]
-                for event in events:
-                    if event not in old_events:
-                        old_events.append(event)
-                        self.events[time] = old_events
-                    # else:
-                    #     print('Планируемое событие уже есть в базе')
-        self.events.update(new_time_schedule)
-        if None in self.events.values():
-            print('Ошибка в расписании!')
-
-    def del_event_from_schedule(schedule, new_events):
-        # if ev not in schedule:
-        #     schedule.update(new_events)
-        # elif ev in self.schedule and self.schedule[ev] != new_events[ev]:
-        #     self.schedule[ev].extend(new_events[ev])
-        # else:
-        #     print('Планируемое событие уже есть в базе')
-        # new_schedule = dict()
-        # return new_schedule
-        pass
-
 
 class ModelScheduler:
     def __init__(self, net, config):
