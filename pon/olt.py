@@ -4,9 +4,6 @@ from pon.signal import Signal
 
 
 class Olt(ActiveDev):
-    def observe(fn):
-        return fn
-
     def __init__(self, env, name, config):
         ActiveDev.__init__(self, env, name, config)
         self.sn_request_interval = config["sn_request_interval"]
@@ -69,7 +66,6 @@ class Olt(ActiveDev):
                 yield self.env.timeout(self.cycle_duration + 1e-11)
                 self.counters.cycle_number += 1
 
-    @observe
     def r_end(self, sig, port):
         ret = dict()
         # обработка интерференционной коллизии
