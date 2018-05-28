@@ -4,7 +4,7 @@ import cProfile
 import logging
 import simpy
 import re
-from net_fabric import net_fabric
+from net_fabric import NetFabric
 
 # python3 -m cProfile -o ./proceed.prof ./main.py
 # gprof2dot -f pstats proceed.prof | dot -Tpng -o proceed.png
@@ -47,7 +47,8 @@ def main():
     print("Максимальная прогнозная нагрузка {} Мбит/с".format(max_bw))
 
     env = simpy.Environment()
-    devices, obs = net_fabric(net, env, sim_config)
+    nf = NetFabric()
+    devices, obs = nf.net_fabric(net, env, sim_config)
     t_start = time.time()
     env.run(until=time_horizon)
 
@@ -57,6 +58,10 @@ def main():
         if re.search("[ON|LT]", dev_name) is not None:
             dev = devices[dev_name]
             print("{} : {}".format(dev_name, dev.counters.export_to_console()))
+        if re.search("ONT", dev_name) is not None:
+            for tg_name in dev.traffic_generators:
+                tg = dev.traffic_generators[tg_name]
+                print("{} : {}".format(tg_name, tg.p_counters.export_to_console()))
 
     obs.make_results()
     obs.end_flag = True

@@ -1,13 +1,10 @@
 import simpy
 import json
-import random
 import logging
-import re
-import time
 import copy
-import random
 from sympy import EmptySet, Interval
 import numpy as np
+from support.counters import PacketCounters
 from uni_traffic.packet import Packet
 
 
@@ -30,7 +27,6 @@ class PacketGenerator(object):
     def __init__(self, env, id,  adist, sdist, initial_delay=0, finish=float("inf"), flow_id=0):
         # self.traf_class = config["class"]
         # self.service = config["service"]
-        # self.packet_counter = 0
         # self.max_queue_size = config["max_queue_size"]  # in number_of_packets
         self.id = id
         self.env = env
@@ -39,10 +35,10 @@ class PacketGenerator(object):
         self.initial_delay = initial_delay
         self.finish = finish
         self.out = None
-        self.packets_sent = 0
         self.action = env.process(self.run())
         self.flow_id = flow_id
         self.service = None
+        self.p_counters = PacketCounters()
 
     def run(self):
         yield self.env.timeout(self.initial_delay)
@@ -50,12 +46,13 @@ class PacketGenerator(object):
             # wait for next transmission
             send_interval = self.adist()
             yield self.env.timeout(send_interval)
-            self.packets_sent += 1
+            self.p_counters.packets_sent += 1
             pkt_id = "{}_{}".format(self.id, self.env.now)
             p = Packet(self.env.now,
                        round(self.sdist()),
                        pkt_id,
-                       src=self.id, flow_id=self.flow_id, packet_num=self.packets_sent)
+                       src=self.id, flow_id=self.flow_id,
+                       packet_num=self.p_counters.packets_sent)
             self.out.put(p)
 
 
@@ -79,7 +76,8 @@ class PacketSink(object):
         selector: a function that takes a packet and returns a boolean
             used for selective statistics. Default none.
     """
-    def __init__(self, env, rec_arrivals=False, absolute_arrivals=False, rec_waits=True, debug=False, selector=None):
+    def __init__(self, env, rec_arrivals=False,
+                 absolute_arrivals=False, rec_waits=True, debug=False, selector=None):
         self.store = simpy.Store(env)
         self.env = env
         self.rec_waits = rec_waits
@@ -88,13 +86,12 @@ class PacketSink(object):
         self.waits = []
         self.arrivals = []
         self.debug = debug
-        self.packets_rec = 0
         self.bytes_rec = 0
         self.selector = selector
         self.last_arrival = 0.0
         self.packets_to_defragment = dict()
-        # self.ev_defrag = ThEvent()
-        # self.end_flag = False
+        self.p_counters = PacketCounters()
+
 
     def put(self, pkt):
         if not self.selector or self.selector(pkt):
@@ -107,7 +104,7 @@ class PacketSink(object):
                 else:
                     self.arrivals.append(now - self.last_arrival)
                 self.last_arrival = now
-            self.packets_rec += 1
+            self.p_counters.fragments_rec += 1
             self.bytes_rec += pkt.size
             self.store.put(pkt)
             if pkt.id not in self.packets_to_defragment:
@@ -116,7 +113,7 @@ class PacketSink(object):
                 .union(Interval(pkt.f_offset, pkt.f_offset + pkt.size))
             if self.packets_to_defragment[pkt.id].measure == pkt.t_size:
                 defragmented = self.defragmentation(pkt)
-            # self.ev_defrag.set()
+                self.p_counters.packets_rec += 1
 
     def run(self):
         while not self.end_flag:
@@ -135,19 +132,20 @@ class PacketSink(object):
                     print(round(self.env.now, 3), pkt)
                 self.ev_defrag.clear()  # clean event for future
 
-
-    def defragmentation(self, pkt):
-        flow_id = pkt.flow_id
-        total_size = pkt.t_size
-        fragments = list(msg for msg in self.store.items if msg.id == pkt.id)
-        defragment = EmptySet().union(Interval(frg.f_offset, frg.f_offset + frg.size) for frg in fragments)
+    def defragmentation(self, frg):
+        flow_id = frg.flow_id
+        total_size = frg.t_size
+        fragments = list(msg for msg in self.store.items if msg.id == frg.id)
+        defragment = EmptySet().union(Interval(frg.f_offset, frg.f_offset + frg.size)
+                                      for frg in fragments)
         if defragment.measure == total_size:
             for frg in fragments:
                 self.store.items.remove(frg)
-            pkt = Packet(*pkt.make_args_for_defragment())
+            pkt = Packet(*frg.make_args_for_defragment())
+            logging.debug(self.env.now, pkt)
             if self.debug:
-                logging.info(self.env.now, pkt)
                 print(round(self.env.now, 3), pkt)
+            return pkt
 
 
 class UniPort(object):
@@ -170,14 +168,13 @@ class UniPort(object):
         self.store = simpy.Store(env)
         self.rate = rate
         self.env = env
-        self.packets_rec = 0
-        self.packets_drop = 0
         self.qlimit = qlimit
         self.limit_bytes = limit_bytes
         self.byte_size = 0  # Current size of the queue in bytes
         self.debug = debug
         self.busy = 0  # Used to track if a packet is currently being sent
         self.traf_class = None
+        self.p_counters = PacketCounters()
 
     def get(self, size):
         pkt_list = list()
@@ -188,6 +185,7 @@ class UniPort(object):
             if size > pkt.size:
                 pkt_list.append(pkt)
                 self.store.items.remove(pkt)
+                self.p_counters.packets_sent += 1
                 size -= pkt.size
                 tot_size_got += pkt.size
             else:
@@ -202,17 +200,17 @@ class UniPort(object):
         return pkt_list
 
     def put(self, pkt):
-        self.packets_rec += 1
+        self.p_counters.packets_rec += 1
         tmp_byte_count = self.byte_size + pkt.size
 
         if self.qlimit is None:
             self.byte_size = tmp_byte_count
             return self.store.put(pkt)
         if self.limit_bytes and tmp_byte_count > self.qlimit:
-            self.packets_drop += 1
+            self.p_counters.packets_drop += 1
             return
         elif not self.limit_bytes and len(self.store.items) >= self.qlimit-1:
-            self.packets_drop += 1
+            self.p_counters.packets_drop += 1
         else:
             self.byte_size = tmp_byte_count
             return self.store.put(pkt)
@@ -237,7 +235,9 @@ class TrafficGeneratorBuilder:
     def packet_source(self, env, flow_id, traf_type):
         def deterministic(parameter):
             return parameter  # time interval
-        distribution = {"poisson": np.random.poisson, "normal": np.random.normal, "deterministic": deterministic}
+        distribution = {"poisson": np.random.poisson,
+                        "normal": np.random.normal,
+                        "deterministic": deterministic}
         if traf_type in self.traf_configs["traffic"]:
             config = self.traf_configs["traffic"][traf_type]
             adistrib = distribution[config["send_interval_distribution"]]
@@ -265,7 +265,7 @@ class TrafficGeneratorBuilder:
             rate, qlimit = config["rate"], config["qlimit"]
         else:
             rate = 1000000
-            qlimit = 2000000
+            qlimit = 200000
         # env, rate, qlimit = None, limit_bytes = True, debug = False
         uniport = UniPort(env, rate, qlimit)
         uniport.traf_class = self.traf_classes[pg.service]
