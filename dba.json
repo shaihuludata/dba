@@ -1,6 +1,6 @@
 {
     "debug" : false,
-    "horizon" : 10000,
+    "horizon" : 60000,
     "observers" : {
         "flow": {
             "report": false,

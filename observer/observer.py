@@ -3,6 +3,7 @@ from threading import Event as ThEvent
 from sympy import EmptySet, Interval
 import matplotlib.pyplot as plt
 from uni_traffic.packet import Packet
+import numpy as np
 
 
 class Observer(Thread):
@@ -37,7 +38,6 @@ class Observer(Thread):
 
         self.new_data = list()
         self.traf_mon_result = dict()
-        self.traf_mon_flow_indexes = dict()
         self.packets_result = dict()
         self.ev_wait = ThEvent()
         self.end_flag = False
@@ -71,6 +71,7 @@ class Observer(Thread):
             fig = plt.figure(1, figsize=(15, 15))
             fig.show()
             res_make(fig)
+            plt.close(fig)
 
     def packets_matcher(self, operation, cur_time, psink, pkt: Packet):
         if operation is not "check_dfg_pkt":
@@ -89,7 +90,9 @@ class Observer(Thread):
         number_of_flows = len(self.packets_result)
         flow_pack_result = self.packets_result
         subplot_index = 1
-        for flow_name in flow_pack_result:
+        flows = list(flow_pack_result.keys())
+        flows.sort()
+        for flow_name in flows:
             # time_result = list(flow_time_result[flow_name].keys())
             pack_res = flow_pack_result[flow_name]
             pkt_nums = list(pack_res.keys())
@@ -159,44 +162,98 @@ class Observer(Thread):
                 continue
             if flow_id not in self.traf_mon_result:
                 self.traf_mon_result[flow_id] = dict()
-                cur_index = max(self.traf_mon_flow_indexes.values()) + 1\
-                    if len(self.traf_mon_flow_indexes) > 0\
-                    else 0
-                self.traf_mon_flow_indexes[flow_id] = cur_index
             assert cur_time not in self.traf_mon_result[flow_id]
             pkts = sig.data[flow_id]
-            self.traf_mon_result[flow_id][cur_time] = pkts
-            # self.traf_mon_result_new_data[flow_id][cur_time] = pkts
+            pkts_size = sum(list(pkt.size for pkt in pkts))
+            grant_size = sig.data["grant_size"]
+            if grant_size < pkts_size:
+                print("Однако")
+            self.traf_mon_result[flow_id][cur_time] = (pkts_size, grant_size)
             # {имя сигнала : {время: данные сигнала}}
-        return True
+            return True
 
     def traffic_utilization_res_make(self, fig):
-        # number_of_sigs = len(self.observer_result)
+
+        def cook_summary_graph(flow_time_result, time_step):
+            total_bits_sent = int()
+            time_bw_result = dict()
+            time_alloc_result = dict()
+            for flow in flow_time_result:
+                time_result = flow_time_result[flow]
+                for t in time_result:
+                    if t not in time_bw_result:
+                        time_bw_result[t] = 0
+                    if t not in time_alloc_result:
+                        time_alloc_result[t] = 0
+                    bw = time_result[t][0]
+                    alloc = time_result[t][1]
+                    time_bw_result[t] += bw
+                    time_alloc_result[t] += alloc
+
+            time_list = list(time_bw_result.keys())
+            time_list.sort()
+            last_time, end_time = min(time_list), max(time_list)
+            bw_list = list()
+            al_list = list()
+            uti_list = list()
+            time_stride = list()
+
+            while end_time - last_time > 0:
+                cur_min_t = last_time
+                cur_max_t = last_time + time_step
+                time_stride.append(cur_max_t)
+                bw_t = sum(list(time_bw_result[tim]
+                                for tim in time_list
+                                if cur_min_t < tim <= cur_max_t))
+                al_t = sum(list(time_alloc_result[tim]
+                                for tim in time_list
+                                if cur_min_t < tim <= cur_max_t))
+                total_bits_sent += 8*bw_t
+                bw_list.append(8 * bw_t / time_step)
+                al_list.append(8 * al_t / time_step)
+                last_time += time_step
+                uti_list = np.array(bw_list) / np.array(al_list)
+            return time_stride, bw_list, al_list, uti_list, total_bits_sent
+
+        total_utilization_dict = dict()
         flow_time_result = self.traf_mon_result
-        # flow_pack_result = dict()
-        # for flow in flow_time_result:
-        #     time_result = flow_time_result[flow]
-        #     flow_pack_result[flow] = dict()
-        #     for time_r in time_result:
-        #         pkts = time_result[time_r]
-        #         for pkt in pkts:
-        #             pkt.e_time = time_r
-        #             flow_pack_result[flow][pkt.num] = pkt
-        number_of_flows = len(self.traf_mon_flow_indexes)
+        number_of_flows = len(self.traf_mon_result) + 1
+        time_step = 125
+        time_result, bw_result, al_result, total_uti_result, _ =\
+            cook_summary_graph(flow_time_result, time_step)
         subplot_index = 1
-        for flow_name in flow_time_result:
-            pack_res = flow_time_result[flow_name]
-            time_result = list(pack_res.keys())
+        ax = fig.add_subplot(number_of_flows, 2, subplot_index)
+        plt.ylabel('total_bw')
+        ax.plot(time_result, bw_result)
+        ax.plot(time_result, al_result)
+        subplot_index += 1
+        total_bits_sent = sum(bw_result) * 125
+        total_utilization = total_bits_sent / (2488.320*self.time_horizon)
+        print("Полная утилизация", total_utilization)
+
+        # график полной утилизации
+        ax = fig.add_subplot(number_of_flows, 2, subplot_index)
+        ax.plot(time_result, total_uti_result)
+        subplot_index += 1
+
+        # графики по потокам
+        flows = list(flow_time_result.keys())
+        flows.sort()
+        for flow_name in flows:
+            sig_res = flow_time_result[flow_name]
+            time_result = list(sig_res.keys())
             time_result.sort()
             # график bw и alloc
             bw_result = list()
             alloc_result = list()
             last_time = int()
-
-            for pkt_time in time_result:
-                pkts = pack_res[pkt_time]
-                bw_result.append(8*sum(list(pkt.size for pkt in pkts))/(pkt_time - last_time))
-                alloc_result.append(8*sum(list(pkt.alloc for pkt in pkts))/(pkt_time - last_time))
+            # для пропускной способности
+            # теперь надо пронормировать количество байт на временной интервал
+            for sig_time in time_result:
+                data_size, alloc_size = sig_res[sig_time]
+                bw_result.append((8*data_size)/(sig_time - last_time))
+                alloc_result.append((8*alloc_size)/(sig_time - last_time))
+                last_time = sig_time
 
             ax = fig.add_subplot(number_of_flows, 2, subplot_index)
             subplot_index += 1
@@ -206,23 +263,29 @@ class Observer(Thread):
             fig.canvas.draw()
 
             # график утилизации
-            # dv_result = list()
-            # basis_latency = min(latency_result)
-            # basis_latency = sum(latency_result) / len(latency_result)
-            # for pkt_num in pkt_nums:
-            #     pkt = pack_res[pkt_num]
-            #     dv = (pkt.e_time - pkt.s_time) / basis_latency
-            #     dv_result.append(dv)
-            # ax = fig.add_subplot(number_of_flows, 2, subplot_index)
-            # subplot_index += 1
-            # # plt.ylabel(flow_name)
-            # ax.plot(pkt_nums, dv_result, "ro")
-            # min_dv = min(dv_result)
-            # max_dv = max(dv_result)
-            # ax.set_ylim(bottom=min_dv - 1, top=max_dv + 1)
-            # fig.canvas.draw()
+            # теперь есть 2 функции:
+            # надо их поделить, получится график утилизации
+            time_start, time_end = min(time_result), max(time_result)
+            # time_stride = np.arange(time_start, time_end, 125)
+            bw_result = np.array(bw_result)
+            alloc_result = np.array(alloc_result)
+            utilization_result = bw_result / alloc_result
+            ax = fig.add_subplot(number_of_flows, 2, subplot_index)
+            ax.plot(time_result, utilization_result)
+            ax.set_ylim(bottom=0)
+            fig.canvas.draw()
+            subplot_index += 1
 
+            # plt.xlabel("Утилизация")
+            total_bw = abs(np.trapz(bw_result, time_result))
+            total_al = abs(np.trapz(alloc_result, time_result))
+            total_utilization = round(total_bw / total_al, 1)
+            if total_utilization < 0:
+                print('странно')
+            total_utilization_dict[flow_name] = total_utilization
+        print("Утилизация по потокам:")
+        for flow_name in flows:
+            print(flow_name, round(total_utilization_dict[flow_name], 1))
         # ax.set_xticklabels(points_to_watch)
         fig.canvas.draw()
-        # plt.show()
         fig.savefig(self.result_dir + "bw_utilization.png", bbox_inches="tight")

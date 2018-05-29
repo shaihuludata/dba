@@ -3,15 +3,13 @@ import logging
 
 
 class Dev(object):
-    # observer = Observer(json.load(open("./dba.json")))
-    # observer.start()
-
     def __init__(self, env, name, config):
         self.config = config
         self.name = name
         # self.rate = config["type"]
         self.env = env
         self.out = dict()
+        self.observer = None
 
     def s_start(self, sig, port):
         raise NotImplemented
