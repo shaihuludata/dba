@@ -4,6 +4,7 @@ from sympy import EmptySet, Interval
 import matplotlib.pyplot as plt
 from uni_traffic.packet import Packet
 import numpy as np
+import collections
 
 
 class Observer(Thread):
@@ -18,9 +19,12 @@ class Observer(Thread):
         obs_conf = config["observers"]
         self.time_ranges_to_show = dict()
         observer_dict = {"flow": 0, "power": 0,
-                         "packets": (self.packets_matcher, self.packets_res_make),
-                         "traffic_utilization": (self.traffic_utilization_matcher, self.traffic_utilization_res_make),
-                         "buffers": 0, "mass": 0}
+                         "packets": (self.packets_matcher,
+                                     self.packets_res_make),
+                         "traffic_utilization": ((self.traffic_utilization_matcher, self.buffer_utilization_matcher),
+                                                 self.traffic_utilization_res_make),
+                         "buffers": 0,
+                         "mass": 0}
         self.match_conditions = list()
         self.result_makers = list()
         for obs_name in obs_conf:
@@ -29,7 +33,10 @@ class Observer(Thread):
                 time_ranges = cur_obs_conf["time_ranges"]
                 self.time_ranges_to_show[obs_name] = EmptySet().union(Interval(i[0], i[1]) for i in time_ranges)
                 matcher = observer_dict[obs_name][0]
-                self.match_conditions.append(matcher)
+                if isinstance(matcher, collections.Iterable):
+                    self.match_conditions.extend(matcher)
+                else:
+                    self.match_conditions.append(matcher)
                 res_maker = observer_dict[obs_name][1]
                 self.result_makers.append(res_maker)
 
@@ -114,7 +121,7 @@ class Observer(Thread):
             basis_latency = sum(latency_result) / len(latency_result)
             for pkt_num in pkt_nums:
                 pkt = pack_res[pkt_num]
-                dv = (pkt.e_time - pkt.s_time) / basis_latency
+                dv = (pkt.dfg_time - pkt.s_time) / basis_latency
                 dv_result.append(dv)
             ax = fig.add_subplot(number_of_flows, 3, subplot_index)
             subplot_index += 1
@@ -171,6 +178,9 @@ class Observer(Thread):
             self.traf_mon_result[flow_id][cur_time] = (pkts_size, grant_size)
             # {имя сигнала : {время: данные сигнала}}
             return True
+
+    def buffer_utilization_matcher(self, fig):
+        pass
 
     def traffic_utilization_res_make(self, fig):
 
@@ -262,9 +272,8 @@ class Observer(Thread):
             ax.plot(time_result, alloc_result)
             fig.canvas.draw()
 
-            # график утилизации
-            # теперь есть 2 функции:
-            # надо их поделить, получится график утилизации
+            # график утилизации. есть 2 функции
+            # надо их поделить, получится утилизация
             time_start, time_end = min(time_result), max(time_result)
             # time_stride = np.arange(time_start, time_end, 125)
             bw_result = np.array(bw_result)

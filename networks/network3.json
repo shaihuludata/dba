@@ -1,7 +1,7 @@
 {
   "OLT0":
   {
-    "dba_type": "tm_basic",
+    "dba_type": "tm_linear_traftype_aware",
     "possible_dba_types": ["static", "static_allocs", "tm_basic", "tm_linear_traftype_aware", "status_report"],
     "maximum_ont_amount": "32",
     "upstream_interframe_interval": 100,
@@ -26,6 +26,7 @@
     "transmitter_wavelength": "1310",
     "transmitter_type": "2G",
     "activation_time": 0,
+    "traffic_activation_time": 0.5,
     "Alloc": {"1": "type1", "2": "type1"}
   },
   "Fiber1":
@@ -41,6 +42,7 @@
     "transmitter_wavelength": "1310",
     "transmitter_type": "2G",
     "activation_time": 0.2,
+    "traffic_activation_time": 0.7,
     "Alloc": {"1": "type2", "2": "type2"}
   },
   "Fiber2":
@@ -56,6 +58,7 @@
     "transmitter_wavelength": "1310",
     "transmitter_type": "2G",
     "activation_time": 0.3,
+    "traffic_activation_time": 0.8,
     "Alloc": {"1": "type3", "2": "type3"}
   },
   "Fiber3":
@@ -71,6 +74,7 @@
     "transmitter_wavelength": "1310",
     "transmitter_type": "2G",
     "activation_time": 0.4,
+    "traffic_activation_time": 0.9,
     "Alloc": {"1": "type4", "2": "type4"}
   },
   "Fiber4":
