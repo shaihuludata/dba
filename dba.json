@@ -1,29 +1,29 @@
 {
     "debug" : false,
-    "horizon" : 30000,
+    "horizon" : 10000,
     "observers" : {
         "flow": {
             "report": false,
             "time_ranges": [[0, 60000]]
         },
         "power": {
-            "report": true,
+            "report": false,
             "time_ranges": [[3000, 5000]]
         },
-        "traffic": {
+        "traffic_utilization": {
             "report": true,
             "time_ranges": [[0, 60000]]
         },
-        "IPtraffic": {
+        "packets": {
             "report": true,
             "time_ranges": [[0, 60000]]
         },
         "mass_traffic": {
-            "report": true,
+            "report": false,
             "time_ranges": [[0, 60000]]
         },
         "BufferObserver": {
-            "report": true,
+            "report": false,
             "time_ranges": [[0, 60000]]
         }
     }

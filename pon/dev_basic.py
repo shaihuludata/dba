@@ -1,5 +1,3 @@
-from observer.observer import Observer
-import json
 from support.counters import Counters
 import logging
 
