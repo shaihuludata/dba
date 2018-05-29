@@ -385,6 +385,7 @@ class ReceivedTrafficObserver:
         subplot_index += 2
         flow_utilization_dict = dict()
         for flow_name in flow_time_result:
+            # график пропускной способности и грантов
             throughput_result, alloc_result = list(), list()
             time_throughput_result = dict()
             time_alloc_result = self.utilization_result[flow_name]
@@ -398,8 +399,6 @@ class ReceivedTrafficObserver:
             #     if sum(throughput) > self.utilization_result[flow_name][time_d]:
             #         print('опачки')
 
-            # теперь надо пронормировать количество байт на временной интервал
-            # для пропускной способности
             time_result_bw = list(time_throughput_result.keys())
             time_result_bw.sort()
             last_time_d = int()
@@ -427,8 +426,7 @@ class ReceivedTrafficObserver:
             ax.plot(time_result_bw, throughput_result)
             ax.plot(time_result_al, alloc_result)
             fig.canvas.draw()
-            # time.sleep(1)
-
+            # график утилизации
             # теперь есть 2 функции:
             # time_result_bw и throughput_result, time_result_al и alloc_result
             # надо их поделить, получится график утилизации
@@ -445,7 +443,6 @@ class ReceivedTrafficObserver:
                 fig.canvas.draw()
             subplot_index += 1
             # plt.xlabel("Утилизация")
-            time.sleep(1)
 
             total_bw = np.trapz(throughput_result, time_result_bw)
             total_al = np.trapz(alloc_result, time_result_al)

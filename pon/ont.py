@@ -100,7 +100,7 @@ class Ont(ActiveDev):
                     allocation_start = allocation["StartTime"]
                     allocation_stop = allocation["StopTime"]
                     grant_size = allocation_stop - allocation_start
-                    data = {}
+                    data = dict()
                     if grant_size > 0:
                         intra_cycle_s_start = round(8*1000000*allocation_start / self.transmitter_speed, 2)
                         intra_cycle_e_start = round(8*1000000*allocation_stop / self.transmitter_speed, 2)
@@ -124,6 +124,7 @@ class Ont(ActiveDev):
                         data.update({alloc_id: pkts})
                         data.update({"cycle_num": sig.data["cycle_num"]})
                         data.update({"allocation": allocation})
+                        data.update({"grant_size": grant_size})
                         sig_id = "{}:{}:{}".format(planned_s_time, self.name, planned_e_time)
                         a = len(self.snd_port_sig[port])
                         # assert len(self.snd_port_sig[port]) == 0

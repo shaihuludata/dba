@@ -187,7 +187,6 @@ class UniPort(object):
             if alloc_size == 0:
                 break
             if alloc_size > pkt.size:
-                pkt.alloc = alloc_size
                 pkt_list.append(pkt)
                 self.store.items.remove(pkt)
                 self.p_counters.packets_sent += 1
@@ -196,11 +195,10 @@ class UniPort(object):
             else:
                 new_pkt = copy.deepcopy(pkt)
                 new_pkt.size = alloc_size
-                pkt.alloc = alloc_size
                 pkt_list.append(new_pkt)
                 pkt.size -= alloc_size
-                pkt.f_offset += alloc_size
                 alloc_size = 0
+                pkt.f_offset += alloc_size
                 tot_size_got += new_pkt.size
         self.byte_size -= tot_size_got
         return pkt_list
