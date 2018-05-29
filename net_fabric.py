@@ -21,10 +21,10 @@ class NetFabric:
         self.env = env
         dbg = sim_config["debug"] if "debug" in sim_config else False
         self.dbg = dbg
-        self.obs = obs = Observer(sim_config)
+        self.obs = obs = Observer(env, sim_config)
 
         for class_name in ["OLT", "ONT"]:
-            new_class = self.make_observeable_device_class(obs, class_name)
+            new_class = self.make_observable_device_class(obs, class_name)
             self.classes[class_name] = new_class
         obs.start()
 
@@ -47,14 +47,16 @@ class NetFabric:
         devices = self.interconnect_devices(devices, connection)
         return devices, obs
 
-    def make_observeable_device_class(self, obs, class_name):
+    def make_observable_device_class(self, obs, class_name):
         parent_class = self.classes[class_name]
-        class observeable_dev(parent_class):
+
+        class ObservableDev(parent_class):
             observe = obs.notice
+
             @observe
             def r_end(self, sig, port):
                 parent_class.r_end(self, sig, port)
-        return observeable_dev
+        return ObservableDev
 
     def create_dba(self, dev, config):
         # Configure OLT DBA
@@ -74,8 +76,8 @@ class NetFabric:
         env = self.env
         dbg = self.dbg
         if re.search("[OL|NT]", dev_name) is not None:
-            new_p_sink = self.make_observeable_psink_class(self.obs, PacketSink)
-            dev.p_sink = PacketSink(env, debug=dbg)
+            new_p_sink = self.make_observable_psink_class(self.obs, PacketSink)
+            dev.p_sink = new_p_sink(env, debug=dbg)
         if re.search("ONT", dev_name) is not None:
             tgb = TrafficGeneratorBuilder()
             if "Alloc" in config:
@@ -90,15 +92,14 @@ class NetFabric:
                 alloc_type = "type0"
         return dev
 
-    def make_observeable_psink_class(self, obs, parent_class):
-        class observeable_dev(parent_class):
+    def make_observable_psink_class(self, obs, parent_class):
+        class ObservablePSink(parent_class):
             observe = obs.notice
-            @observe
-            # вот тут надо переподумать
-            def defragmentation(self, frg):
-                parent_class.r_end(self, frg)
-        return observeable_dev
 
+            @observe
+            def check_dfg_pkt(self, frg):
+                parent_class.check_dfg_pkt(self, frg)
+        return ObservablePSink
 
     def interconnect_devices(self, devices, connection):
         # Interconnect devices

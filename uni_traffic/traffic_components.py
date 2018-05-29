@@ -92,7 +92,6 @@ class PacketSink(object):
         self.packets_to_defragment = dict()
         self.p_counters = PacketCounters()
 
-
     def put(self, pkt):
         if not self.selector or self.selector(pkt):
             now = self.env.now
@@ -112,8 +111,9 @@ class PacketSink(object):
             self.packets_to_defragment[pkt.id] = self.packets_to_defragment[pkt.id]\
                 .union(Interval(pkt.f_offset, pkt.f_offset + pkt.size))
             if self.packets_to_defragment[pkt.id].measure == pkt.t_size:
-                defragmented = self.defragmentation(pkt)
+                defragmented_pkt = self.defragmentation(pkt)
                 self.p_counters.packets_rec += 1
+                self.check_dfg_pkt(defragmented_pkt)
 
     def run(self):
         while not self.end_flag:
@@ -142,10 +142,14 @@ class PacketSink(object):
             for frg in fragments:
                 self.store.items.remove(frg)
             pkt = Packet(*frg.make_args_for_defragment())
+            pkt.dfg_time = self.env.now
             logging.debug(self.env.now, pkt)
             if self.debug:
                 print(round(self.env.now, 3), pkt)
             return pkt
+
+    def check_dfg_pkt(self, dfg):
+        pass
 
 
 class UniPort(object):
@@ -176,25 +180,27 @@ class UniPort(object):
         self.traf_class = None
         self.p_counters = PacketCounters()
 
-    def get(self, size):
+    def get(self, alloc_size):
         pkt_list = list()
         tot_size_got = int()
         for pkt in self.store.items:
-            if size == 0:
+            if alloc_size == 0:
                 break
-            if size > pkt.size:
+            if alloc_size > pkt.size:
+                pkt.alloc = alloc_size
                 pkt_list.append(pkt)
                 self.store.items.remove(pkt)
                 self.p_counters.packets_sent += 1
-                size -= pkt.size
+                alloc_size -= pkt.size
                 tot_size_got += pkt.size
             else:
                 new_pkt = copy.deepcopy(pkt)
-                new_pkt.size = size
+                new_pkt.size = alloc_size
+                pkt.alloc = alloc_size
                 pkt_list.append(new_pkt)
-                pkt.size -= size
-                pkt.f_offset += size
-                size = 0
+                pkt.size -= alloc_size
+                pkt.f_offset += alloc_size
+                alloc_size = 0
                 tot_size_got += new_pkt.size
         self.byte_size -= tot_size_got
         return pkt_list

@@ -58,6 +58,8 @@ def main():
         if re.search("[ON|LT]", dev_name) is not None:
             dev = devices[dev_name]
             print("{} : {}".format(dev_name, dev.counters.export_to_console()))
+        if re.search("OLT", dev_name) is not None:
+            print("{} : {}".format("OLT0_recv", dev.p_sink.p_counters.export_to_console()))
         if re.search("ONT", dev_name) is not None:
             for tg_name in dev.traffic_generators:
                 tg = dev.traffic_generators[tg_name]

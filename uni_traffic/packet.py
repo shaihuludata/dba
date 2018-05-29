@@ -22,6 +22,7 @@ class Packet(object):
         # "interval": self.send_interval,
         self.s_time = s_time
         self.e_time = 0
+        self.dfg_time = 0
         self.size = size
         self.t_size = size
         self.f_offset = 0
