@@ -1,9 +1,7 @@
 import simpy
-import json
 import logging
 import copy
 from sympy import EmptySet, Interval
-import numpy as np
 from support.counters import PacketCounters
 from uni_traffic.packet import Packet
 
@@ -218,60 +216,3 @@ class UniPort(object):
         else:
             self.byte_size = tmp_byte_count
             return self.store.put(pkt)
-
-
-class TrafficGeneratorBuilder:
-    traf_classes = {"voice": 0, "video": 1, "data": 2, "best_effort": 3}
-    # elif sid == "poisson":
-    #     (par, size)
-    # elif sid == "normal":
-    #     sigma = config["sigma_si"]
-    #     self.send_interval = (par, sigma, size)
-
-    def __init__(self):
-        self.traf_configs = json.load(open("./uni_traffic/traffic_types.json"))
-
-    def generate_distribution(self, distribution, parameters: list):
-        def configured_distr():
-            return distribution(*parameters)
-        return configured_distr
-
-    def packet_source(self, env, flow_id, traf_type):
-        def deterministic(parameter):
-            return parameter  # time interval
-        distribution = {"poisson": np.random.poisson,
-                        "normal": np.random.normal,
-                        "deterministic": deterministic}
-        if traf_type in self.traf_configs["traffic"]:
-            config = self.traf_configs["traffic"][traf_type]
-            adistrib = distribution[config["send_interval_distribution"]]
-            a_dist_params = list()
-            for par in ["send_interval", "sigma_si"]:
-                if par in config:
-                    a_dist_params.append(config[par])
-            adist = self.generate_distribution(adistrib, a_dist_params)
-            sdistrib = distribution[config["size_of_packet_distribution"]]
-            s_dist_params = list()
-            for par in ["size_of_packet", "sigma_sop"]:
-                if par in config:
-                    s_dist_params.append(config[par])
-            sdist = self.generate_distribution(sdistrib, s_dist_params)
-        else:
-            raise NotImplemented
-        # (env, id, adist, sdist, initial_delay = 0, finish = float("inf"), flow_id = 0
-        pg = PacketGenerator(env, flow_id, adist, sdist, flow_id=flow_id)
-        pg.service = config["service"]
-        return pg
-
-    def uni_input_for_ont(self, env, pg, port_type=None):
-        if port_type in self.traf_configs["ports"]:
-            config = self.traf_configs["ports"][port_type]
-            rate, qlimit = config["rate"], config["qlimit"]
-        else:
-            rate = 1000000
-            qlimit = 200000
-        # env, rate, qlimit = None, limit_bytes = True, debug = False
-        uniport = UniPort(env, rate, qlimit)
-        uniport.traf_class = self.traf_classes[pg.service]
-        pg.out = uniport
-        return uniport

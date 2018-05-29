@@ -3,7 +3,8 @@ from pon.olt import Olt
 from pon.ont import Ont
 from pon.opaque import Fiber, Splitter
 from observer.observer import Observer
-from uni_traffic.traffic_components import TrafficGeneratorBuilder, PacketSink
+from uni_traffic.traffic_components import PacketSink
+from uni_traffic.builders import TrafficGeneratorBuilder
 from dba.dba_static import DbaStatic, DbaStaticAllocs
 from dba.dba_tm import DbaTM, DbaTrafficMonLinear
 
@@ -15,6 +16,7 @@ class NetFabric:
         self.env = None
         self.dbg = None
         self.obs = None
+        self.tgb = TrafficGeneratorBuilder()
         pass
 
     def net_fabric(self, net, env, sim_config):
@@ -79,13 +81,13 @@ class NetFabric:
             new_p_sink = self.make_observable_psink_class(self.obs, PacketSink)
             dev.p_sink = new_p_sink(env, debug=dbg)
         if re.search("ONT", dev_name) is not None:
-            tgb = TrafficGeneratorBuilder()
+            traffic_activation_time = 1000*config["traffic_activation_time"]
             if "Alloc" in config:
                 for alloc_num in config["Alloc"]:
                     traf_type = config["Alloc"][alloc_num]
                     flow_id = dev.name + "_" + alloc_num
-                    pg = tgb.packet_source(env, flow_id, traf_type)
-                    uni = tgb.uni_input_for_ont(env, pg, flow_id)
+                    pg = self.tgb.packet_source(env, flow_id, traf_type, traffic_activation_time)
+                    uni = self.tgb.uni_input_for_ont(env, pg, flow_id)
                     dev.traffic_generators[flow_id] = uni
                     dev.current_allocations[flow_id] = uni.traf_class
             if "0" not in config["Alloc"]:

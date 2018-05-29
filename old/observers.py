@@ -413,7 +413,7 @@ class ReceivedTrafficObserver:
             time_result_al.sort()
             last_time_d = int()
             for time_d in time_result_al:
-                #bw = 8 * sum(time_alloc_result[time_d]) / (time_d - last_time_d)
+                # bw = 8 * sum(time_alloc_result[time_d]) / (time_d - last_time_d)
                 alloc = 8 * (time_alloc_result[time_d]) / (time_d - last_time_d)
                 if alloc > 2500:
                     print('очень странно')
