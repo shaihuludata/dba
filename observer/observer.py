@@ -87,6 +87,10 @@ class Observer(Thread):
             return False
         if cur_time not in self.time_ranges_to_show["packets"]:
             return False
+        # ***
+        # if "ONT1_1" in pkt.flow_id:
+        #     print(pkt.num)
+        # ***
         flow_id = pkt.flow_id
         if flow_id not in self.packets_result:
             self.packets_result[flow_id] = dict()

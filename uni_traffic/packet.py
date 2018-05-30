@@ -34,8 +34,8 @@ class Packet(object):
         self.flow_id = flow_id
 
     def __repr__(self):
-        return "id: {}, src: {}, time: {}, size: {}, t_size {}, f_offset: {},".\
-            format(self.id, self.src, self.s_time, self.size, self.t_size, self.f_offset)
+        return "id: {}, num: {}, src: {}, time: {}, size: {}, t_size {}, f_offset: {},".\
+            format(self.id, self.num, self.src, self.s_time, self.size, self.t_size, self.f_offset)
 
     def make_args_for_defragment(self):
         args = [self.s_time, self.t_size, self.id, self.src, self.dst, self.flow_id, self.cos, self.num]

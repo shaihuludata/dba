@@ -103,6 +103,8 @@ class PacketSink(object):
                 self.last_arrival = now
             self.p_counters.fragments_rec += 1
             self.bytes_rec += pkt.size
+            if "ONT1_1" in pkt.flow_id:
+                print(pkt.num, pkt.size)
             self.store.put(pkt)
             if pkt.id not in self.packets_to_defragment:
                 self.packets_to_defragment[pkt.id] = EmptySet()
@@ -134,11 +136,14 @@ class PacketSink(object):
         flow_id = frg.flow_id
         total_size = frg.t_size
         fragments = list(msg for msg in self.store.items if msg.id == frg.id)
+
         defragment = EmptySet().union(Interval(frg.f_offset, frg.f_offset + frg.size)
                                       for frg in fragments)
-        if defragment.measure == total_size:
+        dfg_measure = defragment.measure
+        if dfg_measure == total_size:
             for frg in fragments:
                 self.store.items.remove(frg)
+
             pkt = Packet(*frg.make_args_for_defragment())
             pkt.dfg_time = self.env.now
             logging.debug(self.env.now, pkt)
@@ -181,10 +186,14 @@ class UniPort(object):
     def get(self, alloc_size):
         pkt_list = list()
         tot_size_got = int()
+        # pkt_numbered = dict()
+        # for pkt in self.store.items:
+        #     pkt_nums_list.append(pkt.num)
+        # pkt_nums_list.sort()
         for pkt in self.store.items:
             if alloc_size == 0:
                 break
-            if alloc_size > pkt.size:
+            if alloc_size >= pkt.size:
                 pkt_list.append(pkt)
                 self.store.items.remove(pkt)
                 self.p_counters.packets_sent += 1
@@ -198,6 +207,7 @@ class UniPort(object):
                 alloc_size = 0
                 pkt.f_offset += alloc_size
                 tot_size_got += new_pkt.size
+
         self.byte_size -= tot_size_got
         return pkt_list
 
