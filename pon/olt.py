@@ -96,6 +96,8 @@ class Olt(ActiveDev):
             for alloc in ont_allocs:
                 pkts = sig.data[alloc]
                 for pkt in pkts:
+                    # if "ONT1_1" in pkt.flow_id:
+                    #     print(pkt.num, pkt.size)
                     self.p_sink.put(pkt)
                     self.dba.register_packet(alloc, sig.data[alloc])
             return ret
