@@ -52,6 +52,9 @@ class PacketGenerator(object):
                        src=self.id, flow_id=self.flow_id,
                        packet_num=self.p_counters.packets_sent)
             self.out.put(p)
+            if "ONT4" in self.id:
+                pass
+                # print(.flow_id, pkt.num, pkt.size)
 
 
 class PacketSink(object):
@@ -104,6 +107,7 @@ class PacketSink(object):
             self.p_counters.fragments_rec += 1
             self.bytes_rec += pkt.size
             self.store.put(pkt)
+
             if pkt.id not in self.packets_to_defragment:
                 self.packets_to_defragment[pkt.id] = EmptySet()
             self.packets_to_defragment[pkt.id] = self.packets_to_defragment[pkt.id]\
@@ -112,23 +116,8 @@ class PacketSink(object):
                 defragmented_pkt = self.defragmentation(pkt)
                 self.p_counters.packets_rec += 1
                 self.check_dfg_pkt(defragmented_pkt)
-
-    def run(self):
-        while not self.end_flag:
-            self.ev_defrag.wait(timeout=5)  # wait for event
-            for pkt in self.packets_to_defragment:
-                flow_id = pkt.flow_id
-                total_size = pkt.t_size
-                fragments = list(msg for msg in self.store.items)
-                defragment = EmptySet().union(Interval(frg.f_offset, frg.f_offset + frg.size) for frg in fragments)
-                if defragment.measure == total_size:
-                    for frg in fragments:
-                        self.store.items.remove(frg)
-                pkt = Packet(*pkt.make_args_for_defragment())
-                if self.debug:
-                    print(self.env.now, pkt)
-                    print(round(self.env.now, 3), pkt)
-                self.ev_defrag.clear()  # clean event for future
+            # if "ONT4" in pkt.flow_id:
+            #     print(pkt.flow_id, pkt.num, pkt.size)
 
     def defragmentation(self, frg):
         flow_id = frg.flow_id
@@ -150,9 +139,8 @@ class PacketSink(object):
             return pkt
 
     def check_dfg_pkt(self, dfg):
-        if "ONT1_1" in dfg.flow_id:
-            print(dfg.num, dfg.size)
-        pass
+        if "ONT4" in dfg.flow_id:
+            print(dfg.flow_id, dfg.num, dfg.size)
 
 
 class UniPort(object):
@@ -184,7 +172,8 @@ class UniPort(object):
         self.p_counters = PacketCounters()
 
     def get(self, alloc_size):
-        pkt_list = list()
+        pkts_to_extract = list()
+        pkts_to_remove = list()
         tot_size_got = int()
         # pkt_numbered = dict()
         # for pkt in self.store.items:
@@ -195,26 +184,26 @@ class UniPort(object):
             if alloc_size == 0:
                 break
             if alloc_size >= pkt.size:
-                pkt_list.append(pkt)
+                pkts_to_extract.append(pkt)
+                pkts_to_remove.append(pkt)
                 self.p_counters.packets_sent += 1
                 alloc_size -= pkt.size
                 tot_size_got += pkt.size
             else:
                 new_pkt = copy.deepcopy(pkt)
                 new_pkt.size = alloc_size
-                pkt_list.append(new_pkt)
+                pkts_to_extract.append(new_pkt)
                 pkt.size -= alloc_size
-                alloc_size = 0
                 pkt.f_offset += alloc_size
+                alloc_size = 0
                 tot_size_got += new_pkt.size
-        pkts_to_remove = list()
-        for pkt in self.store.items:
-            if pkt.size == 0:
-                pkts_to_remove.append(pkt)
+            # if "ONT4" in pkt.flow_id:
+            #     print(pkt.flow_id, pkt.num, pkt.size)
+
         for pkt in pkts_to_remove:
             self.store.items.remove(pkt)
         self.byte_size -= tot_size_got
-        return pkt_list
+        return pkts_to_extract
 
     def put(self, pkt):
         self.p_counters.packets_rec += 1

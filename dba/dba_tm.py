@@ -108,9 +108,12 @@ class DbaTM(Dba):
             self.alloc_bandwidth[alloc].pop(0)
         self.alloc_bandwidth[alloc].append(size)
         self.alloc_max_bandwidth[alloc] = max(self.alloc_bandwidth[alloc])
-        # if self.alloc_max_bandwidth[alloc] < size:
-        #     self.alloc_max_bandwidth[alloc] = size
         self.recalculate_utilisation(alloc)
+        if "ONT4" in alloc:
+            al_bw = self.alloc_bandwidth[alloc]
+            al_max_bw = self.alloc_max_bandwidth[alloc]
+            al_uti = self.alloc_utilisation[alloc]
+            pass
 
     def recalculate_utilisation(self, alloc):
         total_bw = self.alloc_bandwidth[alloc]
@@ -118,9 +121,6 @@ class DbaTM(Dba):
         mean_total_bw = sum(total_bw) / len(total_bw)
         mean_total_grant = sum(total_grant) / len(total_grant)
         current_uti = round(mean_total_bw / mean_total_grant, 2)
-        # if current_uti > 1:
-        #     print("uti {} > 1".format(current_uti))
-        # current_uti = total_bw[-1] / total_grant[-1]
         if len(self.alloc_utilisation[alloc]) >= self.mem_size:
             self.alloc_utilisation[alloc].pop(0)
         self.alloc_utilisation[alloc].append(round(current_uti, 2))
@@ -198,3 +198,9 @@ class DbaTrafficMonLinear(DbaTM):
         self.alloc_bandwidth[alloc].append(size)
         self.alloc_max_bandwidth[alloc] = calc_mean_three_max(self.alloc_bandwidth[alloc])
         self.recalculate_utilisation(alloc)
+
+        if "ONT4" in alloc:
+            al_bw = self.alloc_bandwidth[alloc]
+            al_uti = self.alloc_utilisation[alloc]
+            al_max_bw = self.alloc_max_bandwidth[alloc]
+

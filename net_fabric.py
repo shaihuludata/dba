@@ -70,7 +70,8 @@ class NetFabric:
         for dba_par in ["cycle_duration", "transmitter_type",
                         "maximum_allocation_start_time", "upstream_interframe_interval"]:
             dba_config[dba_par] = config[dba_par] if dba_par in config else None
-        dba = olt_dba_dict[config["dba_type"]](env, dba_config, dev.snd_port_sig[0])
+        dba_type = config["dba_type"]
+        dba = olt_dba_dict[dba_type](env, dba_config, dev.snd_port_sig[0])
         return dba
 
     def create_traffic_entities(self, dev, dev_name, config):
