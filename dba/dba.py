@@ -11,9 +11,7 @@ class Dba:
         self.ont_discovered = dict()
         self.cycle_duration = config["cycle_duration"]
         self.snd_sig = snd_sig
-
         self.upstream_interframe_interval = config["upstream_interframe_interval"]
-
         if "maximum_allocation_start_time" in config and config["maximum_allocation_start_time"] is not None:
             self.maximum_allocation_start_time = config["maximum_allocation_start_time"]
         elif config["transmitter_type"] == "1G":

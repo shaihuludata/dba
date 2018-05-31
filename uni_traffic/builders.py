@@ -22,18 +22,20 @@ class TrafficGeneratorBuilder:
     def packet_source(self, env, flow_id, traf_type, activation_time=0):
         def deterministic(parameter, dumb=None):
             return parameter  # time interval
-        distribution = {"poisson": np.random.poisson,
+        distribution_types = {"poisson": np.random.poisson,
                         "normal": np.random.normal,
                         "deterministic": deterministic}
         if traf_type in self.traf_configs["traffic"]:
             config = self.traf_configs["traffic"][traf_type]
-            adistrib = distribution[config["send_interval_distribution"]]
+            adist_type = config["send_interval_distribution"]
+            adistrib = distribution_types[adist_type]
             a_dist_params = list()
             for par in ["send_interval", "sigma_si"]:
                 if par in config:
                     a_dist_params.append(config[par])
             adist = self.generate_distribution(adistrib, a_dist_params)
-            sdistrib = distribution[config["size_of_packet_distribution"]]
+            sdist_type = config["size_of_packet_distribution"]
+            sdistrib = distribution_types[sdist_type]
             s_dist_params = list()
             for par in ["size_of_packet", "sigma_sop"]:
                 if par in config:
