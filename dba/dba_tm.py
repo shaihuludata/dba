@@ -91,7 +91,7 @@ class DbaTM(Dba):
             total_size = sum(requests.values())
         return requests
 
-    def register_new_ont(self, s_number, allocs: list):
+    def register_new_ont(self, s_number, allocs: dict):
         self.ont_discovered[s_number] = list(allocs.keys())
         for alloc in allocs:
             self.alloc_utilisation[alloc] = [0]
@@ -132,11 +132,9 @@ class DbaTrafficMonLinear(DbaTM):
                             2: {0.9: 3.0, 0: 0.7},
                             3: {0.9: 3.0, 0: 0.7}}
 
-    def empty(self):
-        pass
-
     def generate_alloc(self, bw, uti, alloc):
-        utis = self.TM_linear_multi_dict[self.alloc_class[alloc]]
+        al_class = self.alloc_class[alloc]
+        utis = self.TM_linear_multi_dict[al_class]
         multi = float()
         utis_list = list(utis.keys())
         utis_list.sort()
@@ -149,11 +147,11 @@ class DbaTrafficMonLinear(DbaTM):
         for traf_type in ["voice", "video"]:
             if self.alloc_class[alloc] == self.traf_classes[traf_type]:
                 alloc_size = 1.1 * max_bw if alloc_size > 1.1 * max_bw else alloc_size
+        alloc_size = self.min_grant if alloc_size < self.min_grant else alloc_size
 
-        if alloc_size < self.min_grant:
-            alloc_size = self.min_grant
-        if bw > self.min_grant and alloc_size > bw:
-            self.empty()
+        if "ONT4" in alloc:
+            if bw > self.min_grant and alloc_size > bw:
+                self.empty()
         return alloc_size
 
     def crop_allocations(self, requests: dict, max_time):
@@ -178,6 +176,8 @@ class DbaTrafficMonLinear(DbaTM):
 
     def register_packet(self, alloc, packets: list):
         def calc_mean_three_max(alloc_bw: list):
+            # несколько максимальных значений в списке
+            # вычисляем среднее
             big_list = list(alloc_bw)
             if len(big_list) > 5:
                 lit_list = list()
@@ -204,3 +204,84 @@ class DbaTrafficMonLinear(DbaTM):
             al_uti = self.alloc_utilisation[alloc]
             al_max_bw = self.alloc_max_bandwidth[alloc]
 
+
+class DbaTMLinearFair(DbaTrafficMonLinear):
+    def run(self):
+        while True:
+            ont_alloc_dict = self.ont_discovered
+            requests = dict()
+            max_time = self.maximum_allocation_start_time - len(self.ont_discovered) * self.upstream_interframe_interval
+
+            # расчитать веса аллоков
+            weigths = dict()
+            for ont in ont_alloc_dict:
+                allocs = ont_alloc_dict[ont]
+                for alloc in allocs:
+                    if len(self.alloc_bandwidth[alloc]) > 0:
+                        current_bw = self.alloc_bandwidth[alloc][-1]
+                    else:
+                        current_bw = self.min_grant
+                    current_uti = self.alloc_utilisation[alloc][-1]
+                    weight = self.generate_alloc_weight(current_bw, current_uti, alloc)
+                    weigths[alloc] = weight
+                    if alloc not in requests:
+                        requests[alloc] = 0
+
+            # определить доли от max_time
+            total_weight = sum(weigths.values())
+            portions = dict()
+            if total_weight == 0:
+                total_weight += 1
+            portions = {alloc: weigths[alloc]/total_weight for alloc in weigths}
+
+            for alloc in portions:
+                portion = portions[alloc]
+                if portion * max_time < self.min_grant:
+                    requests[alloc] = self.min_grant
+            max_time -= sum(requests[i] for i in requests)
+            assert max_time > 0
+            for alloc in portions:
+                if requests[alloc] == 0:
+                    portion = portions[alloc]
+                    alloc_size = int(round(portion * max_time))
+                    requests[alloc] = alloc_size
+
+            # после определения реальных значений аллоков, их можно записать в гранты
+            for alloc in requests:
+                alloc_size = requests[alloc]
+                if len(self.alloc_grants[alloc]) >= self.mem_size:
+                    self.alloc_grants[alloc].pop(0)
+                self.alloc_grants[alloc].append(alloc_size)
+            bwmap = self.compose_bwmap_message(requests, ont_alloc_dict, max_time)
+
+            if "bwmap" not in self.snd_sig:
+                self.snd_sig["bwmap"] = bwmap
+            else:
+                pass
+            self.snd_sig["s_timestamp"] = self.env.now
+            yield self.env.timeout(self.cycle_duration)
+
+    fair_multipliers = {0: {"bw": 1.0, "uti": 2},
+                        1: {"bw": 0.9, "uti": 3},
+                        2: {"bw": 0.8, "uti": 4},
+                        3: {"bw": 0.5, "uti": 5}}
+
+    def generate_alloc_weight(self, bw, uti, alloc):
+        al_class = self.alloc_class[alloc]
+        if bw == 0 or uti == 0:
+            return 0
+        bw_weight = bw * self.fair_multipliers[al_class]["bw"]
+        uti_weight = uti * self.fair_multipliers[al_class]["uti"]
+        weight = bw_weight + uti_weight
+        return weight
+        # alloc_size = round(bw * uti * multi + 0.5)
+        # max_bw = self.alloc_max_bandwidth[alloc]
+        # for traf_type in ["voice", "video"]:
+        #     if self.alloc_class[alloc] == self.traf_classes[traf_type]:
+        #         alloc_size = 1.1 * max_bw if alloc_size > 1.1 * max_bw else alloc_size
+        # alloc_size = self.min_grant if alloc_size < self.min_grant else alloc_size
+        #
+        # if "ONT4" in alloc:
+        #     if bw > self.min_grant and alloc_size > bw:
+        #         self.empty()
+        # return alloc_size

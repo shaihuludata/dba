@@ -25,6 +25,9 @@ class Dba:
         while True:
             raise NotImplemented
 
+    def empty(self):
+        pass
+
     def sn_request(self):
         bwmap = list()
         alloc_structure = {"Alloc-ID": "to_all",  # "Flags": 0,

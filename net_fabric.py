@@ -6,7 +6,7 @@ from observer.observer import Observer
 from uni_traffic.traffic_components import PacketSink
 from uni_traffic.builders import TrafficGeneratorBuilder
 from dba.dba_static import DbaStatic, DbaStaticAllocs
-from dba.dba_tm import DbaTM, DbaTrafficMonLinear
+from dba.dba_tm import DbaTM, DbaTrafficMonLinear, DbaTMLinearFair
 
 
 class NetFabric:
@@ -64,7 +64,8 @@ class NetFabric:
         # Configure OLT DBA
         env = self.env
         olt_dba_dict = {"static": DbaStatic, "static_allocs": DbaStaticAllocs,
-                        "tm_basic": DbaTM, "tm_linear_traftype_aware": DbaTrafficMonLinear}
+                        "tm_basic": DbaTM, "tm_linear_traftype_aware": DbaTrafficMonLinear,
+                        "tm_fair": DbaTMLinearFair}
         dba_config = dict()
         # self.upstream_interframe_interval = self.config["upstream_interframe_interval"]  # in bytes
         for dba_par in ["cycle_duration", "transmitter_type",
