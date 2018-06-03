@@ -1,4 +1,5 @@
 from dba.dba import Dba
+import math
 
 
 class DbaTM(Dba):
@@ -252,13 +253,15 @@ class DbaTMLinearFair(DbaTrafficMonLinear):
                 if len(self.alloc_grants[alloc]) >= self.mem_size:
                     self.alloc_grants[alloc].pop(0)
                 self.alloc_grants[alloc].append(alloc_size)
-            bwmap = self.compose_bwmap_message(requests, ont_alloc_dict, max_time)
+            bwmap = self.compose_bwmap_message(requests, ont_alloc_dict, self.maximum_allocation_start_time)
 
             if "bwmap" not in self.snd_sig:
                 self.snd_sig["bwmap"] = bwmap
             else:
                 pass
             self.snd_sig["s_timestamp"] = self.env.now
+            if self is None:
+                raise Exception("WTF???")
             yield self.env.timeout(self.cycle_duration)
 
     fair_multipliers = {0: {"bw": 1.0, "uti": 2},
@@ -270,7 +273,8 @@ class DbaTMLinearFair(DbaTrafficMonLinear):
         al_class = self.alloc_class[alloc]
         if bw == 0 or uti == 0:
             return 0
-        bw_weight = bw * self.fair_multipliers[al_class]["bw"]
+        # bw_weight = bw * self.fair_multipliers[al_class]["bw"]
+        bw_weight = math.log10(bw)  # * self.fair_multipliers[al_class]["bw"]
         uti_weight = uti * self.fair_multipliers[al_class]["uti"]
         weight = bw_weight + uti_weight
         return weight

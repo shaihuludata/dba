@@ -116,8 +116,6 @@ class PacketSink(object):
                 defragmented_pkt = self.defragmentation(pkt)
                 self.p_counters.packets_rec += 1
                 self.check_dfg_pkt(defragmented_pkt)
-            # if "ONT4" in pkt.flow_id:
-            #     print(pkt.flow_id, pkt.num, pkt.size)
 
     def defragmentation(self, frg):
         flow_id = frg.flow_id
@@ -134,13 +132,13 @@ class PacketSink(object):
             pkt = Packet(*frg.make_args_for_defragment())
             pkt.dfg_time = self.env.now
             logging.debug(self.env.now, pkt)
-            if self.debug:
-                print(round(self.env.now, 3), pkt)
             return pkt
 
     def check_dfg_pkt(self, dfg):
-        if "ONT4" in dfg.flow_id:
-            print(dfg.flow_id, dfg.num, dfg.size)
+        if self.debug:
+            print(round(self.env.now, 3), dfg)
+            if "ONT4" in dfg.flow_id:
+                print(dfg.flow_id, dfg.num, dfg.size)
 
 
 class UniPort(object):
