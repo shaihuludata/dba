@@ -261,7 +261,7 @@ class DbaTMLinearFair(DbaTrafficMonLinear):
                 pass
             self.snd_sig["s_timestamp"] = self.env.now
             if self is None:
-                raise Exception("WTF???")
+                raise Exception("WTF????")
             yield self.env.timeout(self.cycle_duration)
 
     fair_multipliers = {0: {"bw": 1.0, "uti": 2},
