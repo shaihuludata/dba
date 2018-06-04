@@ -1,0 +1,13 @@
+{
+  "Parameters": {
+    "IPTD": ["3+P", "15+P", "3+P", "15+P", "50+P", "U"],
+    "IPDV": ["3", "3", "U", "U", "U", "U"],
+    "IPLR": ["3e-5", "3e-5", "3e-5", "3e-5", "3e-5", "U"],
+    "IPER": ["3e-6", "3e-6", "3e-6", "3e-6", "3e-6", "U"],
+    "IPDR": ["3e-5", "3e-5", "3e-5", "3e-5", "3e-5", "U"]
+  },
+  "notices": [
+    "NOTE 1 – If the route distance of an access link exceeds 200 km, then a propagation delay term, P, is added. This is calculated by multiplying the route distance (in km) by 5, dividing by 1000 and rounding down to an integer. This effectively allows 1 ms for each integer multiple of 200 km. See Table 6 for calculation of route distance when only air distance is known.",
+    "NOTE 2 – The delay performance limits are derived from the formula above the table after having removed, from the overall end-to-end IPTD, the delay resulting from the network length (137 ms for QoS lasses 1, 3, 4 and 5; 50 ms for QoS classes 0 and 2). The distance-dependent factor, P, might result in the overall end-to-end flow performance objectives not being met for the case of long access links. For example, in some extreme geographical cases, or with a satellite hop, it may not be possible to meet the overall end-to-end delay performance limits. As a result, some highly interactive IP-based services may not be viable."
+    ]
+}
