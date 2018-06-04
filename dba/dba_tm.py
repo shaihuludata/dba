@@ -253,7 +253,8 @@ class DbaTMLinearFair(DbaTrafficMonLinear):
                 if len(self.alloc_grants[alloc]) >= self.mem_size:
                     self.alloc_grants[alloc].pop(0)
                 self.alloc_grants[alloc].append(alloc_size)
-            bwmap = self.compose_bwmap_message(requests, ont_alloc_dict, self.maximum_allocation_start_time)
+            bwmap = self.compose_bwmap_message(requests, ont_alloc_dict,
+                                               self.maximum_allocation_start_time)
 
             if "bwmap" not in self.snd_sig:
                 self.snd_sig["bwmap"] = bwmap
