@@ -107,6 +107,8 @@ class DbaTM(Dba):
             size += packet.size
         if len(self.alloc_bandwidth[alloc]) >= self.mem_size:
             self.alloc_bandwidth[alloc].pop(0)
+        if size < 0:
+            print("ого")
         self.alloc_bandwidth[alloc].append(size)
         self.alloc_max_bandwidth[alloc] = max(self.alloc_bandwidth[alloc])
         self.recalculate_utilisation(alloc)
@@ -223,6 +225,8 @@ class DbaTMLinearFair(DbaTrafficMonLinear):
                     else:
                         current_bw = self.min_grant
                     current_uti = self.alloc_utilisation[alloc][-1]
+                    if current_bw < 0:
+                        print("опа")
                     weight = self.generate_alloc_weight(current_bw, current_uti, alloc)
                     weigths[alloc] = weight
                     if alloc not in requests:
@@ -274,8 +278,8 @@ class DbaTMLinearFair(DbaTrafficMonLinear):
         al_class = self.alloc_class[alloc]
         if bw == 0 or uti == 0:
             return 0
-        # bw_weight = bw * self.fair_multipliers[al_class]["bw"]
-        bw_weight = math.log10(bw)  # * self.fair_multipliers[al_class]["bw"]
+        bw_weight = bw * self.fair_multipliers[al_class]["bw"]
+        # bw_weight = math.log10(bw)  # * self.fair_multipliers[al_class]["bw"]
         uti_weight = uti * self.fair_multipliers[al_class]["uti"]
         weight = bw_weight + uti_weight
         return weight

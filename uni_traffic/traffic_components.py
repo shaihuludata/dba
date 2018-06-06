@@ -22,7 +22,10 @@ class PacketGenerator(object):
         finish : number
             Stops generation at the finish time. Default is infinite
     """
-    def __init__(self, env, id,  adist, sdist, initial_delay=0, finish=float("inf"), flow_id=0):
+    def __init__(self, env, id,
+                 adist, sdist,
+                 active_dist=None, passive_dist=None,
+                 initial_delay=0, finish=float("inf"), flow_id=0):
         # self.traf_class = config["class"]
         # self.service = config["service"]
         # self.max_queue_size = config["max_queue_size"]  # in number_of_packets
@@ -30,6 +33,9 @@ class PacketGenerator(object):
         self.env = env
         self.adist = adist
         self.sdist = sdist
+        if active_dist is not None and passive_dist is not None:
+            self.active_dist = active_dist
+            self.passive_dist = passive_dist
         self.initial_delay = initial_delay
         self.finish = finish
         self.out = None
@@ -41,20 +47,29 @@ class PacketGenerator(object):
     def run(self):
         yield self.env.timeout(self.initial_delay)
         while self.env.now < self.finish:
-            # wait for next transmission
-            send_interval = self.adist()
-            yield self.env.timeout(send_interval)
-            self.p_counters.packets_sent += 1
-            pkt_id = "{}_{}".format(self.id, self.env.now)
-            p = Packet(self.env.now,
-                       round(self.sdist()),
-                       pkt_id,
-                       src=self.id, flow_id=self.flow_id,
-                       packet_num=self.p_counters.packets_sent)
-            self.out.put(p)
-            if "ONT4" in self.id:
-                pass
-                # print(.flow_id, pkt.num, pkt.size)
+            activity_time = self.env.now + self.active_dist()
+            while self.env.now < activity_time:
+                # wait for next transmission
+                send_interval = self.adist()
+                yield self.env.timeout(send_interval)
+                self.p_counters.packets_sent += 1
+                pkt_id = "{}_{}".format(self.id, self.env.now)
+                p = Packet(self.env.now,
+                           round(self.sdist()),
+                           pkt_id,
+                           src=self.id, flow_id=self.flow_id,
+                           packet_num=self.p_counters.packets_sent)
+                self.out.put(p)
+                if "ONT4" in self.id:
+                    pass
+                    # print(.flow_id, pkt.num, pkt.size)
+            yield self.env.timeout(self.passive_dist())
+
+    def active_dist(self):
+        return self.finish
+
+    def passive_dist(self):
+        return 0
 
 
 class PacketSink(object):

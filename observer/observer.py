@@ -48,9 +48,14 @@ class Observer(Thread):
         self.packets_result = dict()
         self.ev_wait = ThEvent()
         self.end_flag = False
+        self.cur_time = 0
 
     def run(self):
         while not self.end_flag:
+            cur_time_in_msec = self.env.now // 1000
+            if cur_time_in_msec > self.cur_time:
+                print("время {} мс".format(cur_time_in_msec))
+                self.cur_time = cur_time_in_msec
             self.ev_wait.wait(timeout=5)  # wait for event
             for i in self.new_data:
                 # r_end, cur_time, dev, sig, port = i
@@ -159,7 +164,7 @@ class Observer(Thread):
 
         # ax.set_xticklabels(points_to_watch)
         fig.canvas.draw()
-        fig.savefig(self.result_dir + "packets.png", bbox_inches="tight")
+        fig.savefig(self.result_dir + "packets1sec.png", bbox_inches="tight")
 
     def traffic_utilization_matcher(self, operation, cur_time, dev, sig, port):
         if operation is not "r_end":

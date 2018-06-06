@@ -1,6 +1,6 @@
 {
     "debug" : false,
-    "horizon" : 30000,
+    "horizon" : 10000,
     "observers" : {
         "flow": {
             "report": false,
@@ -12,11 +12,11 @@
         },
         "traffic_utilization": {
             "report": true,
-            "time_ranges": [[0, 60000]]
+            "time_ranges": [[0, 1000000]]
         },
         "packets": {
             "report": true,
-            "time_ranges": [[0, 60000]]
+            "time_ranges": [[0, 1000000]]
         },
         "mass_traffic": {
             "report": false,
