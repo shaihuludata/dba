@@ -130,7 +130,7 @@ class Ont(ActiveDev):
                         # assert len(self.snd_port_sig[port]) == 0
                         self.snd_port_sig[port].append({"s_time": planned_s_time,
                                                         "args": [self.env, sig_id, data,
-                                                                 self, port, planned_delta - 1e-11]})
+                                                                 self, port, planned_delta - 1e-9]})
         else:
             raise Exception("State {} not implemented".format(self.STATE))
         if self.STATE != "Offline":

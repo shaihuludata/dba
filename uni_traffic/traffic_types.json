@@ -15,10 +15,11 @@
       "service": "voice",
       "send_interval": 125,
       "send_interval_distribution": "poisson",
-      "size_of_packet": 300,
-      "sigma_sop": 10,
+      "size_of_packet": 10,
+      "sigma_sop": 2,
       "size_of_packet_distribution": "normal",
-      "max_queue_size": 20
+      "max_queue_size": 20,
+      "average_bw": "700kbps"
     },
     "type2": {
       "class": 0,
@@ -28,11 +29,12 @@
       "size_of_packet": 500,
       "sigma_sop": 30,
       "size_of_packet_distribution": "normal",
-      "activity_interval": 1000,
+      "activity_interval": 100000,
       "activity_interval_distribution": "deterministic",
-      "silence_interval": 1000,
+      "silence_interval": 100000,
       "silence_interval_distribution": "deterministic",
-      "max_queue_size": 20
+      "max_queue_size": 20,
+      "average_bw": "8Mbps"
     },
     "type3": {
       "class": 3,
@@ -41,7 +43,8 @@
       "send_interval_distribution": "deterministic",
       "size_of_packet": 20000,
       "size_of_packet_distribution": "deterministic",
-      "max_queue_size": 10
+      "max_queue_size": 10,
+      "average_bw": "640Mbps"
     },
     "type4": {
       "class": 3,
@@ -56,7 +59,8 @@
       "silence_interval": 500,
       "sigma_silence": 100,
       "silence_interval_distribution": "normal",
-      "max_queue_size": 10
+      "max_queue_size": 10,
+      "average_bw": "443Mbps"
     }
   },
   "ports": {
