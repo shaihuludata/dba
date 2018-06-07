@@ -26,7 +26,7 @@
       "service": "video",
       "send_interval": 250,
       "send_interval_distribution": "poisson",
-      "size_of_packet": 500,
+      "size_of_packet": 400,
       "sigma_sop": 30,
       "size_of_packet_distribution": "normal",
       "activity_interval": 100000,
@@ -34,24 +34,24 @@
       "silence_interval": 100000,
       "silence_interval_distribution": "deterministic",
       "max_queue_size": 20,
-      "average_bw": "8Mbps"
+      "average_bw": "6.4Mbps"
     },
     "type3": {
       "class": 3,
       "service": "best_effort",
       "send_interval": 250,
       "send_interval_distribution": "deterministic",
-      "size_of_packet": 20000,
+      "size_of_packet": 2000,
       "size_of_packet_distribution": "deterministic",
       "max_queue_size": 10,
-      "average_bw": "640Mbps"
+      "average_bw": "64Mbps"
     },
     "type4": {
       "class": 3,
       "service": "best_effort",
       "send_interval": 250,
       "send_interval_distribution": "deterministic",
-      "size_of_packet": 20000,
+      "size_of_packet": 10000,
       "size_of_packet_distribution": "deterministic",
       "activity_interval": 1000,
       "sigma_ai": 100,
@@ -60,7 +60,7 @@
       "sigma_silence": 100,
       "silence_interval_distribution": "normal",
       "max_queue_size": 10,
-      "average_bw": "443Mbps"
+      "average_bw": "220Mbps"
     }
   },
   "ports": {

@@ -13,6 +13,7 @@ class PacketSink_traf_counter(PacketSink):
             self.total_kbits += 8*dfg.size
             # print(self.total_kbits)
 
+
 tgb = TrafficGeneratorBuilder(traf_types="./traffic_types.json")
 env = simpy.Environment()
 

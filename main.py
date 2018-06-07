@@ -6,12 +6,13 @@ import simpy
 import re
 from net_fabric import NetFabric
 
-# python3 -m cProfile -o ./proceed.prof ./main.py
-# gprof2dot -f pstats proceed.prof | dot -Tpng -o proceed.png
-
 
 def profile(func):
-    """Decorator for run function profile"""
+    """
+    Профилирующий декоратор полезен для поиска критически замедляющих участков кода
+    # python3 -m cProfile -o ./proceed.prof ./main.py
+    # gprof2dot -f pstats proceed.prof | dot -Tpng -o proceed.png
+    """
     def wrapper(*args, **kwargs):
         profile_filename = './result/' + func.__name__ + '.prof'
         profiler = cProfile.Profile()
@@ -21,37 +22,43 @@ def profile(func):
     return wrapper
 
 
-def bandwidth_prognosis(net):
-    max_bw_prognosis = float()
-    allocs = list()
-    bws = list()
-    for dev in net:
-        if 'ONT' in dev:
-            allocs.extend(net[dev]["Alloc"].values())
-    typs = json.load(open('./uni_traffic/traffic_types.json'))
-    for typ_name in allocs:
-        typ = typs["traffic"][typ_name]
-        bw = round(8 * 1 * typ["size_of_packet"] / typ["send_interval"], 3)
-        bws.append(bw)
-        print(typ_name, bw)
-    max_bw_prognosis = round(sum(bws), 3)
-    return max_bw_prognosis
+class ProfiledEnv(simpy.Environment):
+    @profile
+    def run(self, until=None):
+        simpy.Environment.run(self, until)
 
 
 def main():
+    # исходные условия, описывающие контекст симуляции
+    # sim_config имеет настройки:
+    # "debug" - используется некоторыми классами для отображения отладочной информации
+    # "horizon" - горизонт моделирования в микросекундах (максимальное симуляционное время)
+    # "observers" - аспекты наблюдения классом observer за событиями модели
+    # сюда же будут помещаться всякие исследуемые аспекты сети
     sim_config = json.load(open("./dba.json"))
-    net = json.load(open("./networks/network3.json"))
     time_horizon = sim_config["horizon"] if "horizon" in sim_config else 1000
-    logging.info("Net description: ", net)
-    max_bw = bandwidth_prognosis(net)
-    print("Максимальная прогнозная нагрузка {} Мбит/с".format(max_bw))
 
-    env = simpy.Environment()
+    # структуры сетей описаны в соответствующей директории
+    # там описаны устройства, их параметры и их соединения друг с другом
+    net = json.load(open("./networks/network7.json"))
+    logging.info("Net description: ", net)
+
+    # env - общая среда выполнения симуляционного процесса.
+    # обеспечивает общее время и планирование всех событий, происходящих в модели
+    # при включенном дебаге работает профилирование
+    env = ProfiledEnv() if sim_config["debug"] else simpy.Environment()
+
+    # описание сети net используется фабрикой для порождения устройств,
+    # их соединения друг с другом в едином пространстве env
     nf = NetFabric()
     devices, obs = nf.net_fabric(net, env, sim_config)
+
+    # t_start нужен, чтобы оценить длительность выполнения
     t_start = time.time()
+    # запуск симуляции
     env.run(until=time_horizon)
 
+    # по окончанию симуляции показать общие результаты
     print("{} End of simulation in {}...".format(env.now, round(time.time() - t_start, 2)),
           "\n***Preparing results***".format())
     for dev_name in devices:
@@ -65,7 +72,9 @@ def main():
                 tg = dev.traffic_generators[tg_name]
                 print("{} : {}".format(tg_name, tg.p_counters.export_to_console()))
 
+    # накопленные наблюдателем obs результаты визуализировать и сохранить в директорию result
     obs.make_results()
+    # а по окончанию отдельным потокам наблюдателя сообщить чтобы отключались
     obs.end_flag = True
 
 
