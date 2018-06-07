@@ -7,6 +7,7 @@ import numpy as np
 import collections
 
 
+
 class Observer(Thread):
     result_dir = "./result/"
     # flow FlowObserver, power PhysicsObserver, traffic ReceivedTrafficObserver
@@ -31,7 +32,8 @@ class Observer(Thread):
             cur_obs_conf = obs_conf[obs_name]
             if cur_obs_conf["report"]:
                 time_ranges = cur_obs_conf["time_ranges"]
-                self.time_ranges_to_show[obs_name] = EmptySet().union(Interval(i[0], i[1]) for i in time_ranges)
+                self.time_ranges_to_show[obs_name] = EmptySet().union(Interval(i[0], i[1])
+                                                                      for i in time_ranges)
                 matcher = observer_dict[obs_name][0]
                 if isinstance(matcher, collections.Iterable):
                     self.match_conditions.extend(matcher)
@@ -40,8 +42,10 @@ class Observer(Thread):
                 res_maker = observer_dict[obs_name][1]
                 self.result_makers.append(res_maker)
 
-        self.time_horizon = max(list(max(self.time_ranges_to_show[i].boundary) for i in self.time_ranges_to_show))
-        self.time_horizon = max(config["horizon"], self.time_horizon)
+        if len(self.time_ranges_to_show) > 0:
+            self.time_horizon = max(list(max(self.time_ranges_to_show[i].boundary)
+                                         for i in self.time_ranges_to_show))
+            self.time_horizon = max(config["horizon"], self.time_horizon)
 
         self.new_data = list()
         self.traf_mon_result = dict()
@@ -52,7 +56,7 @@ class Observer(Thread):
 
     def run(self):
         while not self.end_flag:
-            cur_time_in_msec = self.env.now // 1000
+            cur_time_in_msec = round(self.env.now // 1000)
             if cur_time_in_msec > self.cur_time:
                 print("время {} мс".format(cur_time_in_msec))
                 self.cur_time = cur_time_in_msec
