@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from uni_traffic.packet import Packet
 import numpy as np
 import collections
-
+import re
 
 
 class Observer(Thread):
@@ -81,6 +81,19 @@ class Observer(Thread):
             self.ev_wait.set()
             return func(*args)
         return wrapped
+
+    @staticmethod
+    def export_counters(devices):
+        for dev_name in devices:
+            if re.search("[ON|LT]", dev_name) is not None:
+                dev = devices[dev_name]
+                print("{} : {}".format(dev_name, dev.counters.export_to_console()))
+            if re.search("OLT", dev_name) is not None:
+                print("{} : {}".format("OLT0_recv", dev.p_sink.p_counters.export_to_console()))
+            if re.search("ONT", dev_name) is not None:
+                for tg_name in dev.traffic_generators:
+                    tg = dev.traffic_generators[tg_name]
+                    print("{} : {}".format(tg_name, tg.p_counters.export_to_console()))
 
     def make_results(self):
         for res_make in self.result_makers:
