@@ -1,8 +1,6 @@
-from addict import Dict
-
 
 class Dba:
-    traf_classes = Dict({"voice": 0, "video": 1, "data": 2, "best_effort": 3})
+    traf_classes = {"voice": 0, "video": 1, "data": 2, "best_effort": 3}
 
     def __init__(self, env, config, snd_sig):
         self.env = env

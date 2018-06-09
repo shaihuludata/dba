@@ -3,8 +3,7 @@ import time
 import cProfile
 import logging
 import simpy
-import re
-from net_fabric import NetFabric
+from networks.net_fabric import NetFabric
 
 
 def profile(func):
@@ -50,8 +49,9 @@ def main():
 
     # описание сети net используется фабрикой для порождения устройств,
     # их соединения друг с другом в едином пространстве env
-    nf = NetFabric()
-    devices, obs = nf.net_fabric(net, env, sim_config)
+    # devices содержит список инициализированных устройств
+    # obs - наблюдатель симуляции, накапливает информацию и обрабатывает, выдаёт графики
+    devices, obs = NetFabric().net_fabric(net, env, sim_config)
 
     # t_start нужен, чтобы оценить длительность выполнения
     t_start = time.time()
@@ -61,17 +61,7 @@ def main():
     # по окончанию симуляции показать общие результаты
     print("{} End of simulation in {}...".format(env.now, round(time.time() - t_start, 2)),
           "\n***Preparing results***".format())
-    for dev_name in devices:
-        if re.search("[ON|LT]", dev_name) is not None:
-            dev = devices[dev_name]
-            print("{} : {}".format(dev_name, dev.counters.export_to_console()))
-        if re.search("OLT", dev_name) is not None:
-            print("{} : {}".format("OLT0_recv", dev.p_sink.p_counters.export_to_console()))
-        if re.search("ONT", dev_name) is not None:
-            for tg_name in dev.traffic_generators:
-                tg = dev.traffic_generators[tg_name]
-                print("{} : {}".format(tg_name, tg.p_counters.export_to_console()))
-
+    obs.export_counters(devices)
     # накопленные наблюдателем obs результаты визуализировать и сохранить в директорию result
     obs.make_results()
     # а по окончанию отдельным потокам наблюдателя сообщить чтобы отключались
