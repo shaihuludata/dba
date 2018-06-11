@@ -1,6 +1,6 @@
 import random
 import time
-#import inspyred
+import inspyred
 
 def generate_binary(random, args):
     bits = args.get('num_bits', 8)
