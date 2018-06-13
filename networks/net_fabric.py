@@ -20,6 +20,9 @@ class NetFabric:
         pass
 
     def net_fabric(self, net, env, sim_config):
+        max_bw = self.bandwidth_prognosis(net)
+        print("Максимальная прогнозная нагрузка {} Мбит/с".format(max_bw))
+
         self.env = env
         dbg = sim_config["debug"] if "debug" in sim_config else False
         self.dbg = dbg
@@ -48,6 +51,23 @@ class NetFabric:
                     devices[dev_name] = dev
         devices = self.interconnect_devices(devices, connection)
         return devices, obs
+
+    def bandwidth_prognosis(self, net):
+        max_bw_prognosis = float()
+        allocs = list()
+        bws = list()
+        for dev in net:
+            if 'ONT' in dev:
+                allocs.extend(net[dev]["Alloc"].values())
+        # typs = json.load(open('./uni_traffic/traffic_types.json'))
+        typs = self.tgb.traf_configs
+        for typ_name in allocs:
+            typ = typs["traffic"][typ_name]
+            bw = round(8 * 1 * typ["size_of_packet"] / typ["send_interval"], 3)
+            bws.append(bw)
+            print(typ_name, bw)
+        max_bw_prognosis = round(sum(bws), 3)
+        return max_bw_prognosis
 
     def make_observable_device_class(self, obs, class_name):
         parent_class = self.classes[class_name]

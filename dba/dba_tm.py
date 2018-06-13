@@ -107,6 +107,8 @@ class DbaTM(Dba):
             size += packet.size
         if len(self.alloc_bandwidth[alloc]) >= self.mem_size:
             self.alloc_bandwidth[alloc].pop(0)
+        if size < 0:
+            print("ого")
         self.alloc_bandwidth[alloc].append(size)
         self.alloc_max_bandwidth[alloc] = max(self.alloc_bandwidth[alloc])
         self.recalculate_utilisation(alloc)
@@ -223,6 +225,8 @@ class DbaTMLinearFair(DbaTrafficMonLinear):
                     else:
                         current_bw = self.min_grant
                     current_uti = self.alloc_utilisation[alloc][-1]
+                    if current_bw < 0:
+                        print("опа")
                     weight = self.generate_alloc_weight(current_bw, current_uti, alloc)
                     weigths[alloc] = weight
                     if alloc not in requests:
@@ -253,7 +257,8 @@ class DbaTMLinearFair(DbaTrafficMonLinear):
                 if len(self.alloc_grants[alloc]) >= self.mem_size:
                     self.alloc_grants[alloc].pop(0)
                 self.alloc_grants[alloc].append(alloc_size)
-            bwmap = self.compose_bwmap_message(requests, ont_alloc_dict, self.maximum_allocation_start_time)
+            bwmap = self.compose_bwmap_message(requests, ont_alloc_dict,
+                                               self.maximum_allocation_start_time)
 
             if "bwmap" not in self.snd_sig:
                 self.snd_sig["bwmap"] = bwmap
@@ -261,7 +266,7 @@ class DbaTMLinearFair(DbaTrafficMonLinear):
                 pass
             self.snd_sig["s_timestamp"] = self.env.now
             if self is None:
-                raise Exception("WTF????")
+                raise Exception("WTF?????")
             yield self.env.timeout(self.cycle_duration)
 
     fair_multipliers = {0: {"bw": 1.0, "uti": 2},
@@ -273,8 +278,8 @@ class DbaTMLinearFair(DbaTrafficMonLinear):
         al_class = self.alloc_class[alloc]
         if bw == 0 or uti == 0:
             return 0
-        # bw_weight = bw * self.fair_multipliers[al_class]["bw"]
-        bw_weight = math.log10(bw)  # * self.fair_multipliers[al_class]["bw"]
+        bw_weight = bw * self.fair_multipliers[al_class]["bw"]
+        # bw_weight = math.log10(bw)  # * self.fair_multipliers[al_class]["bw"]
         uti_weight = uti * self.fair_multipliers[al_class]["uti"]
         weight = bw_weight + uti_weight
         return weight

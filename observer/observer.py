@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from uni_traffic.packet import Packet
 import numpy as np
 import collections
+import re
 
 
 class Observer(Thread):
@@ -31,7 +32,8 @@ class Observer(Thread):
             cur_obs_conf = obs_conf[obs_name]
             if cur_obs_conf["report"]:
                 time_ranges = cur_obs_conf["time_ranges"]
-                self.time_ranges_to_show[obs_name] = EmptySet().union(Interval(i[0], i[1]) for i in time_ranges)
+                self.time_ranges_to_show[obs_name] = EmptySet().union(Interval(i[0], i[1])
+                                                                      for i in time_ranges)
                 matcher = observer_dict[obs_name][0]
                 if isinstance(matcher, collections.Iterable):
                     self.match_conditions.extend(matcher)
@@ -40,17 +42,24 @@ class Observer(Thread):
                 res_maker = observer_dict[obs_name][1]
                 self.result_makers.append(res_maker)
 
-        self.time_horizon = max(list(max(self.time_ranges_to_show[i].boundary) for i in self.time_ranges_to_show))
-        self.time_horizon = max(config["horizon"], self.time_horizon)
+        if len(self.time_ranges_to_show) > 0:
+            self.time_horizon = max(list(max(self.time_ranges_to_show[i].boundary)
+                                         for i in self.time_ranges_to_show))
+            self.time_horizon = max(config["horizon"], self.time_horizon)
 
         self.new_data = list()
         self.traf_mon_result = dict()
         self.packets_result = dict()
         self.ev_wait = ThEvent()
         self.end_flag = False
+        self.cur_time = 0
 
     def run(self):
         while not self.end_flag:
+            cur_time_in_msec = round(self.env.now // 1000)
+            if cur_time_in_msec > self.cur_time:
+                print("время {} мс".format(cur_time_in_msec))
+                self.cur_time = cur_time_in_msec
             self.ev_wait.wait(timeout=5)  # wait for event
             for i in self.new_data:
                 # r_end, cur_time, dev, sig, port = i
@@ -72,6 +81,19 @@ class Observer(Thread):
             self.ev_wait.set()
             return func(*args)
         return wrapped
+
+    @staticmethod
+    def export_counters(devices):
+        for dev_name in devices:
+            if re.search("[ON|LT]", dev_name) is not None:
+                dev = devices[dev_name]
+                print("{} : {}".format(dev_name, dev.counters.export_to_console()))
+            if re.search("OLT", dev_name) is not None:
+                print("{} : {}".format("OLT0_recv", dev.p_sink.p_counters.export_to_console()))
+            if re.search("ONT", dev_name) is not None:
+                for tg_name in dev.traffic_generators:
+                    tg = dev.traffic_generators[tg_name]
+                    print("{} : {}".format(tg_name, tg.p_counters.export_to_console()))
 
     def make_results(self):
         for res_make in self.result_makers:
@@ -159,7 +181,7 @@ class Observer(Thread):
 
         # ax.set_xticklabels(points_to_watch)
         fig.canvas.draw()
-        fig.savefig(self.result_dir + "packets.png", bbox_inches="tight")
+        fig.savefig(self.result_dir + "packets1sec.png", bbox_inches="tight")
 
     def traffic_utilization_matcher(self, operation, cur_time, dev, sig, port):
         if operation is not "r_end":

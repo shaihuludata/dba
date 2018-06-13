@@ -1,9 +1,8 @@
 import numpy as np
 from sympy import Interval
 import collections
-from addict import Dict
 
-traf_classes = Dict({'voice': 0, 'video': 1, 'data': 2, 'best_effort': 3})
+traf_classes = {'voice': 0, 'video': 1, 'data': 2, 'best_effort': 3}
 
 
 class Dba:
