@@ -17,24 +17,44 @@ class Observer(Thread):
     def __init__(self, env, config):
         Thread.__init__(self)
         self.env = env
+        self.ev_wait = ThEvent()
+        self.end_flag = False
+        self.cur_time = 0
+
         self.name = "CommonObserver"
         obs_conf = config["observers"]
         self.time_ranges_to_show = dict()
-        self.observers_active = list()
+        # словарь содержит операции, ассоциированные с обозревателем
+        # по ключам:
+        #   flow - диаграммы потоков
+        #   packets - мониторинг пакетов
+        #   traffic_utilization - мониторинг утилизации ресурсов и буфферов
+        #   total_per_flow_performance - интегральная оценка по потокам
+        # по значениям - кортеж:
+        # (проверка на соответствие условиям события, метод получения результата)
         observer_dict = {"flow": 0, "power": 0,
                          "packets": (self.packets_matcher,
                                      self.packets_res_make),
-                         "traffic_utilization": ((self.traffic_utilization_matcher, self.buffer_utilization_matcher),
+                         "traffic_utilization": ((self.traffic_utilization_matcher,
+                                                  self.buffer_utilization_matcher),
                                                  self.traffic_utilization_res_make),
                          "buffers": 0,
                          "mass": 0,
-                         "total_per_flow_performance_result": ()}
+                         "total_per_flow_performance": ()}
+        # первые помещуются в match_conditions.
+        # Наблюдатель прогоняет матчеры для сохранения результата
         self.match_conditions = list()
+        # вторые используются для подготовки результата и его вывода
+        # Наблюдатель прогоняет мэйкеры для обработки результата
         self.result_makers = list()
+        # показывает, какие из наблюдений актуальны в симуляции
+        self.observers_active = dict()
+
         for obs_name in obs_conf:
             cur_obs_conf = obs_conf[obs_name]
             if cur_obs_conf["report"]:
-                self.observers_active.append(obs_name)
+                self.observers_active[obs_name] = cur_obs_conf["output"]
+            if cur_obs_conf["report"] and "time_ranges" in cur_obs_conf:
                 time_ranges = cur_obs_conf["time_ranges"]
                 self.time_ranges_to_show[obs_name] = EmptySet().union(Interval(i[0], i[1])
                                                                       for i in time_ranges)
@@ -51,13 +71,21 @@ class Observer(Thread):
                                          for i in self.time_ranges_to_show))
             self.time_horizon = max(config["horizon"], self.time_horizon)
 
+        # это буфер для новых данных,
+        # потом обрабатываются в отдельном потоке и удаляются
         self.new_data = list()
+
+        # _raw - сырые данные, полученные от матчеров
+        # _result - обработанный и причёсанный результат
+        # traffic_utilization
+        self.traf_mon_raw = dict()
         self.traf_mon_result = dict()
+        # packets
+        self.packets_raw = dict()
         self.packets_result = dict()
+        # total_per_flow_performance
         self.global_flow_result = dict()
-        self.ev_wait = ThEvent()
-        self.end_flag = False
-        self.cur_time = 0
+        self.flow_class = dict()
 
     def run(self):
         while not self.end_flag:
@@ -87,51 +115,84 @@ class Observer(Thread):
             return func(*args)
         return wrapped
 
-    @staticmethod
-    def export_counters(devices):
-        for dev_name in devices:
-            if re.search("[ON|LT]", dev_name) is not None:
-                dev = devices[dev_name]
-                print("{} : {}".format(dev_name, dev.counters.export_to_console()))
-            if re.search("OLT", dev_name) is not None:
-                print("{} : {}".format("OLT0_recv", dev.p_sink.p_counters.export_to_console()))
-            if re.search("ONT", dev_name) is not None:
-                for tg_name in dev.traffic_generators:
-                    tg = dev.traffic_generators[tg_name]
-                    print("{} : {}".format(tg_name, tg.p_counters.export_to_console()))
-
     def make_results(self):
         for res_make in self.result_makers:
-            fig = plt.figure(1, figsize=(15, 15))
-            fig.show()
-            res_make(fig)
-            plt.close(fig)
-        if "total_per_flow_performance_result" in self.observers_active:
+            res_name, total_res, data_to_plot = res_make()
+
+            if "figure" in self.observers_active[res_name]:
+                self.export_data_to_figure(res_name, data_to_plot)
+
+            if "json" in self.observers_active[res_name]:
+                print(res_name, "jsonifying comming_soon")
+
+            if "total_per_flow_performance" in self.observers_active:
+                if res_name not in self.global_flow_result:
+                    self.global_flow_result[res_name] = dict()
+                    self.global_flow_result[res_name].update(total_res)
+        if "total_per_flow_performance" in self.observers_active:
             tpfp_res = self.make_total_per_flow_performance_result()
+            print(tpfp_res)
 
     def make_total_per_flow_performance_result(self):
-        objective = json.load(open("../observer/net_performance.json"))
+        objective = json.load(open("./observer/net_performance.json"))
         normative = dict()
         normative.update(objective["ITU-T Y1540"])
         normative.update(objective["PON"])
 
+        for flow_id in self.packets_raw:
+            self.flow_class[flow_id] = self.packets_raw[flow_id][1].cos
+
         normalized_per_flow_result = dict()
-        for flow_id in self.global_flow_result:
-            normalized_per_flow_result[flow_id] = dict()
-            normalized_result = dict()
-            par_result = dict()
-            normalized_result[tr_class] = par_result
-            for par in ["IPTD", "IPDV", "IPLR"]:
-                par_value = normative[par][tr_class]
-                if par == "IPTD":
-                    par_result = float(par_value.split("+")[0])
-                elif par == "IPDV":
-                    par_result = float(par_value) if par_value != "U" else float("Inf")
-                elif par == "IPLR":
-                    par_result = float(par_value) if par_value != "U" else float("Inf")
-                else:
-                    raise NotImplemented
-            # normalized_result[tr_class][par] = par_result
+        for res_name in ["packets", "utilization"]:
+            if res_name not in self.global_flow_result:
+                print(res_name, "data absent")
+                continue
+            for flow_id in self.global_flow_result[res_name]:
+                tr_class = self.flow_class[flow_id]
+                normalized_per_flow_result[flow_id] = dict()
+                normalized_result = dict()
+                par_result = dict()
+                normalized_result[tr_class] = par_result
+                for par in ["IPTD", "IPDV", "IPLR"]:
+                    par_value = normative[par][tr_class]
+                    if par == "IPTD":
+                        par_result = float(par_value.split("+")[0])
+                    elif par == "IPDV":
+                        par_result = float(par_value) if par_value != "U" else float("Inf")
+                    elif par == "IPLR":
+                        par_result = float(par_value) if par_value != "U" else float("Inf")
+                    else:
+                        raise NotImplemented
+                raise NotImplemented
+                normalized_result[tr_class][par] = par_result
+
+    def export_data_to_figure(self, res_name, data_to_plot):
+        print("comming_soon")
+        fig = plt.figure(1, figsize=(15, 15))
+        number_of_flows = len(data_to_plot)
+        flow_ids = list(flow_id for flow_id in data_to_plot)
+        flow_ids.sort()
+        subplot_index = 1
+        for flow_name in flow_ids:
+            columns = len(data_to_plot[flow_name])
+            for tup in data_to_plot[flow_name]:
+                ax = fig.add_subplot(number_of_flows, columns, subplot_index)
+                plt.ylabel(flow_name)
+                ax.plot(tup[0], tup[1], "ro") #latency_result, "ro")
+                subplot_index += 1
+
+                # ax.plot(pkt_nums, dv_result, "ro")
+                # min_dv = min(dv_result)
+                # max_dv = max(dv_result)
+                # ax.set_ylim(bottom=min_dv - 1, top=max_dv + 1)
+                # min_lr = min(lr_result)
+                # max_lr = max(lr_result)
+                # ax.set_ylim(bottom=min_lr, top=max_lr)
+                # ax.set_xticklabels(points_to_watch)
+                # fig.canvas.draw()
+        fig.show()
+        fig.savefig(self.result_dir + res_name + ".png", bbox_inches="tight")
+        plt.close(fig)
 
     def packets_matcher(self, operation, cur_time, psink, pkt: Packet):
         if operation is not "check_dfg_pkt":
@@ -145,32 +206,27 @@ class Observer(Thread):
         #     print(pkt.num)
         # ***
         flow_id = pkt.flow_id
-        if flow_id not in self.packets_result:
-            self.packets_result[flow_id] = dict()
-        if pkt.num not in self.packets_result[flow_id]:
-            self.packets_result[flow_id][pkt.num] = pkt
+        if flow_id not in self.packets_raw:
+            self.packets_raw[flow_id] = dict()
+        if pkt.num not in self.packets_raw[flow_id]:
+            self.packets_raw[flow_id][pkt.num] = pkt
 
-    def packets_res_make(self, fig):
-        number_of_flows = len(self.packets_result)
-        flow_pack_result = self.packets_result
-        subplot_index = 1
-        flows = list(flow_pack_result.keys())
+    def packets_res_make(self):
+        data_total = dict()
+        data_to_plot = dict()
+        flows = list(self.packets_raw.keys())
         flows.sort()
         for flow_name in flows:
             # time_result = list(flow_time_result[flow_name].keys())
-            pack_res = flow_pack_result[flow_name]
+            pack_res = self.packets_raw[flow_name]
             pkt_nums = list(pack_res.keys())
             pkt_nums.sort()
+
             # график задержек
             latency_result = list()
             for pkt_num in pkt_nums:
                 pkt = pack_res[pkt_num]
                 latency_result.append(pkt.dfg_time - pkt.s_time)
-            ax = fig.add_subplot(number_of_flows, 3, subplot_index)
-            subplot_index += 1
-            plt.ylabel(flow_name)
-            ax.plot(pkt_nums, latency_result, "ro")
-            fig.canvas.draw()
 
             # график вариации задержек
             dv_result = list()
@@ -180,14 +236,6 @@ class Observer(Thread):
                 pkt = pack_res[pkt_num]
                 dv = (pkt.dfg_time - pkt.s_time) / basis_latency
                 dv_result.append(dv)
-            ax = fig.add_subplot(number_of_flows, 3, subplot_index)
-            subplot_index += 1
-            # plt.ylabel(flow_name)
-            ax.plot(pkt_nums, dv_result, "ro")
-            min_dv = min(dv_result)
-            max_dv = max(dv_result)
-            ax.set_ylim(bottom=min_dv - 1, top=max_dv + 1)
-            fig.canvas.draw()
 
             # график коэффициента потерь
             # каждое последующее значение зависит от предыдущего
@@ -201,18 +249,19 @@ class Observer(Thread):
                 max_pack_num_got = pkt_num if pkt_num > max_pack_num_got else pkt_num
                 current_lr = (max_pack_num_got - len(packet_nums)) / max_pack_num_got
                 lr_result.append(current_lr)
-            ax = fig.add_subplot(number_of_flows, 3, subplot_index)
-            subplot_index += 1
-            # plt.ylabel(flow_name)
-            ax.plot(pkt_nums, lr_result, "ro")
-            min_lr = min(lr_result)
-            max_lr = max(lr_result)
-            ax.set_ylim(bottom=min_lr, top=max_lr)
-            fig.canvas.draw()
 
-        # ax.set_xticklabels(points_to_watch)
-        fig.canvas.draw()
-        fig.savefig(self.result_dir + "packets1sec.png", bbox_inches="tight")
+            if flow_name not in data_to_plot:
+                data_to_plot[flow_name] = list()
+            data_to_plot[flow_name].append((pkt_nums, latency_result))
+            data_to_plot[flow_name].append((pkt_nums, dv_result))
+            data_to_plot[flow_name].append((pkt_nums, lr_result))
+
+            if flow_name not in data_total:
+                data_total[flow_name] = dict()
+            data_total[flow_name]["IPTD"] = max(latency_result)
+            data_total[flow_name]["IPDV"] = max(dv_result)
+            data_total[flow_name]["IPLR"] = lr_result[-1]
+        return "packets", data_total, data_to_plot
 
     def traffic_utilization_matcher(self, operation, cur_time, dev, sig, port):
         if operation is not "r_end":
@@ -224,15 +273,15 @@ class Observer(Thread):
         for flow_id in sig.data:
             if "ONT" not in flow_id:
                 continue
-            if flow_id not in self.traf_mon_result:
-                self.traf_mon_result[flow_id] = dict()
-            assert cur_time not in self.traf_mon_result[flow_id]
+            if flow_id not in self.traf_mon_raw:
+                self.traf_mon_raw[flow_id] = dict()
+            assert cur_time not in self.traf_mon_raw[flow_id]
             pkts = sig.data[flow_id]
             pkts_size = sum(list(pkt.size for pkt in pkts))
             grant_size = sig.data["grant_size"]
             if grant_size < pkts_size:
                 print("Однако")
-            self.traf_mon_result[flow_id][cur_time] = (pkts_size, grant_size)
+            self.traf_mon_raw[flow_id][cur_time] = (pkts_size, grant_size)
             # {имя сигнала : {время: данные сигнала}}
             return True
 
@@ -279,14 +328,17 @@ class Observer(Thread):
                 bw_list.append(8 * bw_t / time_step)
                 al_list.append(8 * al_t / time_step)
                 last_time += time_step
-                uti_list = np.array(bw_list) / np.array(al_list)
+                try:
+                    uti_list = np.array(bw_list) / np.array(al_list)
+                except RuntimeWarning:
+                    print(bw_list, al_list)
             return time_stride, bw_list, al_list, uti_list, total_bits_sent
 
         total_utilization_dict = dict()
-        if len(self.traf_mon_result) == 0:
+        if len(self.traf_mon_raw) == 0:
             return False
-        flow_time_result = self.traf_mon_result
-        number_of_flows = len(self.traf_mon_result) + 1
+        flow_time_result = self.traf_mon_raw
+        number_of_flows = len(self.traf_mon_raw) + 1
         time_step = 125
         time_result, bw_result, al_result, total_uti_result, _ =\
             cook_summary_graph(flow_time_result, time_step)
@@ -357,3 +409,17 @@ class Observer(Thread):
         # ax.set_xticklabels(points_to_watch)
         fig.canvas.draw()
         fig.savefig(self.result_dir + "bw_utilization.png", bbox_inches="tight")
+        return "utilization", data_total, data_to_plot
+
+    @staticmethod
+    def export_counters(devices):
+        for dev_name in devices:
+            if re.search("[ON|LT]", dev_name) is not None:
+                dev = devices[dev_name]
+                print("{} : {}".format(dev_name, dev.counters.export_to_console()))
+            if re.search("OLT", dev_name) is not None:
+                print("{} : {}".format("OLT0_recv", dev.p_sink.p_counters.export_to_console()))
+            if re.search("ONT", dev_name) is not None:
+                for tg_name in dev.traffic_generators:
+                    tg = dev.traffic_generators[tg_name]
+                    print("{} : {}".format(tg_name, tg.p_counters.export_to_console()))

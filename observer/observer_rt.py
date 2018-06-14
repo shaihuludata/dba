@@ -1,4 +1,6 @@
 from threading import Thread
+from threading import Event as ThEvent
+from sympy import EmptySet, Interval
 
 
 class DevObserverRealTime(Thread):
@@ -15,8 +17,8 @@ class DevObserverRealTime(Thread):
         self.time_horizon = max(self.time_ranges_to_show.boundary)
         self.new_data = list()
         self.observer_result = dict()
-        self.traf_mon_result = dict()
-        self.traf_mon_result_new_data = dict()
+        self.traf_mon_raw = dict()
+        self.traf_mon_raw_new_data = dict()
         self.traf_mon_flow_indexes = dict()
         self.ev_wait = ThEvent()
         self.end_flag = False
@@ -53,22 +55,22 @@ class DevObserverRealTime(Thread):
         for flow_id in sig.data:
             if "ONT" not in flow_id:
                 continue
-            if flow_id not in self.traf_mon_result:
-                self.traf_mon_result[flow_id] = dict()
+            if flow_id not in self.traf_mon_raw:
+                self.traf_mon_raw[flow_id] = dict()
                 cur_index = max(self.traf_mon_flow_indexes.values()) + 1\
                     if len(self.traf_mon_flow_indexes) > 0\
                     else 0
                 self.traf_mon_flow_indexes[flow_id] = cur_index
-            assert cur_time not in self.traf_mon_result[flow_id]
+            assert cur_time not in self.traf_mon_raw[flow_id]
             pkts = sig.data[flow_id]
-            self.traf_mon_result[flow_id][cur_time] = pkts
-            # self.traf_mon_result_new_data[flow_id][cur_time] = pkts
+            self.traf_mon_raw[flow_id][cur_time] = pkts
+            # self.traf_mon_raw_new_data[flow_id][cur_time] = pkts
             # {имя сигнала : {время: данные сигнала}}
         return True
 
     def traf_vis_res_rt(self, fig):
         # number_of_sigs = len(self.observer_result)
-        flow_time_result = self.traf_mon_result
+        flow_time_result = self.traf_mon_raw
         flow_pack_result = dict()
         for flow in flow_time_result:
             time_result = flow_time_result[flow]

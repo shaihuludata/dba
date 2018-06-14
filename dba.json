@@ -11,12 +11,14 @@
             "time_ranges": [[3000, 5000]]
         },
         "traffic_utilization": {
-            "report": true,
-            "time_ranges": [[0, 60000]]
+            "report": false,
+            "time_ranges": [[0, 60000]],
+            "output": ["json"]
         },
         "packets": {
             "report": true,
-            "time_ranges": [[0, 60000]]
+            "time_ranges": [[0, 60000]],
+            "output": ["figure", "json"]
         },
         "mass_traffic": {
             "report": false,
@@ -26,8 +28,9 @@
             "report": false,
             "time_ranges": [[0, 60000]]
         },
-        "total_per_flow_performance_result": {
-            "report": true
+        "total_per_flow_performance": {
+            "report": true,
+            "output": ["json"]
         }
     }
 }
