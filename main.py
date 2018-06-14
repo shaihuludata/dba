@@ -3,7 +3,7 @@ import time
 import cProfile
 import logging
 import simpy
-from networks.net_fabric import NetFabric
+from dba_pon_networks.net_fabric import NetFabric
 
 
 def profile(func):
@@ -27,7 +27,7 @@ class ProfiledEnv(simpy.Environment):
         simpy.Environment.run(self, until)
 
 
-def main():
+def main(**kwargs):
     # исходные условия, описывающие контекст симуляции
     # sim_config имеет настройки:
     # "debug" - используется некоторыми классами для отображения отладочной информации
@@ -39,7 +39,9 @@ def main():
 
     # структуры сетей описаны в соответствующей директории
     # там описаны устройства, их параметры и их соединения друг с другом
-    net = json.load(open("./networks/network7.json"))
+    net = json.load(open("./dba_pon_networks/network7.json"))
+    if "DbaTMLinearFair_fair_multipliers" in kwargs:
+        net["OLT0"].update(kwargs)
     logging.info("Net description: ", net)
 
     # env - общая среда выполнения симуляционного процесса.
@@ -69,4 +71,11 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    dba_fair_multipliers = {0: {"bw": 1.0, "uti": 2},
+                            1: {"bw": 0.9, "uti": 3},
+                            2: {"bw": 0.8, "uti": 4},
+                            3: {"bw": 0, "uti": 0}}
+                            # 3: {"bw": 0.5, "uti": 5}}
+    kwargs = {'DbaTMLinearFair_fair_multipliers': dba_fair_multipliers,
+              'dba_min_grant': 1}
+    main(**kwargs)

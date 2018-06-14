@@ -47,4 +47,3 @@ for tr_class in [0, 1, 2, 3, 4]:
 print(evaluations)
 sum_evaluations = list(round(sum(evs), 2) for evs in evaluations)
 print(sum_evaluations)
-
