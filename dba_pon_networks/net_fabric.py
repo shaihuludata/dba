@@ -17,7 +17,6 @@ class NetFabric:
         self.dbg = None
         self.obs = None
         self.tgb = TrafficGeneratorBuilder()
-        pass
 
     def net_fabric(self, net, env, sim_config):
         max_bw = self.bandwidth_prognosis(net)
@@ -91,8 +90,13 @@ class NetFabric:
         for dba_par in ["cycle_duration", "transmitter_type",
                         "maximum_allocation_start_time", "upstream_interframe_interval"]:
             dba_config[dba_par] = config[dba_par] if dba_par in config else None
-        dba_type = config["dba_type"]
-        dba = olt_dba_dict[dba_type](env, dba_config, dev.snd_port_sig[0])
+        dba_type_name = config["dba_type"]
+        dba_type = olt_dba_dict[dba_type_name]
+        if "dba_min_grant" in config and "tm_" in dba_type_name:
+            dba_type.min_grant = config["dba_min_grant"]
+        if "DbaTMLinearFair_fair_multipliers" in config and dba_type_name == "tm_fair":
+            DbaTMLinearFair.fair_multipliers = config["DbaTMLinearFair_fair_multipliers"]
+        dba = dba_type(env, dba_config, dev.snd_port_sig[0])
         return dba
 
     def create_traffic_entities(self, dev, dev_name, config):

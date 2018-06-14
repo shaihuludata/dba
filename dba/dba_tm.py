@@ -3,10 +3,11 @@ import math
 
 
 class DbaTM(Dba):
+    # минимальный размер гранта при утилизации 0
+    min_grant = 10
+
     def __init__(self, env, config, snd_sig):
         Dba.__init__(self, env, config, snd_sig)
-        # минимальный размер гранта при утилизации 0
-        self.min_grant = 10
         self.mem_size = 10
         # для хранения текущих значений утилизации
         self.alloc_utilisation = dict()

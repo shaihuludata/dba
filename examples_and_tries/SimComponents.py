@@ -507,7 +507,7 @@ class ShaperTokenBucket(object):
 
 class VirtualClockServer(object):
     """ Models a virtual clock server. For theory and implementation see:
-        L. Zhang, Virtual clock: A new traffic control algorithm for packet switching networks,
+        L. Zhang, Virtual clock: A new traffic control algorithm for packet switching dba_pon_networks,
         in ACM SIGCOMM Computer Communication Review, 1990, vol. 20, pp. 19.
 
 
