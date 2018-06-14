@@ -6,6 +6,7 @@ from uni_traffic.packet import Packet
 import numpy as np
 import collections
 import re
+import json
 
 
 class Observer(Thread):
@@ -19,18 +20,21 @@ class Observer(Thread):
         self.name = "CommonObserver"
         obs_conf = config["observers"]
         self.time_ranges_to_show = dict()
+        self.observers_active = list()
         observer_dict = {"flow": 0, "power": 0,
                          "packets": (self.packets_matcher,
                                      self.packets_res_make),
                          "traffic_utilization": ((self.traffic_utilization_matcher, self.buffer_utilization_matcher),
                                                  self.traffic_utilization_res_make),
                          "buffers": 0,
-                         "mass": 0}
+                         "mass": 0,
+                         "total_per_flow_performance_result": ()}
         self.match_conditions = list()
         self.result_makers = list()
         for obs_name in obs_conf:
             cur_obs_conf = obs_conf[obs_name]
             if cur_obs_conf["report"]:
+                self.observers_active.append(obs_name)
                 time_ranges = cur_obs_conf["time_ranges"]
                 self.time_ranges_to_show[obs_name] = EmptySet().union(Interval(i[0], i[1])
                                                                       for i in time_ranges)
@@ -50,6 +54,7 @@ class Observer(Thread):
         self.new_data = list()
         self.traf_mon_result = dict()
         self.packets_result = dict()
+        self.global_flow_result = dict()
         self.ev_wait = ThEvent()
         self.end_flag = False
         self.cur_time = 0
@@ -101,6 +106,32 @@ class Observer(Thread):
             fig.show()
             res_make(fig)
             plt.close(fig)
+        if "total_per_flow_performance_result" in self.observers_active:
+            tpfp_res = self.make_total_per_flow_performance_result()
+
+    def make_total_per_flow_performance_result(self):
+        objective = json.load(open("../observer/net_performance.json"))
+        normative = dict()
+        normative.update(objective["ITU-T Y1540"])
+        normative.update(objective["PON"])
+
+        normalized_per_flow_result = dict()
+        for flow_id in self.global_flow_result:
+            normalized_per_flow_result[flow_id] = dict()
+            normalized_result = dict()
+            par_result = dict()
+            normalized_result[tr_class] = par_result
+            for par in ["IPTD", "IPDV", "IPLR"]:
+                par_value = normative[par][tr_class]
+                if par == "IPTD":
+                    par_result = float(par_value.split("+")[0])
+                elif par == "IPDV":
+                    par_result = float(par_value) if par_value != "U" else float("Inf")
+                elif par == "IPLR":
+                    par_result = float(par_value) if par_value != "U" else float("Inf")
+                else:
+                    raise NotImplemented
+            # normalized_result[tr_class][par] = par_result
 
     def packets_matcher(self, operation, cur_time, psink, pkt: Packet):
         if operation is not "check_dfg_pkt":
@@ -252,6 +283,8 @@ class Observer(Thread):
             return time_stride, bw_list, al_list, uti_list, total_bits_sent
 
         total_utilization_dict = dict()
+        if len(self.traf_mon_result) == 0:
+            return False
         flow_time_result = self.traf_mon_result
         number_of_flows = len(self.traf_mon_result) + 1
         time_step = 125

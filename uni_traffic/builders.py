@@ -18,8 +18,8 @@ class TrafficGeneratorBuilder:
         def deterministic(parameter, dumb=None):
             return parameter  # time interval
         distribution_types = {"poisson": np.random.poisson,
-                        "normal": np.random.normal,
-                        "deterministic": deterministic}
+                              "normal": np.random.normal,
+                              "deterministic": deterministic}
         if traf_type in self.traf_configs["traffic"]:
             config = self.traf_configs["traffic"][traf_type]
             # распределение и интервал отправки сообщений
