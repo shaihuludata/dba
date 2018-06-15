@@ -5,7 +5,6 @@ import logging
 import simpy
 from dba_pon_networks.net_fabric import NetFabric
 
-
 def profile(func):
     """
     Профилирующий декоратор полезен для поиска критически замедляющих участков кода
@@ -74,7 +73,7 @@ if __name__ == '__main__':
     dba_fair_multipliers = {0: {"bw": 1.0, "uti": 2},
                             1: {"bw": 0.9, "uti": 3},
                             2: {"bw": 0.8, "uti": 4},
-                            3: {"bw": 0, "uti": 0}}
+                            3: {"bw": 0.7, "uti": 5}}
                             # 3: {"bw": 0.5, "uti": 5}}
     kwargs = {'DbaTMLinearFair_fair_multipliers': dba_fair_multipliers,
               'dba_min_grant': 1}
