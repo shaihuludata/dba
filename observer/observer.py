@@ -3,6 +3,7 @@ from threading import Event as ThEvent
 from sympy import EmptySet, Interval
 import matplotlib.pyplot as plt
 from uni_traffic.packet import Packet
+from pon.signal import Signal
 import numpy as np
 import collections
 import re
@@ -86,6 +87,7 @@ class Observer(Thread):
         # total_per_flow_performance
         self.global_flow_result = dict()
         self.flow_class = dict()
+        self.flow_distance = dict()
 
     def run(self):
         while not self.end_flag:
@@ -140,34 +142,61 @@ class Observer(Thread):
         normative.update(objective["PON"])
 
         for flow_id in self.packets_raw:
-            self.flow_class[flow_id] = self.packets_raw[flow_id][1].cos
+            if "packets" in self.observers_active:
+                self.flow_class[flow_id] = self.packets_raw[flow_id][1].cos
+            if "traffic_utilization" in self.observers_active:
+                a = min(list(self.traf_mon_raw[flow_id].keys()))
+                self.flow_distance[flow_id] = self.traf_mon_raw[flow_id][a][2]
 
-        normalized_per_flow_result = dict()
-        for res_name in ["packets", "utilization"]:
+        glob_res = dict()
+        for res_name in ["packets", "traffic_utilization"]:
             if res_name not in self.global_flow_result:
                 print(res_name, "data absent")
                 continue
             for flow_id in self.global_flow_result[res_name]:
-                tr_class = self.flow_class[flow_id]
-                normalized_per_flow_result[flow_id] = dict()
-                normalized_result = dict()
-                par_result = dict()
-                normalized_result[tr_class] = par_result
-                for par in ["IPTD", "IPDV", "IPLR"]:
-                    par_value = normative[par][tr_class]
-                    if par == "IPTD":
-                        par_result = float(par_value.split("+")[0])
-                    elif par == "IPDV":
-                        par_result = float(par_value) if par_value != "U" else float("Inf")
-                    elif par == "IPLR":
-                        par_result = float(par_value) if par_value != "U" else float("Inf")
-                    else:
-                        raise NotImplemented
-                raise NotImplemented
-                normalized_result[tr_class][par] = par_result
+                if flow_id not in glob_res:
+                    glob_res[flow_id] = dict()
+                glob_res[flow_id].update(self.global_flow_result[res_name][flow_id])
+        self.global_flow_result = glob_res
+
+        normalized_per_flow_result = dict()
+        for flow_id in self.global_flow_result:
+            flow_params = self.global_flow_result[flow_id]
+            tr_class = self.flow_class[flow_id]
+            # distance = self.flow_distance[flow_id]
+            normalized_per_flow_result[flow_id] = par_result = dict()
+            for par in ["IPTD", "IPDV", "IPLR", "uti", "bw"]:  # , "buf"]:
+                par_value = flow_params[par]
+                n_par_value = normative[par][tr_class]
+                if par == "IPTD":
+                    n_par_value = float(n_par_value.split("+")[0]) * 1000 if n_par_value != "U" else float("Inf")
+                elif par == "IPDV":
+                    n_par_value = float(n_par_value) * 1000 if n_par_value != "U" else float("Inf")
+                elif par == "IPLR":
+                    n_par_value = float(n_par_value) if n_par_value != "U" else float("Inf")
+                elif par == "uti":
+                    assert par_value > 1
+                    normalized_par_value = 1 - par_value
+                elif par == "bw":
+                    n_par_value = float(n_par_value)
+                    normalized_par_value = 1 - par_value / n_par_value
+                elif par == "buf":
+                    normalized_par_value = 0
+                else:
+                    raise NotImplemented
+                if par in ["IPTD", "IPDV", "IPLR"]:
+                    normalized_par_value = par_value / (n_par_value * 1.00)
+                    if normalized_par_value > 1:
+                        normalized_par_value *= 10
+                par_result[par] = round(normalized_par_value, 2)
+
+        # normalized_result[tr_class][par] = par_result
+        for flow in normalized_per_flow_result:
+            print(flow, normalized_per_flow_result[flow])
+        return
 
     def export_data_to_figure(self, res_name, data_to_plot):
-        print("comming_soon")
+        print("cumming_soon")
         fig = plt.figure(1, figsize=(15, 15))
         number_of_flows = len(data_to_plot)
         flow_ids = list(flow_id for flow_id in data_to_plot)
@@ -178,9 +207,18 @@ class Observer(Thread):
             for tup in data_to_plot[flow_name]:
                 ax = fig.add_subplot(number_of_flows, columns, subplot_index)
                 plt.ylabel(flow_name)
-                ax.plot(tup[0], tup[1], "ro") #latency_result, "ro")
+                if res_name == "packets": style = "ro"
+                elif res_name == "traffic_utilization": style = "--"
+                else: style = "-"
+
+                if isinstance(tup[1], tuple):
+                    for graph in tup[1]:
+                        ax.plot(tup[0], graph)
+                else:
+                    ax.plot(tup[0], tup[1], style)
                 subplot_index += 1
 
+                # latency_result, "ro")
                 # ax.plot(pkt_nums, dv_result, "ro")
                 # min_dv = min(dv_result)
                 # max_dv = max(dv_result)
@@ -190,6 +228,7 @@ class Observer(Thread):
                 # ax.set_ylim(bottom=min_lr, top=max_lr)
                 # ax.set_xticklabels(points_to_watch)
                 # fig.canvas.draw()
+
         fig.show()
         fig.savefig(self.result_dir + res_name + ".png", bbox_inches="tight")
         plt.close(fig)
@@ -234,7 +273,7 @@ class Observer(Thread):
             basis_latency = sum(latency_result) / len(latency_result)
             for pkt_num in pkt_nums:
                 pkt = pack_res[pkt_num]
-                dv = (pkt.dfg_time - pkt.s_time) / basis_latency
+                dv = (pkt.dfg_time - pkt.s_time) - basis_latency
                 dv_result.append(dv)
 
             # график коэффициента потерь
@@ -259,11 +298,11 @@ class Observer(Thread):
             if flow_name not in data_total:
                 data_total[flow_name] = dict()
             data_total[flow_name]["IPTD"] = max(latency_result)
-            data_total[flow_name]["IPDV"] = max(dv_result)
+            data_total[flow_name]["IPDV"] = abs(max(dv_result))
             data_total[flow_name]["IPLR"] = lr_result[-1]
         return "packets", data_total, data_to_plot
 
-    def traffic_utilization_matcher(self, operation, cur_time, dev, sig, port):
+    def traffic_utilization_matcher(self, operation, cur_time, dev, sig:Signal, port):
         if operation is not "r_end":
             return False
         if cur_time not in self.time_ranges_to_show["traffic_utilization"]:
@@ -281,14 +320,15 @@ class Observer(Thread):
             grant_size = sig.data["grant_size"]
             if grant_size < pkts_size:
                 print("Однако")
-            self.traf_mon_raw[flow_id][cur_time] = (pkts_size, grant_size)
+            distance = sig.physics["distance_passed"]
+            self.traf_mon_raw[flow_id][cur_time] = (pkts_size, grant_size, distance)
             # {имя сигнала : {время: данные сигнала}}
             return True
 
-    def buffer_utilization_matcher(self, fig):
+    def buffer_utilization_matcher(self, operation, cur_time, dev, sig, port):
         pass
 
-    def traffic_utilization_res_make(self, fig):
+    def traffic_utilization_res_make(self):
 
         def cook_summary_graph(flow_time_result, time_step):
             total_bits_sent = int()
@@ -334,28 +374,21 @@ class Observer(Thread):
                     print(bw_list, al_list)
             return time_stride, bw_list, al_list, uti_list, total_bits_sent
 
+        data_total = dict()
+        data_to_plot = dict()
         total_utilization_dict = dict()
         if len(self.traf_mon_raw) == 0:
             return False
         flow_time_result = self.traf_mon_raw
         number_of_flows = len(self.traf_mon_raw) + 1
         time_step = 125
+        # total_uti_result - график полной утилизации
         time_result, bw_result, al_result, total_uti_result, _ =\
             cook_summary_graph(flow_time_result, time_step)
-        subplot_index = 1
-        ax = fig.add_subplot(number_of_flows, 2, subplot_index)
-        plt.ylabel('total_bw')
-        ax.plot(time_result, bw_result)
-        ax.plot(time_result, al_result)
-        subplot_index += 1
+
         total_bits_sent = sum(bw_result) * 125
         total_utilization = total_bits_sent / (2488.320*self.time_horizon)
         print("Полная утилизация", total_utilization)
-
-        # график полной утилизации
-        ax = fig.add_subplot(number_of_flows, 2, subplot_index)
-        ax.plot(time_result, total_uti_result)
-        subplot_index += 1
 
         # графики по потокам
         flows = list(flow_time_result.keys())
@@ -366,50 +399,46 @@ class Observer(Thread):
             time_result.sort()
             # график bw и alloc
             bw_result = list()
-            alloc_result = list()
+            al_result = list()
             last_time = int()
             # для пропускной способности
             # теперь надо пронормировать количество байт на временной интервал
             for sig_time in time_result:
-                data_size, alloc_size = sig_res[sig_time]
+                data_size, alloc_size, distance = sig_res[sig_time]
                 bw_result.append((8*data_size)/(sig_time - last_time))
-                alloc_result.append((8*alloc_size)/(sig_time - last_time))
+                al_result.append((8*alloc_size)/(sig_time - last_time))
                 last_time = sig_time
-
-            ax = fig.add_subplot(number_of_flows, 2, subplot_index)
-            subplot_index += 1
-            plt.ylabel(flow_name)
-            ax.plot(time_result, bw_result)
-            ax.plot(time_result, alloc_result)
-            fig.canvas.draw()
 
             # график утилизации. есть 2 функции
             # надо их поделить, получится утилизация
             time_start, time_end = min(time_result), max(time_result)
             # time_stride = np.arange(time_start, time_end, 125)
-            bw_result = np.array(bw_result)
-            alloc_result = np.array(alloc_result)
-            utilization_result = bw_result / alloc_result
-            ax = fig.add_subplot(number_of_flows, 2, subplot_index)
-            ax.plot(time_result, utilization_result)
-            ax.set_ylim(bottom=0)
-            fig.canvas.draw()
-            subplot_index += 1
+            np_bw_result = np.array(bw_result)
+            np_al_result = np.array(al_result)
+            uti_result = np_bw_result / np_al_result
 
-            # plt.xlabel("Утилизация")
-            total_bw = abs(np.trapz(bw_result, time_result))
-            total_al = abs(np.trapz(alloc_result, time_result))
+            total_bw = abs(np.trapz(np_bw_result, time_result))
+            total_al = abs(np.trapz(np_al_result, time_result))
             total_utilization = round(total_bw / total_al, 1)
             if total_utilization < 0:
                 print('странно')
             total_utilization_dict[flow_name] = total_utilization
-        print("Утилизация по потокам:")
-        for flow_name in flows:
-            print(flow_name, round(total_utilization_dict[flow_name], 1))
-        # ax.set_xticklabels(points_to_watch)
-        fig.canvas.draw()
-        fig.savefig(self.result_dir + "bw_utilization.png", bbox_inches="tight")
-        return "utilization", data_total, data_to_plot
+            print("Утилизация в потоке", flow_name, round(total_utilization_dict[flow_name], 1))
+
+            # data_to_plot["total_bw"].append(time_result, total_uti_result)
+            if flow_name not in data_to_plot:
+                data_to_plot[flow_name] = list()
+            data_to_plot[flow_name].append((time_result, (bw_result, np_al_result)))
+            data_to_plot[flow_name].append((time_result, uti_result))
+            # data_to_plot[flow_name].append((time_result, buf_result))
+
+            if flow_name not in data_total:
+                data_total[flow_name] = dict()
+            data_total[flow_name]["uti"] = sum(uti_result)/len(uti_result)
+            data_total[flow_name]["bw"] = abs(max(bw_result))
+            # data_total[flow_name]["buf"] = max(buf_result)
+
+        return "traffic_utilization", data_total, data_to_plot
 
     @staticmethod
     def export_counters(devices):
