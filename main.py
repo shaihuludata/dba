@@ -74,7 +74,6 @@ if __name__ == '__main__':
                             1: {"bw": 0.9, "uti": 3},
                             2: {"bw": 0.8, "uti": 4},
                             3: {"bw": 0.7, "uti": 5}}
-                            # 3: {"bw": 0.5, "uti": 5}}
     kwargs = {'DbaTMLinearFair_fair_multipliers': dba_fair_multipliers,
               'dba_min_grant': 1}
     main(**kwargs)
