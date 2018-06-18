@@ -123,19 +123,23 @@ class Observer(Thread):
 
             if "figure" in self.observers_active[res_name]:
                 self.export_data_to_figure(res_name, data_to_plot)
-
             if "json" in self.observers_active[res_name]:
-                print(res_name, "jsonifying comming_soon")
+                self.export_data_to_json(res_name, data_to_plot)
 
             if "total_per_flow_performance" in self.observers_active:
                 if res_name not in self.global_flow_result:
                     self.global_flow_result[res_name] = dict()
                     self.global_flow_result[res_name].update(total_res)
-        if "total_per_flow_performance" in self.observers_active:
+
+        res_name = "total_per_flow_performance"
+        if res_name in self.observers_active:
             tpfp_res = self.make_total_per_flow_performance_result()
-            print(tpfp_res)
+            if "json" in self.observers_active[res_name]:
+                self.export_data_to_json(res_name, tpfp_res)
+        return
 
     def make_total_per_flow_performance_result(self):
+        total_per_flow_performance_result = dict()
         objective = json.load(open("./observer/net_performance.json"))
         normative = dict()
         normative.update(objective["ITU-T Y1540"])
@@ -162,6 +166,8 @@ class Observer(Thread):
         normalized_per_flow_result = dict()
         for flow_id in self.global_flow_result:
             flow_params = self.global_flow_result[flow_id]
+            if flow_id not in self.flow_class:
+                continue
             tr_class = self.flow_class[flow_id]
             # distance = self.flow_distance[flow_id]
             normalized_per_flow_result[flow_id] = par_result = dict()
@@ -170,12 +176,15 @@ class Observer(Thread):
                 n_par_value = normative[par][tr_class]
                 if par == "IPTD":
                     n_par_value = float(n_par_value.split("+")[0]) * 1000 if n_par_value != "U" else float("Inf")
+                    normalized_par_value = par_value / (n_par_value * 1.00)
                 elif par == "IPDV":
                     n_par_value = float(n_par_value) * 1000 if n_par_value != "U" else float("Inf")
+                    normalized_par_value = par_value / (n_par_value * 1.00)
                 elif par == "IPLR":
                     n_par_value = float(n_par_value) if n_par_value != "U" else float("Inf")
+                    normalized_par_value = par_value / (n_par_value * 1.00)
                 elif par == "uti":
-                    assert par_value > 1
+                    assert par_value <= 1
                     normalized_par_value = 1 - par_value
                 elif par == "bw":
                     n_par_value = float(n_par_value)
@@ -184,19 +193,22 @@ class Observer(Thread):
                     normalized_par_value = 0
                 else:
                     raise NotImplemented
-                if par in ["IPTD", "IPDV", "IPLR"]:
-                    normalized_par_value = par_value / (n_par_value * 1.00)
-                    if normalized_par_value > 1:
-                        normalized_par_value *= 10
+                if normalized_par_value > 1:
+                    normalized_par_value *= 10
                 par_result[par] = round(normalized_par_value, 2)
 
         # normalized_result[tr_class][par] = par_result
-        for flow in normalized_per_flow_result:
-            print(flow, normalized_per_flow_result[flow])
-        return
+        for flow_id in normalized_per_flow_result:
+            total_per_flow_performance_result[flow_id] = round(sum(normalized_per_flow_result[flow_id].values())\
+                                                         / len(normalized_per_flow_result[flow_id]), 2)
+            # print(flow_id, normalized_per_flow_result[flow_id])
+            # print(flow_id, total_per_flow_performance_result[flow_id])
+        total_performance_index = sum(total_per_flow_performance_result.values())\
+                                  / len(total_per_flow_performance_result)
+        # print(total_performance_index)
+        return round(total_performance_index, 2), total_per_flow_performance_result
 
     def export_data_to_figure(self, res_name, data_to_plot):
-        print("cumming_soon")
         fig = plt.figure(1, figsize=(15, 15))
         number_of_flows = len(data_to_plot)
         flow_ids = list(flow_id for flow_id in data_to_plot)
@@ -217,21 +229,14 @@ class Observer(Thread):
                 else:
                     ax.plot(tup[0], tup[1], style)
                 subplot_index += 1
-
-                # latency_result, "ro")
-                # ax.plot(pkt_nums, dv_result, "ro")
-                # min_dv = min(dv_result)
-                # max_dv = max(dv_result)
-                # ax.set_ylim(bottom=min_dv - 1, top=max_dv + 1)
-                # min_lr = min(lr_result)
-                # max_lr = max(lr_result)
-                # ax.set_ylim(bottom=min_lr, top=max_lr)
-                # ax.set_xticklabels(points_to_watch)
-                # fig.canvas.draw()
-
         fig.show()
         fig.savefig(self.result_dir + res_name + ".png", bbox_inches="tight")
         plt.close(fig)
+
+    def export_data_to_json(self, res_name, data_to_plot):
+        f = open(self.result_dir + res_name + ".json", "w")
+        json.dump(data_to_plot, f)
+        f.close()
 
     def packets_matcher(self, operation, cur_time, psink, pkt: Packet):
         if operation is not "check_dfg_pkt":
@@ -329,7 +334,6 @@ class Observer(Thread):
         pass
 
     def traffic_utilization_res_make(self):
-
         def cook_summary_graph(flow_time_result, time_step):
             total_bits_sent = int()
             time_bw_result = dict()
@@ -388,7 +392,7 @@ class Observer(Thread):
 
         total_bits_sent = sum(bw_result) * 125
         total_utilization = total_bits_sent / (2488.320*self.time_horizon)
-        print("Полная утилизация", total_utilization)
+        # print("Полная утилизация", total_utilization)
 
         # графики по потокам
         flows = list(flow_time_result.keys())
@@ -415,7 +419,8 @@ class Observer(Thread):
             # time_stride = np.arange(time_start, time_end, 125)
             np_bw_result = np.array(bw_result)
             np_al_result = np.array(al_result)
-            uti_result = np_bw_result / np_al_result
+            np_uti_result = np_bw_result / np_al_result
+            uti_result = list(np_uti_result)
 
             total_bw = abs(np.trapz(np_bw_result, time_result))
             total_al = abs(np.trapz(np_al_result, time_result))
@@ -423,19 +428,20 @@ class Observer(Thread):
             if total_utilization < 0:
                 print('странно')
             total_utilization_dict[flow_name] = total_utilization
-            print("Утилизация в потоке", flow_name, round(total_utilization_dict[flow_name], 1))
+            # print("Утилизация в потоке", flow_name, round(total_utilization_dict[flow_name], 1))
 
             # data_to_plot["total_bw"].append(time_result, total_uti_result)
             if flow_name not in data_to_plot:
                 data_to_plot[flow_name] = list()
-            data_to_plot[flow_name].append((time_result, (bw_result, np_al_result)))
+            data_to_plot[flow_name].append((time_result, (bw_result, al_result)))
             data_to_plot[flow_name].append((time_result, uti_result))
             # data_to_plot[flow_name].append((time_result, buf_result))
 
+            data_total["total"] = {"uti": total_utilization}
             if flow_name not in data_total:
                 data_total[flow_name] = dict()
-            data_total[flow_name]["uti"] = sum(uti_result)/len(uti_result)
-            data_total[flow_name]["bw"] = abs(max(bw_result))
+            data_total[flow_name]["uti"] = round(sum(np_uti_result)/len(np_uti_result), 2)
+            data_total[flow_name]["bw"] = round(abs(max(bw_result)), 2)
             # data_total[flow_name]["buf"] = max(buf_result)
 
         return "traffic_utilization", data_total, data_to_plot

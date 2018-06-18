@@ -65,7 +65,7 @@ class Ont(ActiveDev):
                 # delay = random.randrange(34, 36, 1) + random.randrange(0, 50, 1)
                 delay = random.randrange(0, 80, 1) + 2*self.cycle_duration
                 planned_s_time = round(self.env.now + delay, 2)
-                planned_e_time = planned_s_time + 2
+                planned_e_time = planned_s_time + 1
                 sig_id = "{}:{}:{}".format(planned_s_time, self.name, planned_e_time)
                 alloc_ids = self.current_allocations
                 data = {"sn_response": (self.name, alloc_ids)}
