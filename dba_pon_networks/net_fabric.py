@@ -7,6 +7,7 @@ from uni_traffic.traffic_components import PacketSink
 from uni_traffic.builders import TrafficGeneratorBuilder
 from dba.dba_static import DbaStatic, DbaStaticAllocs
 from dba.dba_tm import DbaTM, DbaTrafficMonLinear, DbaTMLinearFair
+import logging
 
 
 class NetFabric:
@@ -20,7 +21,7 @@ class NetFabric:
 
     def net_fabric(self, net, env, sim_config):
         max_bw = self.bandwidth_prognosis(net)
-        print("Максимальная прогнозная нагрузка {} Мбит/с".format(max_bw))
+        logging.info("Максимальная прогнозная нагрузка {} Мбит/с".format(max_bw))
 
         self.env = env
         dbg = sim_config["debug"] if "debug" in sim_config else False
@@ -49,6 +50,7 @@ class NetFabric:
                     dev = self.create_traffic_entities(dev, dev_name, config)
                     devices[dev_name] = dev
         devices = self.interconnect_devices(devices, connection)
+        obs.devices = devices
         return devices, obs
 
     def bandwidth_prognosis(self, net):
@@ -64,7 +66,6 @@ class NetFabric:
             typ = typs["traffic"][typ_name]
             bw = round(8 * 1 * typ["size_of_packet"] / typ["send_interval"], 3)
             bws.append(bw)
-            print(typ_name, bw)
         max_bw_prognosis = round(sum(bws), 3)
         return max_bw_prognosis
 

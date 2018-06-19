@@ -8,6 +8,7 @@ import numpy as np
 import collections
 import re
 import json
+import logging
 
 
 class Observer(Thread):
@@ -21,6 +22,7 @@ class Observer(Thread):
         self.ev_wait = ThEvent()
         self.end_flag = False
         self.cur_time = 0
+        self.devices = None
 
         self.name = "CommonObserver"
         obs_conf = config["observers"]
@@ -93,7 +95,7 @@ class Observer(Thread):
         while not self.end_flag:
             cur_time_in_msec = round(self.env.now // 1000)
             if cur_time_in_msec > self.cur_time:
-                print("время {} мс".format(cur_time_in_msec))
+                logging.info("время {} мс".format(cur_time_in_msec))
                 self.cur_time = cur_time_in_msec
             self.ev_wait.wait(timeout=5)  # wait for event
             for i in self.new_data:
@@ -131,14 +133,22 @@ class Observer(Thread):
                     self.global_flow_result[res_name] = dict()
                     self.global_flow_result[res_name].update(total_res)
 
+        res_name = "device_counters"
+        if res_name in self.observers_active:
+            self.export_counters(self.devices)
+
         res_name = "total_per_flow_performance"
         if res_name in self.observers_active:
             tpfp_res = self.make_total_per_flow_performance_result()
             if "json" in self.observers_active[res_name]:
                 self.export_data_to_json(res_name, tpfp_res)
-        return
+            print(tpfp_res)
+            return tpfp_res[0]
 
     def make_total_per_flow_performance_result(self):
+        """результате информационной свертки (редукции)
+        некоторого подмножества
+        индивидуальных показателей."""
         total_per_flow_performance_result = dict()
         objective = json.load(open("./observer/net_performance.json"))
         normative = dict()
@@ -206,7 +216,7 @@ class Observer(Thread):
         total_performance_index = sum(total_per_flow_performance_result.values())\
                                   / len(total_per_flow_performance_result)
         # print(total_performance_index)
-        return round(total_performance_index, 2), total_per_flow_performance_result
+        return round(total_performance_index, 2), total_per_flow_performance_result, normalized_per_flow_result
 
     def export_data_to_figure(self, res_name, data_to_plot):
         fig = plt.figure(1, figsize=(15, 15))
@@ -409,8 +419,8 @@ class Observer(Thread):
             # теперь надо пронормировать количество байт на временной интервал
             for sig_time in time_result:
                 data_size, alloc_size, distance = sig_res[sig_time]
-                bw_result.append((8*data_size)/(sig_time - last_time))
-                al_result.append((8*alloc_size)/(sig_time - last_time))
+                bw_result.append(round((8*data_size)/(sig_time - last_time), 2))
+                al_result.append(round((8*alloc_size)/(sig_time - last_time), 2))
                 last_time = sig_time
 
             # график утилизации. есть 2 функции

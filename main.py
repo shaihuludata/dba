@@ -26,7 +26,7 @@ class ProfiledEnv(simpy.Environment):
         simpy.Environment.run(self, until)
 
 
-def main(**kwargs):
+def simulate(**kwargs):
     # исходные условия, описывающие контекст симуляции
     # sim_config имеет настройки:
     # "debug" - используется некоторыми классами для отображения отладочной информации
@@ -62,18 +62,23 @@ def main(**kwargs):
     # по окончанию симуляции показать общие результаты
     print("{} End of simulation in {}...".format(env.now, round(time.time() - t_start, 2)),
           "\n***Preparing results***".format())
-    obs.export_counters(devices)
     # накопленные наблюдателем obs результаты визуализировать и сохранить в директорию result
-    obs.make_results()
+    result = obs.make_results()
     # а по окончанию отдельным потокам наблюдателя сообщить чтобы отключались
     obs.end_flag = True
+    return result
 
 
 if __name__ == '__main__':
-    dba_fair_multipliers = {0: {"bw": 1.0, "uti": 2},
-                            1: {"bw": 0.9, "uti": 3},
-                            2: {"bw": 0.8, "uti": 4},
-                            3: {"bw": 0.7, "uti": 5}}
-    kwargs = {'DbaTMLinearFair_fair_multipliers': dba_fair_multipliers,
-              'dba_min_grant': 1}
-    main(**kwargs)
+    # dba_fair_multipliers = {0: {"bw": 1.0, "uti": 2},
+    #                         1: {"bw": 0.9, "uti": 3},
+    #                         2: {"bw": 0.8, "uti": 4},
+    #                         3: {"bw": 0.7, "uti": 5}}
+    # kwargs = {'DbaTMLinearFair_fair_multipliers': dba_fair_multipliers,
+    #           'dba_min_grant': 1}
+    kwargs = {'DbaTMLinearFair_fair_multipliers': {0: {'bw': 7.8, 'uti': 5.6},
+                                                   1: {'bw': 1.2, 'uti': 2.4},
+                                                   2: {'bw': 4.9, 'uti': 9.8},
+                                                   3: {'bw': 9.6, 'uti': 9.2}},
+              'dba_min_grant': 99}
+    simulate(**kwargs)

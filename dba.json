@@ -1,6 +1,6 @@
 {
     "debug" : false,
-    "horizon" : 100000,
+    "horizon" : 5000,
     "observers" : {
         "flow": {
             "report": false,
@@ -31,6 +31,10 @@
         "total_per_flow_performance": {
             "report": true,
             "output": ["json"]
+        },
+        "device_counters": {
+            "report": false,
+            "output": []
         }
     }
 }
