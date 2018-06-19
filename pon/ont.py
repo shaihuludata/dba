@@ -65,7 +65,7 @@ class Ont(ActiveDev):
                 # delay = random.randrange(34, 36, 1) + random.randrange(0, 50, 1)
                 delay = random.randrange(0, 80, 1) + 2*self.cycle_duration
                 planned_s_time = round(self.env.now + delay, 2)
-                planned_e_time = planned_s_time + 1
+                planned_e_time = planned_s_time + 0.0000001
                 sig_id = "{}:{}:{}".format(planned_s_time, self.name, planned_e_time)
                 alloc_ids = self.current_allocations
                 data = {"sn_response": (self.name, alloc_ids)}
@@ -77,7 +77,7 @@ class Ont(ActiveDev):
                 allocs_acked = list(i for i in self.current_allocations.keys()
                                     if type(self.current_allocations[i]) is not int)
                 if len(allocs_acked) > 0:
-                    print("{} Авторизация на OLT подтверждена, allocs: {}".format(self.name, allocs_acked))
+                    logging.info("{} Авторизация на OLT подтверждена, allocs: {}".format(self.name, allocs_acked))
                 # Формально тут должно быть "SerialNumber"
                 # но без потери смысла для симуляции должно быть Ranging
                     self.STATE = "Ranging"

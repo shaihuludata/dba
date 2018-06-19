@@ -25,7 +25,8 @@ class PacketGenerator(object):
     def __init__(self, env, id,
                  adist, sdist,
                  active_dist=None, passive_dist=None,
-                 initial_delay=0, finish=float("inf"), flow_id=0):
+                 initial_delay=0, finish=float("inf"), flow_id=0,
+                 cos=0, service=None):
         # self.traf_class = config["class"]
         # self.service = config["service"]
         # self.max_queue_size = config["max_queue_size"]  # in number_of_packets
@@ -41,7 +42,8 @@ class PacketGenerator(object):
         self.out = None
         self.action = env.process(self.run())
         self.flow_id = flow_id
-        self.service = None
+        self.service = service
+        self.cos = cos
         self.p_counters = PacketCounters()
 
     def run(self):
@@ -58,6 +60,7 @@ class PacketGenerator(object):
                            round(self.sdist()),
                            pkt_id,
                            src=self.id, flow_id=self.flow_id,
+                           cos_class=self.cos,
                            packet_num=self.p_counters.packets_sent)
                 self.out.put(p)
                 if "ONT4" in self.id:
