@@ -1,6 +1,6 @@
 import json
 import numpy as np
-from uni_traffic.traffic_components import UniPort, PacketGenerator
+from uni_traffic.traffic_components import PacketGenerator
 
 
 class TrafficGeneratorBuilder:
@@ -65,7 +65,7 @@ class TrafficGeneratorBuilder:
                              cos=config["class"], service = config["service"])
         return pg
 
-    def uni_input_for_ont(self, env, pg, port_type=None):
+    def uni_input_for_ont(self, env, service, constructor, port_type=None):
         if port_type in self.traf_configs["ports"]:
             config = self.traf_configs["ports"][port_type]
             rate, qlimit = config["rate"], config["qlimit"]
@@ -73,7 +73,6 @@ class TrafficGeneratorBuilder:
             rate = 1000000
             qlimit = 2000000
         # env, rate, qlimit = None, limit_bytes = True, debug = False
-        uniport = UniPort(env, rate, qlimit)
-        uniport.traf_class = self.traf_classes[pg.service]
-        pg.out = uniport
+        uniport = constructor(env, rate, qlimit)
+        uniport.traf_class = self.traf_classes[service]
         return uniport

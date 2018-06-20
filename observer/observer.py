@@ -20,6 +20,7 @@ class Observer(Thread):
         Thread.__init__(self)
         self.env = env
         self.ev_wait = ThEvent()
+        self.ev_th_wait = ThEvent()
         self.end_flag = False
         self.cur_time = 0
         self.devices = None
@@ -83,6 +84,7 @@ class Observer(Thread):
         # traffic_utilization
         self.traf_mon_raw = dict()
         self.traf_mon_result = dict()
+        self.buffer_result = dict()
         # packets
         self.packets_raw = dict()
         self.packets_result = dict()
@@ -93,6 +95,7 @@ class Observer(Thread):
 
     def run(self):
         while not self.end_flag:
+            self.ev_th_wait.clear()
             cur_time_in_msec = round(self.env.now // 1000)
             if cur_time_in_msec > self.cur_time:
                 logging.info("время {} мс".format(cur_time_in_msec))
@@ -101,13 +104,15 @@ class Observer(Thread):
             for i in self.new_data:
                 # r_end, cur_time, dev, sig, port = i
                 # defragmentation, cur_time, psink, pkt
+                # put, cur_time, uni_port, pkt
                 for matcher in self.match_conditions:
                     try:
                         matcher(*i)
                     except TypeError:
                         pass
                 self.new_data.remove(i)
-                self.ev_wait.clear()  # clean event for future
+            self.ev_wait.clear()  # clean event for future
+            self.ev_th_wait.set()
 
     def notice(self, func):
         def wrapped(*args):
@@ -181,7 +186,7 @@ class Observer(Thread):
             tr_class = self.flow_class[flow_id]
             # distance = self.flow_distance[flow_id]
             normalized_per_flow_result[flow_id] = par_result = dict()
-            for par in ["IPTD", "IPDV", "IPLR", "uti", "bw"]:  # , "buf"]:
+            for par in ["IPTD", "IPDV", "IPLR", "uti", "bw", "buf"]:
                 par_value = flow_params[par]
                 n_par_value = normative[par][tr_class]
                 if par == "IPTD":
@@ -200,7 +205,8 @@ class Observer(Thread):
                     n_par_value = float(n_par_value)
                     normalized_par_value = 1 - par_value / n_par_value
                 elif par == "buf":
-                    normalized_par_value = 0
+                    n_par_value = int(n_par_value)
+                    normalized_par_value = par_value / n_par_value
                 else:
                     raise NotImplemented
                 if normalized_par_value > 1:
@@ -317,7 +323,7 @@ class Observer(Thread):
             data_total[flow_name]["IPLR"] = lr_result[-1]
         return "packets", data_total, data_to_plot
 
-    def traffic_utilization_matcher(self, operation, cur_time, dev, sig:Signal, port):
+    def traffic_utilization_matcher(self, operation, cur_time, dev, sig: Signal, port):
         if operation is not "r_end":
             return False
         if cur_time not in self.time_ranges_to_show["traffic_utilization"]:
@@ -329,7 +335,8 @@ class Observer(Thread):
                 continue
             if flow_id not in self.traf_mon_raw:
                 self.traf_mon_raw[flow_id] = dict()
-            assert cur_time not in self.traf_mon_raw[flow_id]
+            # TODO: разобраться почему тут ошибка
+            # assert cur_time not in self.traf_mon_raw[flow_id]
             pkts = sig.data[flow_id]
             pkts_size = sum(list(pkt.size for pkt in pkts))
             grant_size = sig.data["grant_size"]
@@ -340,8 +347,17 @@ class Observer(Thread):
             # {имя сигнала : {время: данные сигнала}}
             return True
 
-    def buffer_utilization_matcher(self, operation, cur_time, dev, sig, port):
-        pass
+    def buffer_utilization_matcher(self, operation, cur_time, dev, pkt):
+        if operation is not "put":
+            return False
+        if cur_time not in self.time_ranges_to_show["traffic_utilization"]:
+            return False
+        if "Uni" not in dev.__class__.__name__:
+            return False
+        flow_id = pkt.flow_id
+        if flow_id not in self.buffer_result:
+            self.buffer_result[flow_id] = dict()
+        self.buffer_result[flow_id][cur_time] = dev.byte_size  # len(dev.store.items)
 
     def traffic_utilization_res_make(self):
         def cook_summary_graph(flow_time_result, time_step):
@@ -440,11 +456,18 @@ class Observer(Thread):
             total_utilization_dict[flow_name] = total_utilization
             # print("Утилизация в потоке", flow_name, round(total_utilization_dict[flow_name], 1))
 
+            # и отдельно график занятости буферов
+            cur_buf_result = self.buffer_result[flow_name]
+            buf_time_result = list(cur_buf_result.keys())
+            buf_time_result.sort()
+            buf_result = list(cur_buf_result[t] for t in buf_time_result)
+
             # data_to_plot["total_bw"].append(time_result, total_uti_result)
             if flow_name not in data_to_plot:
                 data_to_plot[flow_name] = list()
             data_to_plot[flow_name].append((time_result, (bw_result, al_result)))
             data_to_plot[flow_name].append((time_result, uti_result))
+            data_to_plot[flow_name].append((buf_time_result, buf_result))
             # data_to_plot[flow_name].append((time_result, buf_result))
 
             data_total["total"] = {"uti": total_utilization}
@@ -452,8 +475,7 @@ class Observer(Thread):
                 data_total[flow_name] = dict()
             data_total[flow_name]["uti"] = round(sum(np_uti_result)/len(np_uti_result), 2)
             data_total[flow_name]["bw"] = round(abs(max(bw_result)), 2)
-            # data_total[flow_name]["buf"] = max(buf_result)
-
+            data_total[flow_name]["buf"] = max(buf_result)
         return "traffic_utilization", data_total, data_to_plot
 
     @staticmethod

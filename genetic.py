@@ -45,9 +45,9 @@ def genetic():
     ga.terminator = inspyred.ec.terminators.evaluation_termination
     final_pop = ga.evolve(evaluator=gene_simulate,
                           generator=generate_binary,
-                          max_evaluations=10,
+                          max_evaluations=500,
                           num_elites=3,
-                          pop_size=5,
+                          pop_size=10,
                           num_bits=72)
     final_pop.sort(reverse=True)
     for ind in final_pop:
@@ -56,6 +56,7 @@ def genetic():
 
 def interpret_gene(gene: list):
     assert len(gene) == 72
+
     def divide_list_to_chromosomes(lst, size_of_pieces=8):
         ret = list()
         for i in range(len(lst)//size_of_pieces):
