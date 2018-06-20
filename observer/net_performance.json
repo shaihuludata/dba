@@ -9,7 +9,7 @@
   "PON": {
     "uti": ["1", "1", "1", "1", "1", "1"],
     "bw": ["700000", "6400000", "64000000", "220000000", "0", "0"],
-    "buf": [0, 0, 0, 0, 0, 0]
+    "buf": [2000000, 2000000, 2000000, 2000000, 2000000, 2000000]
   },
   "notices": [
     "NOTE 1 – If the route distance of an access link exceeds 200 km, then a propagation delay term, P, is added. This is calculated by multiplying the route distance (in km) by 5, dividing by 1000 and rounding down to an integer. This effectively allows 1 ms for each integer multiple of 200 km. See Table 6 for calculation of route distance when only air distance is known.",

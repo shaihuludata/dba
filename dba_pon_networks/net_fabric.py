@@ -3,7 +3,7 @@ from pon.olt import Olt
 from pon.ont import Ont
 from pon.opaque import Fiber, Splitter
 from observer.observer import Observer
-from uni_traffic.traffic_components import PacketSink
+from uni_traffic.traffic_components import PacketSink, UniPort
 from uni_traffic.builders import TrafficGeneratorBuilder
 from dba.dba_static import DbaStatic, DbaStaticAllocs
 from dba.dba_tm import DbaTM, DbaTrafficMonLinear, DbaTMLinearFair
@@ -105,8 +105,8 @@ class NetFabric:
         env = self.env
         dbg = self.dbg
         if re.search("[OL|NT]", dev_name) is not None:
-            new_p_sink = self.make_observable_psink_class(self.obs, PacketSink)
-            dev.p_sink = new_p_sink(env, debug=dbg)
+            new_p_sink_class = self.make_observable_psink_class(self.obs, PacketSink)
+            dev.p_sink = new_p_sink_class(env, debug=dbg)
         if re.search("ONT", dev_name) is not None:
             traffic_activation_time = 1000*config["traffic_activation_time"]
             if "Alloc" in config:
@@ -114,7 +114,9 @@ class NetFabric:
                     traf_type = config["Alloc"][alloc_num]
                     flow_id = dev.name + "_" + alloc_num
                     pg = self.tgb.packet_source(env, flow_id, traf_type, traffic_activation_time)
-                    uni = self.tgb.uni_input_for_ont(env, pg, flow_id)
+                    new_uni_class = self.make_observable_uni_port(self.obs, UniPort)
+                    uni = self.tgb.uni_input_for_ont(env, pg.service, new_uni_class, flow_id)
+                    pg.out = uni
                     dev.traffic_generators[flow_id] = uni
                     dev.current_allocations[flow_id] = uni.traf_class
             if "0" not in config["Alloc"]:
@@ -129,6 +131,15 @@ class NetFabric:
             def check_dfg_pkt(self, frg):
                 parent_class.check_dfg_pkt(self, frg)
         return ObservablePSink
+
+    def make_observable_uni_port(self, obs, parent_class):
+        class ObservableUniPort(parent_class):
+            observe = obs.notice
+
+            @observe
+            def put(self, pkt):
+                parent_class.put(self, pkt)
+        return ObservableUniPort
 
     def interconnect_devices(self, devices, connection):
         # Interconnect devices

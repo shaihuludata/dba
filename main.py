@@ -62,10 +62,12 @@ def simulate(**kwargs):
     # по окончанию симуляции показать общие результаты
     print("{} End of simulation in {}...".format(env.now, round(time.time() - t_start, 2)),
           "\n***Preparing results***".format())
+
+    # по окончанию отдельным потокам наблюдателя сообщить чтобы отключались
+    obs.end_flag = True
+    obs.ev_th_wait.wait()
     # накопленные наблюдателем obs результаты визуализировать и сохранить в директорию result
     result = obs.make_results()
-    # а по окончанию отдельным потокам наблюдателя сообщить чтобы отключались
-    obs.end_flag = True
     return result
 
 
