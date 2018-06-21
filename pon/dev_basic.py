@@ -77,18 +77,18 @@ class ActiveDev(Dev):
         if num_of_sigs > 1:
             print("{} : {} : ИНТЕРФЕРЕНЦИОННАЯ КОЛЛИЗИЯ. Сигналов: {}!!!"
                   .format(self.env.now, self.name, num_of_sigs))
+            # если все коллизирующие сигналы - запросы серийников, то ничего страшного
             sn = True
             for i in rec_sigs:
                 sn = False if "sn_response" not in i.data else sn*True
+            # иначе их все надо пометить как коллизирующие
             if not sn:
                 print("плохая коллизия")
                 print(list((sig.name, sig.data["cycle_num"]) for sig in rec_sigs))
                 # print(list(sig.name for sig in rec_sigs))
                 # raise Exception("плохая коллизия")
-            else:
-                pass
-            for i in rec_sigs:
-                i.physics["collision"] = True
+                for i in rec_sigs:
+                    i.physics["collision"] = True
         return
 
     def r_end(self, sig, port: int):

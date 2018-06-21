@@ -15,9 +15,9 @@
       "service": "voice",
       "send_interval": 125,
       "send_interval_distribution": "poisson",
-      "size_of_packet": 10,
+      "size_of_packet": 5,
       "sigma_sop": 2,
-      "size_of_packet_distribution": "normal",
+      "size_of_packet_distribution": "deterministic",
       "max_queue_size": 20,
       "average_bw": "700000"
     },

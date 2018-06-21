@@ -37,13 +37,13 @@
   "ONT4":{
     "transmitter_wavelength":"1310",
     "Alloc":{"1":"type1", "2":"type2", "3":"type3", "4":"type4"},
-    "activation_time":0.4,
+    "activation_time":0,
     "transmitter_type":"2G",
     "ports":{
       "0":"Fiber4::0"
     },
     "transmitter_power":"1",
-    "traffic_activation_time":1.4
+    "traffic_activation_time":1
   },
   "ONT5":{
     "transmitter_wavelength":"1310",
@@ -59,13 +59,13 @@
   "ONT2":{
     "transmitter_wavelength":"1310",
     "Alloc":{"1":"type1", "2":"type2", "3":"type3", "4":"type4"},
-    "activation_time":0.2,
+    "activation_time":0,
     "transmitter_type":"2G",
     "ports":{
       "0":"Fiber2::0"
     },
     "transmitter_power":"1",
-    "traffic_activation_time":1.2
+    "traffic_activation_time":1
   },
   "Fiber3":{
     "length":"10",
@@ -165,13 +165,13 @@
   "ONT3":{
     "transmitter_wavelength":"1310",
     "Alloc":{"1":"type1", "2":"type2", "3":"type3", "4":"type4"},
-    "activation_time":0.3,
+    "activation_time":0,
     "transmitter_type":"2G",
     "ports":{
       "0":"Fiber3::0"
     },
     "transmitter_power":"1",
-    "traffic_activation_time":1.3
+    "traffic_activation_time":1
   },
   "OLT0":{
     "cycle_duration":125,
@@ -193,6 +193,6 @@
     "dba_type":"tm_fair",
     "transmitter_power":"1",
     "transmitter_type":"2G",
-    "sn_request_interval":3000
+    "sn_request_interval":5000
   }
 }

@@ -147,7 +147,9 @@ class Observer(Thread):
             tpfp_res = self.make_total_per_flow_performance_result()
             if "json" in self.observers_active[res_name]:
                 self.export_data_to_json(res_name, tpfp_res)
-            print(tpfp_res)
+            print(tpfp_res[0], tpfp_res[1])
+            for flow in tpfp_res[1]:
+                print(flow, tpfp_res[2][flow])
             return tpfp_res[0]
 
     def make_total_per_flow_performance_result(self):
@@ -435,8 +437,10 @@ class Observer(Thread):
             # теперь надо пронормировать количество байт на временной интервал
             for sig_time in time_result:
                 data_size, alloc_size, distance = sig_res[sig_time]
-                bw_result.append(round((8*data_size)/(sig_time - last_time), 2))
-                al_result.append(round((8*alloc_size)/(sig_time - last_time), 2))
+                delta_time = sig_time - last_time
+                # bw_result - в бит/мкс - в мегабитах
+                bw_result.append(round((8*data_size)/(delta_time), 3))
+                al_result.append(round((8*alloc_size)/(delta_time), 3))
                 last_time = sig_time
 
             # график утилизации. есть 2 функции
@@ -474,7 +478,7 @@ class Observer(Thread):
             if flow_name not in data_total:
                 data_total[flow_name] = dict()
             data_total[flow_name]["uti"] = round(sum(np_uti_result)/len(np_uti_result), 2)
-            data_total[flow_name]["bw"] = round(abs(max(bw_result)), 2)
+            data_total[flow_name]["bw"] = abs(max(bw_result))
             data_total[flow_name]["buf"] = max(buf_result)
         return "traffic_utilization", data_total, data_to_plot
 
