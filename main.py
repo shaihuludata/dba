@@ -68,19 +68,22 @@ def simulate(**kwargs):
     obs.ev_th_wait.wait()
     # накопленные наблюдателем obs результаты визуализировать и сохранить в директорию result
     result = obs.make_results()
+    del(obs)
+    for dev in devices:
+        del(dev)
+    del(env)
     return result
 
 
 if __name__ == '__main__':
-    # dba_fair_multipliers = {0: {"bw": 1.0, "uti": 2},
-    #                         1: {"bw": 0.9, "uti": 3},
-    #                         2: {"bw": 0.8, "uti": 4},
-    #                         3: {"bw": 0.7, "uti": 5}}
-    # kwargs = {'DbaTMLinearFair_fair_multipliers': dba_fair_multipliers,
-    #           'dba_min_grant': 1}
-    kwargs = {'DbaTMLinearFair_fair_multipliers': {0: {'bw': 7.8, 'uti': 5.6},
-                                                   1: {'bw': 1.2, 'uti': 2.4},
-                                                   2: {'bw': 4.9, 'uti': 9.8},
-                                                   3: {'bw': 9.6, 'uti': 9.2}},
-              'dba_min_grant': 99}
+    kwargs = {'DbaTMLinearFair_fair_multipliers': {0: {"bw": 1.0, "uti": 2},
+                                                   1: {"bw": 0.9, "uti": 3},
+                                                   2: {"bw": 0.8, "uti": 4},
+                                                   3: {"bw": 0.7, "uti": 5}},
+              'dba_min_grant': 10}
+    # kwargs = {'DbaTMLinearFair_fair_multipliers': {0: {'bw': 7.8, 'uti': 5.6},
+    #                                                1: {'bw': 1.2, 'uti': 2.4},
+    #                                                2: {'bw': 4.9, 'uti': 9.8},
+    #                                                3: {'bw': 9.6, 'uti': 9.2}},
+    #           'dba_min_grant': 99}
     simulate(**kwargs)
