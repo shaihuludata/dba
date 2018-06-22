@@ -68,10 +68,10 @@ def simulate(**kwargs):
     obs.ev_th_wait.wait()
     # накопленные наблюдателем obs результаты визуализировать и сохранить в директорию result
     result = obs.make_results()
-    del(obs)
+    del obs
     for dev in devices:
-        del(dev)
-    del(env)
+        del dev
+    del env
     return result
 
 

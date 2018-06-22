@@ -30,7 +30,11 @@ def evaluate_binary(candidate, args):
 @inspyred.ec.evaluators.evaluator
 def gene_simulate(candidate, args):
     kwargs = interpret_gene(candidate)
-    tpi = simulate(**kwargs)
+    try:
+        tpi = simulate(**kwargs)
+    except:
+        print("failed to simulate {}".format(candidate))
+        tpi = 100500
     f = open(result_file, "a")
     f.writelines(str(bin_list_to_int(candidate)) + " {}\n".format(tpi))
     f.close()
@@ -68,7 +72,7 @@ def interpret_gene(gene: list):
     chromosomes = divide_list_to_chromosomes(gene)
     dba_min_grant = bin_list_to_int(chromosomes.pop(0))
     multipliers = dict()
-    for tr_cl in [0,1,2,3]:
+    for tr_cl in [0, 1, 2, 3]:
         bw = round(bin_list_to_int(chromosomes.pop(0)) * 10 / 255, 1)
         uti = round(bin_list_to_int(chromosomes.pop(0)) * 10 / 255, 1)
         multipliers[tr_cl] = {"bw": bw, "uti": uti}

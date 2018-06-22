@@ -13,12 +13,12 @@
         "traffic_utilization": {
             "report": true,
             "time_ranges": [[0, 60000]],
-            "output": ["figure", "json"]
+            "output": ["json"]
         },
         "packets": {
             "report": true,
             "time_ranges": [[0, 60000]],
-            "output": ["figure", "json"]
+            "output": ["json"]
         },
         "mass_traffic": {
             "report": false,
