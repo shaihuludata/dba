@@ -1,0 +1,11 @@
+{
+  "ONT1":{
+    "transmitter_wavelength":"1310",
+    "Alloc":{"1":"type1"},
+    "activation_time":0,
+    "transmitter_type":"2G",
+    "ports":{},
+    "transmitter_power":"1",
+    "traffic_activation_time":1
+  }
+}
