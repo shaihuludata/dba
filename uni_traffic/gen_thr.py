@@ -19,7 +19,6 @@ def calc_thr(traf_types="./traffic_types.json"):
     tgb = TrafficGeneratorBuilder(traf_types)
     env = simpy.Environment()
 
-
     flow_id = "test1"
     traf_type = "type4"
     traffic_activation_time = 0
