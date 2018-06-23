@@ -25,7 +25,7 @@ class PacketSink_traf_counter(PacketSink):
             # print(self.total_kbits)
 
 
-def calc_thr(traf_types="./traffic_types.json", net_desc="../dba_pon_networks/single_type1.json"):
+def calc_thr(traf_types="./traffic_types.json", net_desc="../dba_pon_networks/network7.json"):
     tgb = TrafficGeneratorBuilder(traf_types)
     env = simpy.Environment()
     net_name = net_desc.split("/")[-1].split(".")[0]
@@ -44,7 +44,7 @@ def calc_thr(traf_types="./traffic_types.json", net_desc="../dba_pon_networks/si
                 tg.out = ps
                 tgs.append(tg)
 
-    horizon = 100000
+    horizon = 1000000
     env.run(until=horizon)
 
     t_stride = list(ps.time_bw.keys())
