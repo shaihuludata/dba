@@ -153,6 +153,7 @@ class Observer(Thread):
             return tpfp_res[0]
 
     def make_total_per_flow_performance_result(self):
+        # TODO: валидация параметров производительности
         """результате информационной свертки (редукции)
         некоторого подмножества
         индивидуальных показателей."""
