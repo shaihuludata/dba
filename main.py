@@ -1,26 +1,13 @@
 import json
 import time
-import cProfile
 import logging
 import simpy
 from dba_pon_networks.net_fabric import NetFabric
-
-def profile(func):
-    """
-    Профилирующий декоратор полезен для поиска критически замедляющих участков кода
-    # python3 -m cProfile -o ./proceed.prof ./main.py
-    # gprof2dot -f pstats proceed.prof | dot -Tpng -o proceed.png
-    """
-    def wrapper(*args, **kwargs):
-        profile_filename = './result/' + func.__name__ + '.prof'
-        profiler = cProfile.Profile()
-        result = profiler.runcall(func, *args, **kwargs)
-        profiler.dump_stats(profile_filename)
-        return result
-    return wrapper
+from support.profiling import profile, timeit
 
 
 class ProfiledEnv(simpy.Environment):
+    @timeit
     @profile
     def run(self, until=None):
         simpy.Environment.run(self, until)
@@ -38,7 +25,7 @@ def simulate(**kwargs):
 
     # структуры сетей описаны в соответствующей директории
     # там описаны устройства, их параметры и их соединения друг с другом
-    net = json.load(open("./dba_pon_networks/network7.json"))
+    net = json.load(open("./dba_pon_networks/network9.json"))
     if "DbaTMLinearFair_fair_multipliers" in kwargs:
         net["OLT0"].update(kwargs)
     logging.info("Net description: ", net)
@@ -54,13 +41,11 @@ def simulate(**kwargs):
     # obs - наблюдатель симуляции, накапливает информацию и обрабатывает, выдаёт графики
     devices, obs = NetFabric().net_fabric(net, env, sim_config)
 
-    # t_start нужен, чтобы оценить длительность выполнения
-    t_start = time.time()
     # запуск симуляции
     env.run(until=time_horizon)
 
     # по окончанию симуляции показать общие результаты
-    print("{} End of simulation in {}...".format(env.now, round(time.time() - t_start, 2)),
+    print("{} End of simulation ...".format(env.now),
           "\n***Preparing results***".format())
 
     # по окончанию отдельным потокам наблюдателя сообщить чтобы отключались
