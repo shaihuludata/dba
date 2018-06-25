@@ -7,60 +7,63 @@
       "send_interval_distribution": "deterministic",
       "distribution_types": ["deterministic", "poisson", "normal"],
       "size_of_packet": 0,
-      "size_of_packet_distribution": "deterministic",
-      "max_queue_size": 0
+      "size_of_packet_distribution": "deterministic"
     },
     "type1": {
       "class": 0,
       "service": "voice",
-      "send_interval": 125,
+      "send_interval": 250,
       "send_interval_distribution": "poisson",
-      "size_of_packet": 5,
-      "sigma_sop": 2,
+      "size_of_packet": 4,
+      "sigma_sop": 1,
       "size_of_packet_distribution": "deterministic",
-      "max_queue_size": 20,
-      "average_bw": "700000"
+      "activity_interval": 100000,
+      "activity_interval_distribution": "normal",
+      "silence_interval": 100000,
+      "silence_interval_distribution": "poisson",
+      "average_bw": "64240"
     },
     "type2": {
       "class": 1,
       "service": "video",
       "send_interval": 250,
       "send_interval_distribution": "poisson",
-      "size_of_packet": 400,
+      "size_of_packet": 500,
       "sigma_sop": 30,
       "size_of_packet_distribution": "normal",
-      "activity_interval": 100000,
+      "activity_interval": 200000,
       "activity_interval_distribution": "deterministic",
-      "silence_interval": 100000,
+      "silence_interval": 200000,
       "silence_interval_distribution": "deterministic",
-      "max_queue_size": 20,
-      "average_bw": "6400000"
+      "average_bw": "10600000"
     },
     "type3": {
       "class": 2,
-      "service": "best_effort",
+      "service": "data",
       "send_interval": 250,
       "send_interval_distribution": "deterministic",
-      "size_of_packet": 2000,
+      "size_of_packet": 1000,
       "size_of_packet_distribution": "deterministic",
-      "max_queue_size": 10,
-      "average_bw": "64000000"
+      "activity_interval": 200000,
+      "activity_interval_distribution": "deterministic",
+      "silence_interval": 100000,
+      "silence_interval_distribution": "deterministic",
+      "average_bw": "21300000"
     },
     "type4": {
       "class": 3,
       "service": "best_effort",
       "send_interval": 250,
       "send_interval_distribution": "deterministic",
-      "size_of_packet": 10000,
+      "size_of_packet": 5000,
       "size_of_packet_distribution": "deterministic",
       "activity_interval": 1000,
-      "sigma_ai": 100,
+      "sigma_ai": 200,
       "activity_interval_distribution": "normal",
-      "silence_interval": 500,
+      "silence_interval": 600,
       "sigma_silence": 100,
       "silence_interval_distribution": "normal",
-      "max_queue_size": 10,
-      "average_bw": "220000000"
+      "average_bw": "104000000"
     }
   },
   "ports": {

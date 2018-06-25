@@ -30,7 +30,7 @@
     "transmitter_type": "2G",
     "activation_time": 0,
     "traffic_activation_time": 1,
-    "Alloc": {"1": "type1", "2": "type1"}
+    "Alloc": {"1":"type1", "2":"type2", "3":"type3", "4":"type4"}
   },
   "Fiber1":
   {

@@ -1,10 +1,10 @@
 import json
 
 
-new_config_name = "network7.json"
-example_config = "network3.json"
+new_config_name = "network9.json"
+example_config = "network8.json"
 
-number_of_ont = 8
+number_of_ont = 32
 ex_net = json.load(open(example_config))
 new_net = dict()
 
