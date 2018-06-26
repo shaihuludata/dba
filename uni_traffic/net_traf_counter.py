@@ -3,7 +3,7 @@ import simpy
 from uni_traffic.traffic_components import PacketSink
 import json
 import matplotlib.pyplot as plt
-from numpy import correlate
+import numpy as np
 from support.profiling import timeit
 
 
@@ -16,7 +16,7 @@ class PacketSink_traf_counter(PacketSink):
     def put(self, pkt):
         if self.env.now not in self.time_bw:
             self.time_bw[self.env.now] = 0
-        self.time_bw[self.env.now] += pkt.size
+        self.time_bw[self.env.now] += 8*pkt.size
         PacketSink.put(self, pkt)
 
     def check_dfg_pkt(self, dfg):
@@ -27,7 +27,7 @@ class PacketSink_traf_counter(PacketSink):
 
 
 @timeit
-def calc_thr(traf_types="./traffic_types.json", net_desc="../dba_pon_networks/network9.json"):
+def calc_thr(traf_types="./traffic_types.json", net_desc="../dba_pon_networks/single_type1.json"):
     tgb = TrafficGeneratorBuilder(traf_types)
     env = simpy.Environment()
     net_name = net_desc.split("/")[-1].split(".")[0]
@@ -46,7 +46,7 @@ def calc_thr(traf_types="./traffic_types.json", net_desc="../dba_pon_networks/ne
                 tg.out = ps
                 tgs.append(tg)
 
-    horizon = 400000
+    horizon = 800000
     env.run(until=horizon)
 
     t_stride = list(ps.time_bw.keys())
@@ -57,7 +57,7 @@ def calc_thr(traf_types="./traffic_types.json", net_desc="../dba_pon_networks/ne
         if t == min(t_stride):
             bw.append(0)
             continue
-        cur_bw = ps.time_bw[t] / (t - t_last)
+        cur_bw = round(ps.time_bw[t] / (t - t_last), 2)
         bw.append(cur_bw)
         t_last = t
 
@@ -69,13 +69,16 @@ def calc_thr(traf_types="./traffic_types.json", net_desc="../dba_pon_networks/ne
     json.dump((t_stride, bw), f)
     f.close()
 
-    # cor = correlate(bw, bw, mode="full")
-    # ax = fig.add_subplot(1, 2, 2)
-    # ax.plot(cor)
+    bw_mean = bw - np.mean(bw)
+    cor = np.correlate(bw_mean, bw_mean, mode="full")
+    ax = fig.add_subplot(1, 2, 2)
+    ax.plot(cor)
 
     fig.show()
     fig.savefig("./" + net_name + ".png", bbox_inches="tight")
     plt.close(fig)
-    print("Итог: {} kbps".format(ps.total_kbits/horizon*1000))
+    mean_bw = ps.total_kbits/horizon*1000
+    max_bw = 1000*max(bw)
+    print("Итог: mean {} kbps, max {} kbps".format(mean_bw, max_bw))
 
 calc_thr()

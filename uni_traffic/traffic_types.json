@@ -21,21 +21,21 @@
       "activity_interval_distribution": "normal",
       "silence_interval": 100000,
       "silence_interval_distribution": "poisson",
-      "average_bw": "64240"
+      "average_bw": "160000"
     },
     "type2": {
       "class": 1,
       "service": "video",
-      "send_interval": 250,
+      "send_interval": 500,
       "send_interval_distribution": "poisson",
-      "size_of_packet": 500,
-      "sigma_sop": 30,
+      "size_of_packet": 600,
+      "sigma_sop": 100,
       "size_of_packet_distribution": "normal",
       "activity_interval": 200000,
       "activity_interval_distribution": "deterministic",
       "silence_interval": 200000,
       "silence_interval_distribution": "deterministic",
-      "average_bw": "10600000"
+      "average_bw": "14650000"
     },
     "type3": {
       "class": 2,
@@ -48,7 +48,7 @@
       "activity_interval_distribution": "deterministic",
       "silence_interval": 100000,
       "silence_interval_distribution": "deterministic",
-      "average_bw": "21300000"
+      "average_bw": "33000000"
     },
     "type4": {
       "class": 3,
@@ -63,7 +63,7 @@
       "silence_interval": 600,
       "sigma_silence": 100,
       "silence_interval_distribution": "normal",
-      "average_bw": "104000000"
+      "average_bw": "162000000"
     }
   },
   "ports": {

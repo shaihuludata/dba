@@ -153,7 +153,6 @@ class Observer(Thread):
             return tpfp_res[0]
 
     def make_total_per_flow_performance_result(self):
-        # TODO: валидация параметров производительности
         """результате информационной свертки (редукции)
         некоторого подмножества
         индивидуальных показателей."""
@@ -205,15 +204,15 @@ class Observer(Thread):
                     assert par_value <= 1
                     normalized_par_value = 1 - par_value
                 elif par == "bw":
-                    n_par_value = float(n_par_value)
+                    n_par_value = float(n_par_value)/1000000  # бит/с
                     normalized_par_value = 1 - par_value / n_par_value
                 elif par == "buf":
                     n_par_value = int(n_par_value)
                     normalized_par_value = par_value / n_par_value
                 else:
                     raise NotImplemented
-                if normalized_par_value > 1:
-                    normalized_par_value *= 10
+                # if normalized_par_value > 1:
+                #     normalized_par_value *= 10
                 par_result[par] = round(normalized_par_value, 2)
 
         # normalized_result[tr_class][par] = par_result
@@ -439,7 +438,7 @@ class Observer(Thread):
             for sig_time in time_result:
                 data_size, alloc_size, distance = sig_res[sig_time]
                 delta_time = sig_time - last_time
-                # bw_result - в бит/мкс - в мегабитах
+                # bw_result - в бит/мкс - в мегабитах/сек
                 bw_result.append(round((8*data_size)/(delta_time), 3))
                 al_result.append(round((8*alloc_size)/(delta_time), 3))
                 last_time = sig_time
@@ -479,7 +478,7 @@ class Observer(Thread):
             if flow_name not in data_total:
                 data_total[flow_name] = dict()
             data_total[flow_name]["uti"] = round(sum(np_uti_result)/len(np_uti_result), 2)
-            data_total[flow_name]["bw"] = abs(max(bw_result))
+            data_total[flow_name]["bw"] = round(sum(bw_result)/len(bw_result), 2)
             data_total[flow_name]["buf"] = max(buf_result)
         return "traffic_utilization", data_total, data_to_plot
 
