@@ -25,7 +25,7 @@ def simulate(**kwargs):
 
     # структуры сетей описаны в соответствующей директории
     # там описаны устройства, их параметры и их соединения друг с другом
-    net = json.load(open("./dba_pon_networks/network9.json"))
+    net = json.load(open("./dba_pon_networks/network8.json"))
     if "DbaTMLinearFair_fair_multipliers" in kwargs:
         net["OLT0"].update(kwargs)
     logging.info("Net description: ", net)
