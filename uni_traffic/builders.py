@@ -71,7 +71,7 @@ class TrafficGeneratorBuilder:
             rate, qlimit = config["rate"], config["qlimit"]
         else:
             rate = 1000000
-            qlimit = 100000
+            qlimit = 2000000
         # env, rate, qlimit = None, limit_bytes = True, debug = False
         uniport = constructor(env, rate, qlimit)
         uniport.traf_class = self.traf_classes[service]

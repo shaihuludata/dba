@@ -53,15 +53,15 @@
     "type4": {
       "class": 3,
       "service": "best_effort",
-      "send_interval": 250,
+      "send_interval": 125,
       "send_interval_distribution": "deterministic",
-      "size_of_packet": 5000,
+      "size_of_packet": 2500,
       "size_of_packet_distribution": "deterministic",
-      "activity_interval": 1000,
-      "sigma_ai": 200,
+      "activity_interval": 10000,
+      "sigma_ai": 2000,
       "activity_interval_distribution": "normal",
-      "silence_interval": 600,
-      "sigma_silence": 100,
+      "silence_interval": 60000,
+      "sigma_silence": 1000,
       "silence_interval_distribution": "normal",
       "average_bw": "162000000"
     }
