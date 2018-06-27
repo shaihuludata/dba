@@ -10,6 +10,7 @@ result_file = result_dir + "genetic_data"
 
 
 def bin_list_to_int(lst):
+    """переводит список бинарных элементов в бинарную строку"""
     bin_string = "0b"
     for i in lst:
         bin_string += str(i)
@@ -17,6 +18,7 @@ def bin_list_to_int(lst):
 
 
 def generate_binary(random, args):
+    """генерирует список бинарных элементов"""
     bits = args.get('num_bits', 8)
     return [random.choice([0, 1]) for i in range(bits)]
 
@@ -29,6 +31,8 @@ def evaluate_binary(candidate, args):
 
 @inspyred.ec.evaluators.evaluator
 def gene_simulate(candidate, args):
+    """запуск симуляции для заданного гена-кандидата
+    результат симуляции - значение фитнес-функции"""
     kwargs = interpret_gene(candidate)
     try:
         tpi = simulate(**kwargs)
@@ -59,6 +63,7 @@ def genetic():
 
 
 def interpret_gene(gene: list):
+    """интерпрератор гена для симуляции"""
     assert len(gene) == 72
 
     def divide_list_to_chromosomes(lst, size_of_pieces=8):

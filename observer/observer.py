@@ -157,6 +157,8 @@ class Observer(Thread):
         некоторого подмножества
         индивидуальных показателей."""
         total_per_flow_performance_result = dict()
+
+        # TODO: traffic performance auto-validation
         objective = json.load(open("./observer/net_performance.json"))
         normative = dict()
         normative.update(objective["ITU-T Y1540"])
