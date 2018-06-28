@@ -54,7 +54,7 @@ def genetic():
     final_pop = ga.evolve(evaluator=gene_simulate,
                           generator=generate_binary,
                           max_evaluations=500,
-                          num_elites=3,
+                          num_elites=1,
                           pop_size=10,
                           num_bits=72)
     final_pop.sort(reverse=True)
