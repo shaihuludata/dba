@@ -5,11 +5,19 @@ import socket
 from main import simulate
 from threading import Thread
 from functools import wraps
+import json
+from multiprocessing import Pool
+from multiprocessing.dummy import Pool as ThPool
+import time
+
+
+def fake_sim(args):
+    return 1
 
 
 class MyService(rpyc.Service):
     def __init__(self):
-        self.exposed_simulate = simulate
+        self.exposed_simulate = fake_sim
 
 
 MY_HOSTNAME = "10.22.252.100"
@@ -31,17 +39,51 @@ class ReggaeSrv:
             return func_hl
         return async_func
 
-    def services_loop(self, conditions):
+    def rpyc_connect_to_simulate(self, args):
+        s_host, sim_args = args
+        conn = rpyc.connect(s_host, RPYC_PORT)
+        tpi = conn.root.simulate(**sim_args)
+        return s_host, 1 / tpi
+
+    def services_loop(self):
         """цикл или map
         получает словарь атрибутов для симуляции
         запускает многопоточный опрос rpyc серверов
         выдаёт результат в виде словаря"""
         services = self.registry.services
-        # ну какое-то такое
-        # results = map(services, conditions)
-        # for s, s_host in services.items():
-        #     conn = rpyc.connect(s_host, RPYC_PORT)
+        import socket
+        sock = socket.socket()
+        sock.bind(('', 9090))
+        sock.listen(1)
+        conn, addr = sock.accept()
+        results = dict()
 
+        while True:
+            data = conn.recv(1024)
+            if not data:
+                break
+            conds = json.loads(data.decode("utf-8"))
+            while len(results) < len(conds):
+                if len(services) == 0:
+                    time.sleep(1)
+                print("Services ", services)
+
+                genes = list(conds.keys())[:len(services)]
+                conditions = list()
+                serv_ips = list(services.values())
+                for cond in genes:
+                    serv_ip = serv_ips.pop(0)
+                    conditions.append((serv_ip, conds[cond]))
+                    results[cond] = serv_ip
+
+                pool = ThPool(len(services))
+                sim_results = pool.map(self.rpyc_connect_to_simulate, conditions)
+                pool.close()
+                pool.join()
+                results.update(sim_results)
+            conn.send(results)
+
+        conn.close()
 
 class ReggaeCli:
     def __init__(self, registry=TCPRegistryClient, service=MyService):
@@ -55,6 +97,7 @@ if __name__ == "__main__":
     if srv:
         reggy_srv = ReggaeSrv()
         reggy_srv.registry_async()
+        reggy_srv.services_loop()
         # server = ThreadedServer(MyService, port = 12345)
         # server.start()
     else:
