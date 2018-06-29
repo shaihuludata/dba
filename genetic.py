@@ -3,10 +3,12 @@ import time
 import inspyred
 from main import simulate
 from datetime import datetime
+import json
+import logging
 
 
 result_dir = "./result/genetic/"
-result_file = result_dir + "genetic_data"
+result_file = result_dir + "genetic_data.json"
 
 
 def bin_list_to_int(lst):
@@ -45,17 +47,54 @@ def gene_simulate(candidate, args):
     return 1/tpi
 
 
-def genetic():
+def rpyc_simulation(candidates, args):
+    import multiprocessing
+
+    conds = {bin_list_to_int(c): interpret_gene(c) for c in candidates}
+
+    fitness_results = json.load(open(result_file))
+    fitness_dict = {gene_id: fitness_results[gene_id]
+                        for gene_id in conds
+                            if gene_id in fitness_results}
+
+    import socket
+    sock = socket.socket()
+    sock.connect(('localhost', 9090))
+
+    conds_str = json.dumps(conds, ensure_ascii=False).encode("utf-8")
+    sock.send(conds_str)
+
+    new_fitness_dict_json = sock.recv(1024)
+    new_fitness_dict = json.loads(new_fitness_dict_json.decode("utf-8"))
+
+    fitness_dict.update(new_fitness_dict)
+    sock.close()
+
+    f = open(result_file, "w")
+    json.dump(fitness_dict, f)
+    f.close()
+
+    fitness = [fitness_dict[bin_list_to_int(gene)] for gene in candidates]
+    return fitness
+
+
+def genetic(mode):
     rand = random.Random()
     rand.seed(int(time.time()))
     ga = inspyred.ec.GA(rand)
     ga.observer = inspyred.ec.observers.stats_observer
     ga.terminator = inspyred.ec.terminators.evaluation_termination
-    final_pop = ga.evolve(evaluator=gene_simulate,
+    if mode == "network":
+        evaluator = rpyc_simulation
+    elif mode == "single":
+        evaluator = gene_simulate
+    else:
+        raise NotImplemented
+    final_pop = ga.evolve(evaluator=evaluator,
                           generator=generate_binary,
                           max_evaluations=500,
                           num_elites=1,
-                          pop_size=10,
+                          pop_size=3,
                           num_bits=72)
     final_pop.sort(reverse=True)
     for ind in final_pop:
@@ -86,10 +125,12 @@ def interpret_gene(gene: list):
 
 
 if __name__ == "__main__":
-    f = open(result_file, "w")
-    f.writelines("Simulation suite started {}\n".format(datetime.now(tz=None)))
-    f.close()
-    genetic()
+    modes = ["single", "network"]
+    mode = "network"
+    # f = open(result_file, "w")
+    # f.writelines("Simulation suite started {}\n".format(datetime.now(tz=None)))
+    # f.close()
+    genetic(mode)
     # dba_fair_multipliers = {0: {"bw": 1.0, "uti": 2},
     #                         1: {"bw": 0.9, "uti": 3},
     #                         2: {"bw": 0.8, "uti": 4},
