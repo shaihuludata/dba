@@ -1,7 +1,6 @@
 import random
 import time
 import inspyred
-from main import simulate
 from datetime import datetime
 import json
 import logging
@@ -35,6 +34,7 @@ def evaluate_binary(candidate, args):
 def gene_simulate(candidate, args):
     """запуск симуляции для заданного гена-кандидата
     результат симуляции - значение фитнес-функции"""
+    from main import simulate
     kwargs = interpret_gene(candidate)
     try:
         tpi = simulate(**kwargs)
@@ -57,15 +57,41 @@ def rpyc_simulation(candidates, args):
                         for gene_id in conds
                             if gene_id in fitness_results}
 
+    conds_str = json.dumps(conds, ensure_ascii=False).encode("utf-8")
+    len_of_conds = str(len(conds_str)) + "\n"
+    while len(len_of_conds) < 10:
+        len_of_conds = "0" + len_of_conds
+
     import socket
     sock = socket.socket()
-    sock.connect(('localhost', 9090))
+    print("Waiting connection")
+    connected = False
 
-    conds_str = json.dumps(conds, ensure_ascii=False).encode("utf-8")
+    while not connected:
+        try:
+            sock.connect(('localhost', 9090))
+            connected = True
+        except ConnectionRefusedError as e:
+            print(e)
+            time.sleep(3)
+
+    print("Server connected. Sending meta-conditions")
+
+    sock.send(len_of_conds.encode("utf-8"))
+    del len_of_conds
     sock.send(conds_str)
+    data = sock.recv(10)
+    print("Server answered: {}".format(data.decode("utf-8")))
+    del data
 
-    new_fitness_dict_json = sock.recv(1024)
-    new_fitness_dict = json.loads(new_fitness_dict_json.decode("utf-8"))
+    results_valid = False
+    while not results_valid:
+        new_fitness_dict_json = sock.recv(1024)
+        try:
+            new_fitness_dict = json.loads(new_fitness_dict_json.decode("utf-8"))
+        except Exception as e:
+            print("No valid data from server: ", e)
+            time.sleep(5)
 
     fitness_dict.update(new_fitness_dict)
     sock.close()
