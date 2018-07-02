@@ -159,6 +159,7 @@ class Observer(Thread):
         total_per_flow_performance_result = dict()
 
         # TODO: traffic performance auto-validation
+        # TODO: нужно добавить fairness
         objective = json.load(open("./observer/net_performance.json"))
         normative = dict()
         normative.update(objective["ITU-T Y1540"])
