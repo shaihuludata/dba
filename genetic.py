@@ -76,9 +76,12 @@ def rpyc_simulation(candidates, args):
             time.sleep(3)
 
     print("Server connected. Sending meta-conditions")
-
-    sock.send(len_of_conds.encode("utf-8"))
+    bytes_sent = 0
+    while len(len_of_conds) < bytes_sent:
+        bytes_sent = sock.send(len_of_conds.encode("utf-8"), socket.MSG_DONTWAIT)
+        time.sleep(1)
     del len_of_conds
+
     sock.send(conds_str)
     data = sock.recv(10)
     print("Server answered: {}".format(data.decode("utf-8")))
@@ -86,21 +89,31 @@ def rpyc_simulation(candidates, args):
 
     results_valid = False
     while not results_valid:
-        new_fitness_dict_json = sock.recv(1024)
+        data = sock.recv(10)
+        print("Получены данные {}".format(data))
+        if not data:
+            time.sleep(5)
+            continue
+        size_of_result = int(data.decode())
+        data = sock.recv(size_of_result)
         try:
-            new_fitness_dict = json.loads(new_fitness_dict_json.decode("utf-8"))
+            new_fitness_dict = json.loads(data.decode("utf-8"))
+            fitness_dict.update(new_fitness_dict)
         except Exception as e:
             print("No valid data from server: ", e)
             time.sleep(5)
+        # проверить, что все гены из conds есть в словаре результатов
+        if [i for i in conds] == [int(i) for i in fitness_dict]:
+            results_valid = True
 
-    fitness_dict.update(new_fitness_dict)
     sock.close()
-
     f = open(result_file, "w")
     json.dump(fitness_dict, f)
     f.close()
 
-    fitness = [fitness_dict[bin_list_to_int(gene)] for gene in candidates]
+    # для всех генов из списка кандидатов
+    # фитнес-функция в виде списка соответствует генам кандидатов
+    fitness = [fitness_dict[str(bin_list_to_int(gene))] for gene in candidates]
     return fitness
 
 
