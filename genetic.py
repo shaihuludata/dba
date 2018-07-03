@@ -4,6 +4,7 @@ import inspyred
 from datetime import datetime
 import json
 import logging
+from support.profiling import timeit
 
 
 result_dir = "./result/genetic/"
@@ -46,7 +47,7 @@ def gene_simulate(candidate, args):
     f.close()
     return 1/tpi
 
-
+@timeit
 def rpyc_simulation(candidates, args):
     import multiprocessing
 
@@ -74,12 +75,13 @@ def rpyc_simulation(candidates, args):
         except ConnectionRefusedError as e:
             print(e)
             time.sleep(3)
-
     print("Server connected. Sending meta-conditions")
-    bytes_sent = 0
-    while len(len_of_conds) < bytes_sent:
-        bytes_sent = sock.send(len_of_conds.encode("utf-8"), socket.MSG_DONTWAIT)
-        time.sleep(1)
+
+    sock.send(len_of_conds.encode("utf-8"))
+    # bytes_sent = 0
+    # while len(len_of_conds) < bytes_sent:
+    #     bytes_sent = sock.send(len_of_conds.encode("utf-8"), socket.MSG_DONTWAIT)
+    #     time.sleep(1)
     del len_of_conds
 
     sock.send(conds_str)
@@ -96,6 +98,7 @@ def rpyc_simulation(candidates, args):
             continue
         size_of_result = int(data.decode())
         data = sock.recv(size_of_result)
+        print("Получены результаты {}".format(data))
         try:
             new_fitness_dict = json.loads(data.decode("utf-8"))
             fitness_dict.update(new_fitness_dict)
@@ -103,10 +106,18 @@ def rpyc_simulation(candidates, args):
             print("No valid data from server: ", e)
             time.sleep(5)
         # проверить, что все гены из conds есть в словаре результатов
-        if [i for i in conds] == [int(i) for i in fitness_dict]:
+        conds_keys = [i for i in conds]
+        conds_keys.sort()
+        fitness_keys = [int(i) for i in fitness_dict]
+        fitness_keys.sort()
+        if conds_keys == fitness_keys:
             results_valid = True
-
+        else:
+            print("ДАННЫЕ НЕ ВАЛИДНЫ!")
+            print(conds_keys)
+            print(fitness_keys)
     sock.close()
+
     f = open(result_file, "w")
     json.dump(fitness_dict, f)
     f.close()
@@ -131,9 +142,9 @@ def genetic(mode):
         raise NotImplemented
     final_pop = ga.evolve(evaluator=evaluator,
                           generator=generate_binary,
-                          max_evaluations=500,
+                          max_evaluations=100,
                           num_elites=1,
-                          pop_size=3,
+                          pop_size=10,
                           num_bits=72)
     final_pop.sort(reverse=True)
     for ind in final_pop:
