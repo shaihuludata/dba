@@ -5,6 +5,7 @@ from datetime import datetime
 import json
 import logging
 from support.profiling import timeit
+import os
 
 
 result_dir = "./result/genetic/"
@@ -52,6 +53,10 @@ def rpyc_simulation(candidates, args):
     import multiprocessing
 
     conds = {bin_list_to_int(c): interpret_gene(c) for c in candidates}
+    if not os.path.exists(result_file):
+        f = open(result_file, "w")
+        json.dump({}, f)
+        f.close()
 
     fitness_results = json.load(open(result_file))
     fitness_dict = {gene_id: fitness_results[gene_id]

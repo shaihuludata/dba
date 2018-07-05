@@ -75,7 +75,7 @@ class ActiveDev(Dev):
         rec_sigs = self.rec_port_sig[port]
         num_of_sigs = len(rec_sigs)
         if num_of_sigs > 1:
-            print("{} : {} : ИНТЕРФЕРЕНЦИОННАЯ КОЛЛИЗИЯ. Сигналов: {}!!!"
+            logging.debug("{} : {} : ИНТЕРФЕРЕНЦИОННАЯ КОЛЛИЗИЯ. Сигналов: {}!!!"
                   .format(self.env.now, self.name, num_of_sigs))
             # если все коллизирующие сигналы - запросы серийников, то ничего страшного
             sn = True

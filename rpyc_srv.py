@@ -11,19 +11,6 @@ from multiprocessing.dummy import Pool as ThPool
 import time
 
 
-def fake_sim(*args, **kwargs):
-    print("Получил условия: {}".format(kwargs))
-    print("Типа симулирую")
-    time.sleep(60)
-    print("Типа досимулировал")
-    return 1
-
-
-class MyService(rpyc.Service):
-    def __init__(self):
-        self.exposed_simulate = fake_sim
-
-
 MY_HOSTNAME = "10.22.252.100"
 REGISTRY_PORT = 18811
 RPYC_PORT = 12345
@@ -54,10 +41,14 @@ class ReggaeSrv:
         # tpi = conn.root.simulate(**sim_args)
         try:
             conn = rpyc.connect(s_host, RPYC_PORT, config={'sync_request_timeout': 70})
-            tpi = conn.root.simulate(**sim_args)
+            jargs = json.dumps(sim_args)
+            tpi = conn.root.simulate(jargs)
         except Exception as e:
-            print(s_host, Exception, e)
+            a = Exception
+            print(s_host, e)
             tpi = False
+        # except EOFError as e:
+        #     pass
         return cond, s_host, tpi
 
     def services_loop(self):

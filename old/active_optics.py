@@ -49,25 +49,7 @@ class ActiveDevice(PonDevice):
 
     def r_start(self, sig, port: int):
         self.receiving_sig[sig] = self.time
-        receiving_sigs = list(self.receiving_sig.keys())
-        rec_sig = self.receiving_sig
         if len(self.receiving_sig) > 1:
-            delta = list()
-            for i in self.receiving_sig:
-                for j in self.receiving_sig:
-                    delta.append(self.receiving_sig[i] - self.receiving_sig[j])
-            print('Time {} {} ИНТЕРФЕРЕНЦИОННАЯ КОЛЛИЗИЯ. Сигналов: {}, дельта {}!!!'
-                  .format(self.time, self.name, len(self.receiving_sig), delta))
-
-            sn = False
-            for i in receiving_sigs:
-                if 'sn_response' in i.data:
-                    sn = True
-            if not sn:
-                print('плохая коллизия')
-                print(list((sig.id, sig.data['cycle_num']) for sig in self.receiving_sig))
-                # raise Exception('плохая коллизия')
-
             sig.physics['collision'] = True
             for rec_sig in self.receiving_sig:
                 rec_sig.physics['collision'] = True

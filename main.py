@@ -12,8 +12,8 @@ class ProfiledEnv(simpy.Environment):
     def run(self, until=None):
         simpy.Environment.run(self, until)
 
-
-def simulate(**kwargs):
+@timeit
+def simulate(jargs):
     # исходные условия, описывающие контекст симуляции
     # sim_config имеет настройки:
     # "debug" - используется некоторыми классами для отображения отладочной информации
@@ -26,6 +26,7 @@ def simulate(**kwargs):
     # структуры сетей описаны в соответствующей директории
     # там описаны устройства, их параметры и их соединения друг с другом
     net = json.load(open("./dba_pon_networks/network8.json"))
+    kwargs = json.loads(jargs)
     if "DbaTMLinearFair_fair_multipliers" in kwargs:
         net["OLT0"].update(kwargs)
     logging.info("Net description: ", net)

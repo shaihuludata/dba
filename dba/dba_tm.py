@@ -279,9 +279,9 @@ class DbaTMLinearFair(DbaTrafficMonLinear):
         al_class = self.alloc_class[alloc]
         if bw == 0 or uti == 0:
             return 0
-        bw_weight = bw * self.fair_multipliers[al_class]["bw"]
+        bw_weight = bw * self.fair_multipliers[str(al_class)]["bw"]
         # bw_weight = math.log10(bw)  # * self.fair_multipliers[al_class]["bw"]
-        uti_weight = uti * self.fair_multipliers[al_class]["uti"]
+        uti_weight = uti * self.fair_multipliers[str(al_class)]["uti"]
         weight = bw_weight + uti_weight
         return weight
         # alloc_size = round(bw * uti * multi + 0.5)

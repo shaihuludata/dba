@@ -11,7 +11,7 @@ RUN apt-get update && \
     pip3 install --no-cache-dir -r requirements.txt
 
 COPY . /usr/src/dba
-CMD ["python3", "./main.py"]
+CMD ["python3", "./rpyc_cli.py"]
 
 #docker build -t pydba .
 #docker run -ti pydba:latest

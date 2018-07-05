@@ -98,6 +98,8 @@ class Observer(Thread):
             self.ev_th_wait.clear()
             cur_time_in_msec = round(self.env.now // 1000)
             if cur_time_in_msec > self.cur_time:
+                progress = round(self.env.now/self.time_horizon, 1) * 100
+                print("время {}".format(progress))
                 logging.info("время {} мс".format(cur_time_in_msec))
                 self.cur_time = cur_time_in_msec
             self.ev_wait.wait(timeout=5)  # wait for event
@@ -115,6 +117,7 @@ class Observer(Thread):
             self.ev_th_wait.set()
 
     def notice(self, func):
+
         def wrapped(*args):
             data = list(args)
             data.insert(0, round(self.env.now, 3))

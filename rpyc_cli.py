@@ -2,27 +2,31 @@ import rpyc
 from rpyc.utils.registry import TCPRegistryServer, TCPRegistryClient
 from rpyc.utils.server import Server, ThreadedServer, ForkingServer
 import socket
-# from main import simulate
+from main import simulate
 from threading import Thread
 from functools import wraps
 import json
-from multiprocessing import Pool
-from multiprocessing.dummy import Pool as ThPool
 import time
-
-
-def fake_sim(*args, **kwargs):
-    print("Получил условия: {}".format(kwargs))
-    print("Типа симулирую")
-    time.sleep(2)
-    print("Типа досимулировал")
-    return 1
+import random
 
 
 class MyService(rpyc.Service):
     def __init__(self):
-        self.exposed_simulate = fake_sim
+        #self.exposed_simulate = fake_sim
+        pass
 
+    @staticmethod
+    def exposed_simulate(jargs):
+        print(jargs)
+        return simulate(jargs)
+
+    # @staticmethod
+    # def exposed_simulate(jargs):
+    #     print("Получил условия: {}".format(jargs))
+    #     print("Типа симулирую")
+    #     time.sleep(5)
+    #     print("Типа досимулировал")
+    #     return random.random()
 
 MY_HOSTNAME = "10.22.252.100"
 REGISTRY_PORT = 18811
@@ -71,8 +75,3 @@ class ReggaeCli:
 if __name__ == "__main__":
     reggy_cli = ReggaeCli()
     reggy_cli.services_loop()
-    # try:
-    #     reggy_cli.services_loop()
-    # except Exception as e:
-    #     print(e)
-    #     time.sleep(10)
