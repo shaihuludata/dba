@@ -1,6 +1,6 @@
 sympy==1.1.1
-numpy==1.14.5
-matplotlib==1.5.1
+rpyc==4.0.1
+inspyred==1.0.1
 simpy==3.0.7
-inspyred
-rpyc
+matplotlib==2.2.2
+numpy==1.14.5

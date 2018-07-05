@@ -86,8 +86,6 @@ class Olt(ActiveDevice):
 
     def r_end(self, sig, port: int):
         ret = dict()
-        # обработка интерференционной коллизии
-        # каждый принимаемый сигнал должен быть помечен как коллизирующий
         for rec_sig in self.receiving_sig:
             if rec_sig.id == sig.id:
                 self.receiving_sig.pop(rec_sig)
