@@ -13,12 +13,12 @@
         "traffic_utilization": {
             "report": true,
             "time_ranges": [[0, 60000]],
-            "output": ["json"]
+            "output": []
         },
         "packets": {
             "report": true,
             "time_ranges": [[0, 60000]],
-            "output": ["json"]
+            "output": []
         },
         "mass_traffic": {
             "report": false,
@@ -26,7 +26,7 @@
         },
         "total_per_flow_performance": {
             "report": true,
-            "output": ["json"]
+            "output": []
         },
         "device_counters": {
             "report": true,

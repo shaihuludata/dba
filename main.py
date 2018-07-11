@@ -7,13 +7,15 @@ from support.profiling import profile, timeit
 
 
 class ProfiledEnv(simpy.Environment):
+    def __init__(self, initial_time=0):
+        simpy.Environment.__init__(self, initial_time=0)
+
     @timeit
     @profile
     def run(self, until=None):
         simpy.Environment.run(self, until)
 
-@timeit
-def simulate(jargs):
+def create_simulation():
     # исходные условия, описывающие контекст симуляции
     # sim_config имеет настройки:
     # "debug" - используется некоторыми классами для отображения отладочной информации
@@ -21,6 +23,17 @@ def simulate(jargs):
     # "observers" - аспекты наблюдения классом observer за событиями модели
     # сюда же будут помещаться всякие исследуемые аспекты сети
     sim_config = json.load(open("./dba.json"))
+
+    # env - общая среда выполнения симуляционного процесса.
+    # обеспечивает общее время и планирование всех событий, происходящих в модели
+    # при включенном дебаге работает профилирование
+    env = ProfiledEnv() if sim_config["debug"] else simpy.Environment()
+    env.end_flag = False
+    return env, sim_config
+
+
+@timeit
+def simulate(env, sim_config, jargs):
     time_horizon = sim_config["horizon"] if "horizon" in sim_config else 1000
 
     # структуры сетей описаны в соответствующей директории
@@ -30,11 +43,6 @@ def simulate(jargs):
     if "DbaTMLinearFair_fair_multipliers" in kwargs:
         net["OLT0"].update(kwargs)
     logging.info("Net description: ", net)
-
-    # env - общая среда выполнения симуляционного процесса.
-    # обеспечивает общее время и планирование всех событий, происходящих в модели
-    # при включенном дебаге работает профилирование
-    env = ProfiledEnv() if sim_config["debug"] else simpy.Environment()
 
     # описание сети net используется фабрикой для порождения устройств,
     # их соединения друг с другом в едином пространстве env
@@ -72,4 +80,9 @@ if __name__ == '__main__':
     #                                                2: {'bw': 4.9, 'uti': 9.8},
     #                                                3: {'bw': 9.6, 'uti': 9.2}},
     #           'dba_min_grant': 99}
-    simulate(**kwargs)
+    jargs = json.dumps(kwargs, ensure_ascii=False).encode("utf-8")
+    env, sim_config = create_simulation()
+    try:
+        simulate(env, sim_config, jargs)
+    except KeyboardInterrupt:
+        env.end_flag = True

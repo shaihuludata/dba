@@ -2,23 +2,71 @@ import rpyc
 from rpyc.utils.registry import TCPRegistryServer, TCPRegistryClient
 from rpyc.utils.server import Server, ThreadedServer, ForkingServer
 import socket
-from main import simulate
-from threading import Thread
+from main import simulate, create_simulation
+from threading import Thread, Event
 from functools import wraps
 import json
 import time
 import random
 
 
+class Job(Thread):
+    def __init__(self, group=None, target=None, name=None, args=None, kwargs=None):
+        Thread.__init__(self, group, target, name, args, kwargs)
+        self._return = None
+
+    def run(self):
+        if self._target is not None:
+            self._return = self._target(*self._args, **self._kwargs)
+
+    def join(self, timeout=1):
+        Thread.join(self, timeout)
+        return self._return
+
+
+# def simulate(*args):
+#     print(args, "wtf")
+#     time.sleep(10)
+#     return 123
+
+
 class MyService(rpyc.Service):
     def __init__(self):
-        #self.exposed_simulate = fake_sim
-        pass
+        self.env = None
+        self.sim_config = None
+        self.result_thread = None
 
-    @staticmethod
-    def exposed_simulate(jargs):
+    def exposed_create_simulation(self):
+        self.env, self.sim_config = create_simulation()
+        return
+
+    def simulate_async(self):
+        func = simulate
+        @wraps(func)
+        def async_func(*args, **kwargs):
+            func_hl = Job(target=func, name="Simulation_thread", args=args, kwargs=kwargs)
+            func_hl.start()
+            return func_hl
+        return async_func
+
+    def exposed_simulate(self, jargs):
         print(jargs)
-        return simulate(jargs)
+        # return simulate(self.env, self.sim_config, jargs)
+        self.result_thread = self.simulate_async()(self.env, self.sim_config, jargs)
+        return "OK"
+
+    def exposed_get_result(self):
+        res = self.result_thread.join(timeout=1)
+        return res
+
+    def exposed_abort_simulation(self):
+        self.env.end_flag = True
+        self.result_thread._tstate_lock.release()
+        self.result_thread._stop()
+        # self.result_thread._delete()
+        # del self.env
+        del self.result_thread
+        return "Aborted"
 
     # @staticmethod
     # def exposed_simulate(jargs):
@@ -46,7 +94,7 @@ class ReggaeCli:
         self.rpc = ThreadedServer(service, port=RPYC_PORT)
 
     def rpyc_async(self):
-        func = reggy_cli.rpc.start
+        func = self.rpc.start
         @wraps(func)
         def async_func(*args, **kwargs):
             func_hl = Thread(target=func, args=args, kwargs=kwargs)
@@ -60,7 +108,7 @@ class ReggaeCli:
         иначе ждёт 5 секунд до следующей попытки"""
         rpyc_th_alive = False
         while True:
-            if reggy_cli.registry.register(self.SERVICE, REGISTRY_PORT):
+            if self.registry.register(self.SERVICE, REGISTRY_PORT):
                 self.state = self.STATE_REGISTERED
                 if not rpyc_th_alive:
                     rpyc_th = self.rpyc_async()()
@@ -73,5 +121,6 @@ class ReggaeCli:
 
 
 if __name__ == "__main__":
+    print("1233455687")
     reggy_cli = ReggaeCli()
     reggy_cli.services_loop()

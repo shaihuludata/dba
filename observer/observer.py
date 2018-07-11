@@ -94,12 +94,15 @@ class Observer(Thread):
         self.flow_distance = dict()
 
     def run(self):
-        while not self.end_flag:
+        last_progress = 0
+        while not self.end_flag and not self.env.end_flag:
             self.ev_th_wait.clear()
             cur_time_in_msec = round(self.env.now // 1000)
             if cur_time_in_msec > self.cur_time:
                 progress = round(self.env.now/self.time_horizon, 1) * 100
-                print("время {}".format(progress))
+                if last_progress < progress:
+                    last_progress = progress
+                    print("Прогресс {} %".format(progress))
                 logging.info("время {} мс".format(cur_time_in_msec))
                 self.cur_time = cur_time_in_msec
             self.ev_wait.wait(timeout=5)  # wait for event
@@ -115,6 +118,8 @@ class Observer(Thread):
                 self.new_data.remove(i)
             self.ev_wait.clear()  # clean event for future
             self.ev_th_wait.set()
+        if self.env.end_flag:
+            print("Остановлен по причине окончания работы среды")
 
     def notice(self, func):
 
