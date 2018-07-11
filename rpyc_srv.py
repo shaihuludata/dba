@@ -1,5 +1,6 @@
 import rpyc
-from rpyc.utils.registry import TCPRegistryServer, TCPRegistryClient
+from rpyc.utils.registry import TCPRegistryServer as tcp_rs
+from rpyc.utils.registry import TCPRegistryClient
 from rpyc.utils.server import Server, ThreadedServer, ForkingServer
 import socket
 # from main import simulate
@@ -14,6 +15,20 @@ import time
 MY_HOSTNAME = "10.22.252.100"
 REGISTRY_PORT = 18811
 RPYC_PORT = 12345
+TERMINAL_TIMEOUT = 300
+
+
+class TCPRegistryServer(tcp_rs):
+    # этот метод надо исправить
+    def cmd_register(self, host, names, port):
+        """implementation of the ``register`` command"""
+        self.logger.debug("registering %s:%s as %s", host, port, ", ".join(names))
+        if isinstance(names, str):
+            self._add_service(names.upper(), (host, port))
+        else:
+            for name in names:
+                self._add_service(name.upper(), (host, port))
+        return "OK"
 
 
 class ReggaeSrv:
@@ -37,18 +52,47 @@ class ReggaeSrv:
 
     def rpyc_connect_to_simulate(self, args):
         cond, s_host, sim_args = args
-        # conn = rpyc.connect(s_host, RPYC_PORT, config={'sync_request_timeout': 70})
-        # tpi = conn.root.simulate(**sim_args)
+        conn = rpyc.connect(s_host, RPYC_PORT,
+                            config={'sync_request_timeout': TERMINAL_TIMEOUT})
+        jargs = json.dumps(sim_args)
+        conn.root.create_simulation()
+        start_time = time.time()
         try:
-            conn = rpyc.connect(s_host, RPYC_PORT, config={'sync_request_timeout': 70})
-            jargs = json.dumps(sim_args)
-            tpi = conn.root.simulate(jargs)
+            reply = conn.root.simulate(jargs)
+            if reply == "OK":
+                print("{} replied {}".format(s_host, reply))
+                time.sleep(1)
+            else:
+                raise NotImplemented
         except Exception as e:
-            a = Exception
-            print(s_host, e)
+            print(s_host, "Error ", e)
             tpi = False
-        # except EOFError as e:
-        #     pass
+            return cond, s_host, tpi
+        while time.time() - start_time < TERMINAL_TIMEOUT:
+            result = conn.root.get_result()
+            if result is not None:
+                tpi = result
+                return cond, s_host, tpi
+            time.sleep(1)
+
+        reply = conn.root.abort_simulation()
+        print(s_host, "таймаут", reply)
+        tpi = 100500
+
+        # try:
+        #     tpi = conn.root.simulate(jargs)
+        # except TimeoutError:
+        #     reply = conn.root.abort_simulation()
+        #     print(s_host, "таймаут ", reply)
+        #     tpi = 100500
+        # try:
+        #      conn = rpyc.connect(s_host, RPYC_PORT,
+        #                          config={'sync_request_timeout': TERMINAL_TIMEOUT})
+        #     jargs = json.dumps(sim_args)
+        #     tpi = conn.root.simulate(jargs)
+        # except Exception as e:
+        #     print(s_host, e)
+        #     tpi = False
         return cond, s_host, tpi
 
     def services_loop(self):
@@ -144,12 +188,13 @@ class ReggaeSrv:
                             # TODO: задокументировать обработку результатов
                             print("Получен результат", sim_results)
                             for gene_id, s_host, tpi in sim_results:
-                                service_states[s_host] = self.S_STATE_REGISTERED
                                 # if gene_id in results:
                                 #     results.pop(gene_id)
                                 if tpi is not False:
+                                    service_states[s_host] = self.S_STATE_REGISTERED
                                     results[gene_id] = tpi
                                 else:
+                                    service_states.pop(s_host)
                                     results.pop(gene_id)
                         except ConnectionError as e:
                             # наверно тут надо работающие треды обрубить

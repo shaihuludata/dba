@@ -50,7 +50,6 @@ def gene_simulate(candidate, args):
 
 @timeit
 def rpyc_simulation(candidates, args):
-    import multiprocessing
 
     conds = {bin_list_to_int(c): interpret_gene(c) for c in candidates}
     if not os.path.exists(result_file):
