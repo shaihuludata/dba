@@ -2,6 +2,7 @@ from pon.dev_basic import ActiveDev
 import random
 from pon.signal import Signal
 import logging
+from memory_profiler import profile as mprofile
 
 
 class Ont(ActiveDev):

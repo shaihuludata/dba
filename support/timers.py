@@ -19,6 +19,7 @@ class Timer:
             yield self.env.timeout(self.timeout)
             self.func(*self.args)
             done = True
+        self.env = None
 
     def once(self):
         done = False
@@ -26,3 +27,4 @@ class Timer:
             yield self.env.timeout(self.timeout)
             self.func(*self.args)
             done = True
+        self.env = None

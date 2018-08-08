@@ -1,5 +1,6 @@
 from support.counters import Counters
 import logging
+from memory_profiler import profile as mprofile
 
 
 class Dev(object):

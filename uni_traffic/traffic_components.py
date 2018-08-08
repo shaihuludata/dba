@@ -4,6 +4,8 @@ import copy
 from sympy import EmptySet, Interval
 from support.counters import PacketCounters
 from uni_traffic.packet import Packet
+from memory_profiler import profile as mprofile
+import gc
 
 
 class PacketGenerator(object):
@@ -63,9 +65,6 @@ class PacketGenerator(object):
                            cos_class=self.cos,
                            packet_num=self.p_counters.packets_sent)
                 self.out.put(p)
-                if "ONT4" in self.id:
-                    pass
-                    # print(.flow_id, pkt.num, pkt.size)
             yield self.env.timeout(self.passive_dist())
 
     def active_dist(self):
@@ -142,12 +141,12 @@ class PacketSink(object):
 
         defragment = EmptySet().union(Interval(frg.f_offset, frg.f_offset + frg.size)
                                       for frg in fragments)
-        dfg_measure = defragment.measure
-        if dfg_measure == total_size:
+        if defragment.measure == total_size:
+            pkt = Packet(*fragments[0].make_args_for_defragment())
+
             for frg in fragments:
                 self.store.items.remove(frg)
 
-            pkt = Packet(*frg.make_args_for_defragment())
             pkt.dfg_time = self.env.now
             logging.debug(self.env.now, pkt)
             return pkt

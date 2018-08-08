@@ -1,3 +1,5 @@
+from memory_profiler import profile as mprofile
+
 
 class Packet(object):
     """ A very simple class that represents a packet.
@@ -18,6 +20,7 @@ class Packet(object):
         flow_id : int
             small integer that can be used to identify a flow
     """
+
     def __init__(self, s_time, size, id: str, src="a", dst="z", flow_id=0, cos_class=0, packet_num=0):
         # "interval": self.send_interval,
         self.s_time = s_time
