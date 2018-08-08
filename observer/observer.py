@@ -1,6 +1,8 @@
 from threading import Thread
 from threading import Event as ThEvent
 from sympy import EmptySet, Interval
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from uni_traffic.packet import Packet
 from pon.signal import Signal
@@ -9,6 +11,7 @@ import collections
 import re
 import json
 import logging
+from memory_profiler import profile as mprofile
 
 
 class Observer(Thread):
@@ -74,6 +77,8 @@ class Observer(Thread):
             self.time_horizon = max(list(max(self.time_ranges_to_show[i].boundary)
                                          for i in self.time_ranges_to_show))
             self.time_horizon = max(config["horizon"], self.time_horizon)
+        else:
+            self.time_horizon = config["horizon"]
 
         # это буфер для новых данных,
         # потом обрабатываются в отдельном потоке и удаляются
@@ -102,8 +107,8 @@ class Observer(Thread):
                 progress = round(self.env.now/self.time_horizon, 1) * 100
                 if last_progress < progress:
                     last_progress = progress
-                    print("Прогресс {} %".format(progress))
-                logging.info("время {} мс".format(cur_time_in_msec))
+                    print("Progress {} %".format(progress))
+                logging.info("time {} ms".format(cur_time_in_msec))
                 self.cur_time = cur_time_in_msec
             self.ev_wait.wait(timeout=5)  # wait for event
             for i in self.new_data:
@@ -120,9 +125,9 @@ class Observer(Thread):
             self.ev_th_wait.set()
         if self.env.end_flag:
             print("Остановлен по причине окончания работы среды")
+            self.env = None
 
     def notice(self, func):
-
         def wrapped(*args):
             data = list(args)
             data.insert(0, round(self.env.now, 3))
@@ -132,6 +137,7 @@ class Observer(Thread):
             return func(*args)
         return wrapped
 
+    # TODO: тут течёт
     def make_results(self):
         for res_make in self.result_makers:
             res_name, total_res, data_to_plot = res_make()
@@ -150,14 +156,15 @@ class Observer(Thread):
         if res_name in self.observers_active:
             self.export_counters(self.devices)
 
+        self.env = None
         res_name = "total_per_flow_performance"
         if res_name in self.observers_active:
             tpfp_res = self.make_total_per_flow_performance_result()
             if "json" in self.observers_active[res_name]:
                 self.export_data_to_json(res_name, tpfp_res)
-            print(tpfp_res[0], tpfp_res[1])
-            for flow in tpfp_res[1]:
-                print(flow, tpfp_res[2][flow])
+            # print(tpfp_res[0], tpfp_res[1])
+            # for flow in tpfp_res[1]:
+            #     print(flow, tpfp_res[2][flow])
             return tpfp_res[0]
 
     def make_total_per_flow_performance_result(self):
@@ -495,9 +502,8 @@ class Observer(Thread):
 
     @staticmethod
     def export_counters(devices):
-        for dev_name in devices:
+        for dev_name, dev in devices.items():
             if re.search("[ON|LT]", dev_name) is not None:
-                dev = devices[dev_name]
                 print("{} : {}".format(dev_name, dev.counters.export_to_console()))
             if re.search("OLT", dev_name) is not None:
                 print("{} : {}".format("OLT0_recv", dev.p_sink.p_counters.export_to_console()))

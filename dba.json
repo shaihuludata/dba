@@ -1,6 +1,6 @@
 {
     "debug" : false,
-    "horizon" : 50000,
+    "horizon" : 10000,
     "observers" : {
         "flow": {
             "report": false,
@@ -29,7 +29,7 @@
             "output": []
         },
         "device_counters": {
-            "report": true,
+            "report": false,
             "output": []
         }
     }

@@ -1,3 +1,5 @@
+from memory_profiler import profile as mprofile
+
 
 class Signal:
     def __init__(self, env, name, data: dict,
@@ -29,3 +31,4 @@ class Signal:
             l_dev.s_end(self, l_port)
             r_dev.r_end(self, r_port)
             self.alive = False
+        self.env = None

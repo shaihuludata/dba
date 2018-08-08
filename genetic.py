@@ -1,11 +1,11 @@
 import random
 import time
 import inspyred
-from datetime import datetime
 import json
-import logging
 from support.profiling import timeit
 import os
+import subprocess
+from memory_profiler import profile as mprofile
 
 
 result_dir = "./result/genetic/"
@@ -33,20 +33,36 @@ def evaluate_binary(candidate, args):
 
 
 @inspyred.ec.evaluators.evaluator
+@mprofile
 def gene_simulate(candidate, args):
     """запуск симуляции для заданного гена-кандидата
     результат симуляции - значение фитнес-функции"""
-    from main import simulate
+    from main import simulate, create_simulation
     kwargs = interpret_gene(candidate)
+    jargs = json.dumps(kwargs)
+    # process = subprocess.Popen(["python3", "main.py", jargs], stdout=subprocess.PIPE)
+    # stdout, stderr = process.communicate()
+    # env, sim_config = create_simulation()
+    # tpi = simulate(env, sim_config, jargs)
     try:
-        tpi = simulate(**kwargs)
+        process = subprocess.Popen(["python3", "main.py", jargs], stdout=subprocess.PIPE)
+        data = process.communicate(timeout=60)
+
+        # env, sim_config = create_simulation()
+        # tpi = simulate(env, sim_config, jargs)
+        print(data)
+        stdout, stderr = data
+        tpistr = str(stdout)
+        tpistr = str(tpistr.split("___")[1])
+        tpi = float(tpistr.split("=")[1])
     except:
         print("failed to simulate {}".format(candidate))
-        tpi = 100500
+        tpi = float('Inf')  # 100500
     f = open(result_file, "a")
     f.writelines(str(bin_list_to_int(candidate)) + " {}\n".format(tpi))
     f.close()
     return 1/tpi
+
 
 @timeit
 def rpyc_simulation(candidates, args):
@@ -86,12 +102,12 @@ def rpyc_simulation(candidates, args):
     # while len(len_of_conds) < bytes_sent:
     #     bytes_sent = sock.send(len_of_conds.encode("utf-8"), socket.MSG_DONTWAIT)
     #     time.sleep(1)
-    del len_of_conds
+    # del len_of_conds
 
     sock.send(conds_str)
     data = sock.recv(10)
     print("Server answered: {}".format(data.decode("utf-8")))
-    del data
+    # del data
 
     results_valid = False
     while not results_valid:
@@ -138,18 +154,15 @@ def genetic(mode):
     ga = inspyred.ec.GA(rand)
     ga.observer = inspyred.ec.observers.stats_observer
     ga.terminator = inspyred.ec.terminators.evaluation_termination
-    if mode == "network":
-        evaluator = rpyc_simulation
-    elif mode == "single":
-        evaluator = gene_simulate
-    else:
-        raise NotImplemented
+    modes = {"network": rpyc_simulation, "single": gene_simulate}
+    evaluator = modes[mode]
     final_pop = ga.evolve(evaluator=evaluator,
                           generator=generate_binary,
-                          max_evaluations=100,
+                          max_evaluations=10,
                           num_elites=1,
-                          pop_size=10,
+                          pop_size=3,
                           num_bits=72)
+
     final_pop.sort(reverse=True)
     for ind in final_pop:
         print(str(ind))
@@ -180,7 +193,7 @@ def interpret_gene(gene: list):
 
 if __name__ == "__main__":
     modes = ["single", "network"]
-    mode = "network"
+    mode = "single"
     # f = open(result_file, "w")
     # f.writelines("Simulation suite started {}\n".format(datetime.now(tz=None)))
     # f.close()
