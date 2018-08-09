@@ -10,6 +10,7 @@ import json
 from multiprocessing import Pool
 from multiprocessing.dummy import Pool as ThPool
 import time
+import logging
 
 
 MY_HOSTNAME = "10.22.252.100"
@@ -55,12 +56,12 @@ class ReggaeSrv:
         conn = rpyc.connect(s_host, RPYC_PORT,
                             config={'sync_request_timeout': TERMINAL_TIMEOUT})
         jargs = json.dumps(sim_args)
-        conn.root.create_simulation()
+        # conn.root.create_simulation()
         start_time = time.time()
         try:
             reply = conn.root.simulate(jargs)
             if reply == "OK":
-                print("{} replied {}".format(s_host, reply))
+                print("SRV: {} replied {}: simulation started".format(s_host, reply))
                 time.sleep(1)
             else:
                 raise NotImplemented
@@ -77,7 +78,7 @@ class ReggaeSrv:
 
         reply = conn.root.abort_simulation()
         print(s_host, "таймаут", reply)
-        tpi = 100500
+        tpi = float("inf")
 
         # try:
         #     tpi = conn.root.simulate(jargs)
@@ -112,7 +113,7 @@ class ReggaeSrv:
                 sock.bind(('', 9090))
                 socket_opened = True
             except OSError as e:
-                print("Сокет занят. Ожидаю освобождения. ", e)
+                logging.warning("SRV: Сокет занят. Ожидаю освобождения. ", e)
                 time.sleep(10)
 
         sock.listen(1)
@@ -129,12 +130,12 @@ class ReggaeSrv:
                 while len(results) == 0 or len(results) < len(conds):
                     services = self.registry.services
                     if len(conds) == 0:
-                        print("No conditions found")
+                        logging.warning("SRV: No new conditions found")
                         size_of_conds = conn.recv(10)
                         if not size_of_conds:
                             time.sleep(5)
                             continue
-                        print("Получен", size_of_conds)
+                        logging.debug("SRV: got size of new conditions", size_of_conds)
                         sizeoc = int(size_of_conds.decode("utf-8"))
                         data = conn.recv(sizeoc)
                         if not data:
@@ -142,7 +143,7 @@ class ReggaeSrv:
                             continue
                         conn.send("working".encode("utf-8"))
                         conds = json.loads(data.decode("utf-8"))
-                        print("Conditions: {} : ".format(len(conds)), conds)
+                        logging.info("SRV: {} New conditions arrived: ".format(len(conds)), conds)
                     elif len(services) == 0:
                         print("No services found")
                         time.sleep(5)
@@ -154,7 +155,7 @@ class ReggaeSrv:
                         continue
                     else:
                         service_hosts = services[self.S_SERVICE]
-                        print("Service_hosts: {} : ".format(len(service_hosts)), service_hosts)
+                        logging.info("SRV: {} service_hosts available: ".format(len(service_hosts)), service_hosts)
 
                         # список доступных сервисов
                         services_free = list()
@@ -166,10 +167,10 @@ class ReggaeSrv:
                             elif s_host in service_states:
                                 if service_states[s_host] == self.S_STATE_REGISTERED:
                                     services_free.append(s_host)
-                        print(service_states)
+                        # print(service_states)
                         if len(services_free) == 0:
                             time.sleep(1)
-                            print("Нет свободных сервисов")
+                            logging.warning("SRV: Нет свободных сервисов")
                             continue
 
                         # словарь условий, которые ещё не были обслужены,
@@ -186,7 +187,7 @@ class ReggaeSrv:
                         try:
                             sim_results = pool.map(self.rpyc_connect_to_simulate, conditions.values())
                             # TODO: задокументировать обработку результатов
-                            print("Получен результат", sim_results)
+                            logging.warning("SRV: Получен результат {}".format(sim_results))
                             for gene_id, s_host, tpi in sim_results:
                                 # if gene_id in results:
                                 #     results.pop(gene_id)
@@ -198,8 +199,8 @@ class ReggaeSrv:
                                     results.pop(gene_id)
                         except ConnectionError as e:
                             # наверно тут надо работающие треды обрубить
-                            print("Ошибка. Одна из станций не отвечает", e)
-                            print("Список станций: ", services)
+                            logging.error("SRV: Ошибка. Одна из станций не отвечает", e)
+                            logging.info("SRV: Список станций: ", services)
                             pool.close()
                             time.sleep(3)
 
@@ -223,7 +224,7 @@ class ReggaeSrv:
                 conds = {}
                 results = {}
         except KeyboardInterrupt as e:
-            print("Закрываю открытые соединения. ", e)
+            logging.error("SRV: Закрываю открытые соединения. ", e)
             sock.close()
 
 

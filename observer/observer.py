@@ -14,6 +14,9 @@ import logging
 from memory_profiler import profile as mprofile
 
 
+np.seterr(invalid="ignore", divide="ignore")
+
+
 class Observer(Thread):
     result_dir = "./result/"
     # flow FlowObserver, power PhysicsObserver, traffic ReceivedTrafficObserver
@@ -420,7 +423,7 @@ class Observer(Thread):
                 last_time += time_step
                 try:
                     uti_list = np.array(bw_list) / np.array(al_list)
-                except:
+                except RuntimeWarning:
                     print(bw_list, al_list)
             return time_stride, bw_list, al_list, uti_list, total_bits_sent
 
