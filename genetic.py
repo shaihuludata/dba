@@ -6,6 +6,7 @@ from support.profiling import timeit
 import os
 import subprocess
 from memory_profiler import profile as mprofile
+import logging
 
 
 result_dir = "./result/genetic/"
@@ -33,11 +34,10 @@ def evaluate_binary(candidate, args):
 
 
 @inspyred.ec.evaluators.evaluator
-@mprofile
+# @mprofile
 def gene_simulate(candidate, args):
     """запуск симуляции для заданного гена-кандидата
     результат симуляции - значение фитнес-функции"""
-    from main import simulate, create_simulation
     kwargs = interpret_gene(candidate)
     jargs = json.dumps(kwargs)
     # process = subprocess.Popen(["python3", "main.py", jargs], stdout=subprocess.PIPE)
@@ -47,24 +47,22 @@ def gene_simulate(candidate, args):
     try:
         process = subprocess.Popen(["python3", "main.py", jargs], stdout=subprocess.PIPE)
         data = process.communicate(timeout=60)
-
-        # env, sim_config = create_simulation()
-        # tpi = simulate(env, sim_config, jargs)
-        print(data)
+        logging.info("GENE: ", data)
         stdout, stderr = data
         tpistr = str(stdout)
         tpistr = str(tpistr.split("___")[1])
         tpi = float(tpistr.split("=")[1])
     except:
-        print("failed to simulate {}".format(candidate))
+        logging.critical("failed to simulate {}".format(candidate))
         tpi = float('Inf')  # 100500
     f = open(result_file, "a")
     f.writelines(str(bin_list_to_int(candidate)) + " {}\n".format(tpi))
     f.close()
-    return 1/tpi
+    return tpi
 
 
 @timeit
+# @mprofile
 def rpyc_simulation(candidates, args):
 
     conds = {bin_list_to_int(c): interpret_gene(c) for c in candidates}
@@ -95,7 +93,7 @@ def rpyc_simulation(candidates, args):
         except ConnectionRefusedError as e:
             print(e)
             time.sleep(3)
-    print("Server connected. Sending meta-conditions")
+    logging.info("GENE: Server connected. Sending meta-conditions")
 
     sock.send(len_of_conds.encode("utf-8"))
     # bytes_sent = 0
@@ -161,6 +159,7 @@ def genetic(mode):
                           max_evaluations=10,
                           num_elites=1,
                           pop_size=3,
+                          maximize=False,
                           num_bits=72)
 
     final_pop.sort(reverse=True)
@@ -193,7 +192,7 @@ def interpret_gene(gene: list):
 
 if __name__ == "__main__":
     modes = ["single", "network"]
-    mode = "single"
+    mode = "network"
     # f = open(result_file, "w")
     # f.writelines("Simulation suite started {}\n".format(datetime.now(tz=None)))
     # f.close()

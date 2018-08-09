@@ -8,6 +8,22 @@ from functools import wraps
 import json
 import time
 import random
+import logging
+import subprocess
+
+
+def sub_simulate(jargs):
+    try:
+        process = subprocess.Popen(["python3", "main.py", jargs], stdout=subprocess.PIPE)
+        data = process.communicate(timeout=60)
+        logging.info("GENE: ", data)
+        stdout, stderr = data
+        tpistr = str(stdout)
+        tpistr = str(tpistr.split("___")[1])
+        tpi = float(tpistr.split("=")[1])
+    except:
+        tpi = float('Inf')  # 100500
+    return tpi
 
 
 class Job(Thread):
@@ -24,12 +40,6 @@ class Job(Thread):
         return self._return
 
 
-# def simulate(*args):
-#     print(args, "wtf")
-#     time.sleep(10)
-#     return 123
-
-
 class MyService(rpyc.Service):
     def __init__(self):
         self.env = None
@@ -41,7 +51,7 @@ class MyService(rpyc.Service):
         return
 
     def simulate_async(self):
-        func = simulate
+        func = sub_simulate
         @wraps(func)
         def async_func(*args, **kwargs):
             func_hl = Job(target=func, name="Simulation_thread", args=args, kwargs=kwargs)
@@ -50,9 +60,7 @@ class MyService(rpyc.Service):
         return async_func
 
     def exposed_simulate(self, jargs):
-        print(jargs)
-        # return simulate(self.env, self.sim_config, jargs)
-        self.result_thread = self.simulate_async()(self.env, self.sim_config, jargs)
+        self.result_thread = self.simulate_async()(jargs)
         return "OK"
 
     def exposed_get_result(self):
@@ -121,6 +129,5 @@ class ReggaeCli:
 
 
 if __name__ == "__main__":
-    print("1233455687")
     reggy_cli = ReggaeCli()
     reggy_cli.services_loop()

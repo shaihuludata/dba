@@ -57,11 +57,11 @@ def simulate(env, sim_config, jargs):
     devices, obs = NetFabric().net_fabric(net, env, sim_config)
 
     # запуск симуляции
-    print("Start simulation")
+    logging.info("Start simulation")
     env.run(until=time_horizon)
 
     # по окончанию симуляции показать общие результаты
-    print("{} End of simulation ...".format(env.now),
+    logging.info("{} End of simulation ...".format(env.now),
           "\n***Preparing results***".format())
 
     # по окончанию отдельным потокам наблюдателя сообщить чтобы отключались
