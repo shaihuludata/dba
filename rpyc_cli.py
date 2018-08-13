@@ -1,5 +1,6 @@
 import rpyc
-from rpyc.utils.registry import TCPRegistryServer, TCPRegistryClient
+from rpyc.utils.registry import TCPRegistryServer
+from rpyc.utils.registry import TCPRegistryClient as tcp_cl
 from rpyc.utils.server import Server, ThreadedServer, ForkingServer
 import socket
 from main import simulate, create_simulation
@@ -15,7 +16,7 @@ import subprocess
 def sub_simulate(jargs):
     try:
         process = subprocess.Popen(["python3", "main.py", jargs], stdout=subprocess.PIPE)
-        data = process.communicate(timeout=60)
+        data = process.communicate(timeout=500)
         logging.info("GENE: ", data)
         stdout, stderr = data
         tpistr = str(stdout)
@@ -84,16 +85,55 @@ class MyService(rpyc.Service):
     #     print("Типа досимулировал")
     #     return random.random()
 
-MY_HOSTNAME = "10.22.252.100"
+MY_HOSTNAME = "192.168.0.15"
 REGISTRY_PORT = 18811
 RPYC_PORT = 12345
+
+
+# переопределение класса, чтобы исправить утечку портов
+from rpyc.core import brine
+
+
+
+MAX_DGRAM_SIZE          = 1500
+
+
+class TCPRegistryClient(tcp_cl):
+    # исправленный метод закрывает сокет
+    def register(self, aliases, port, interface = ""):
+
+        self.logger.info("registering on %s:%s", self.ip, self.port)
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind((interface, 0))
+        sock.settimeout(self.timeout)
+        data = brine.dump(("RPYC", "REGISTER", (aliases, port)))
+        try:
+            sock.connect((self.ip, self.port))
+            sock.send(data)
+        except (socket.error, socket.timeout):
+            self.logger.warn("could not connect to registry")
+            return False
+        try:
+            data = sock.recv(MAX_DGRAM_SIZE)
+        except socket.timeout:
+            self.logger.warn("registry did not acknowledge")
+            return False
+        try:
+            reply = brine.load(data)
+        except Exception:
+            self.logger.warn("received corrupted data from registry")
+            return False
+        if reply == "OK":
+            self.logger.info("registry %s:%s acknowledged", self.ip, self.port)
+        sock.close()
+        return True
 
 
 class ReggaeCli:
     STATE_INITIAL = "Offline"
     STATE_REGISTERED = "Registered"
     STATE_WORKING = "Working"
-    REGGAE_HOSTNAME = "10.22.252.100"
+    REGGAE_HOSTNAME = "192.168.0.15"
     SERVICE = "REMOTESIM"
     def __init__(self, registry=TCPRegistryClient, service=MyService):
         self.state = self.STATE_INITIAL
@@ -115,8 +155,17 @@ class ReggaeCli:
         то запускает тред с rpyc
         иначе ждёт 5 секунд до следующей попытки"""
         rpyc_th_alive = False
+        time_start = - self.registry.REREGISTER_INTERVAL
+        reg_result = False
+
         while True:
-            if self.registry.register(self.SERVICE, REGISTRY_PORT):
+            time_current = time.time()
+            time_delta = time_current - time_start
+            if time_delta > self.registry.REREGISTER_INTERVAL:
+                logging.debug("Reregistering after {} sec".format(time_delta))
+                time_start = time_current
+                reg_result = self.registry.register(self.SERVICE, REGISTRY_PORT)
+            if reg_result:
                 self.state = self.STATE_REGISTERED
                 if not rpyc_th_alive:
                     rpyc_th = self.rpyc_async()()

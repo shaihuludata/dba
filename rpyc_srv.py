@@ -66,7 +66,7 @@ class ReggaeSrv:
             else:
                 raise NotImplemented
         except Exception as e:
-            print(s_host, "Error ", e)
+            print("SRV: ", s_host, "Error ", e)
             tpi = False
             return cond, s_host, tpi
         while time.time() - start_time < TERMINAL_TIMEOUT:
@@ -77,7 +77,7 @@ class ReggaeSrv:
             time.sleep(1)
 
         reply = conn.root.abort_simulation()
-        print(s_host, "таймаут", reply)
+        print("SRV: ", s_host, "таймаут", reply)
         tpi = float("inf")
 
         # try:
@@ -112,16 +112,16 @@ class ReggaeSrv:
             try:
                 sock.bind(('', 9090))
                 socket_opened = True
-            except OSError as e:
-                logging.warning("SRV: Сокет занят. Ожидаю освобождения. ", e)
+            except OSError:
+                logging.warning("SRV: Сокет занят. Ожидаю освобождения. ")
                 time.sleep(10)
 
         sock.listen(1)
         try:
             while True:
-                print("Waiting for client")
+                logging.info("SRV: Waiting for client")
                 conn, addr = sock.accept()
-                print("Connected")
+                logging.warning("SRV: Conditions source connected")
 
                 results = dict()
                 conds = {}
@@ -145,12 +145,12 @@ class ReggaeSrv:
                         conds = json.loads(data.decode("utf-8"))
                         logging.info("SRV: {} New conditions arrived: ".format(len(conds)), conds)
                     elif len(services) == 0:
-                        print("No services found")
+                        logging.warning("SRV: No services found")
                         time.sleep(5)
                         continue
                     elif self.S_SERVICE not in services:
-                        print("No appropriate remote services")
-                        print(services)
+                        logging.error("No appropriate remote services")
+                        logging.error(services)
                         time.sleep(5)
                         continue
                     else:
