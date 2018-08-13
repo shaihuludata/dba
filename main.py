@@ -39,6 +39,7 @@ def create_simulation():
     return env, sim_config
 
 
+@timeit
 def simulate(env, sim_config, jargs):
     time_horizon = sim_config["horizon"] if "horizon" in sim_config else 1000
 

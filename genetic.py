@@ -137,6 +137,7 @@ def rpyc_simulation(candidates, args):
     sock.close()
 
     f = open(result_file, "w")
+    fitness_dict.update(fitness_results)
     json.dump(fitness_dict, f)
     f.close()
 
@@ -146,6 +147,7 @@ def rpyc_simulation(candidates, args):
     return fitness
 
 
+@timeit
 def genetic(mode):
     rand = random.Random()
     rand.seed(int(time.time()))
@@ -156,9 +158,9 @@ def genetic(mode):
     evaluator = modes[mode]
     final_pop = ga.evolve(evaluator=evaluator,
                           generator=generate_binary,
-                          max_evaluations=10,
+                          max_evaluations=60,
                           num_elites=1,
-                          pop_size=3,
+                          pop_size=5,
                           maximize=False,
                           num_bits=72)
 

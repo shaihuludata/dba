@@ -102,7 +102,7 @@ class Observer(Thread):
         self.flow_distance = dict()
 
     def run(self):
-        last_progress = 0
+        last_progress = -1
         while not self.end_flag and not self.env.end_flag:
             self.ev_th_wait.clear()
             cur_time_in_msec = round(self.env.now // 1000)
