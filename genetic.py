@@ -158,7 +158,7 @@ def genetic(mode):
     evaluator = modes[mode]
     final_pop = ga.evolve(evaluator=evaluator,
                           generator=generate_binary,
-                          max_evaluations=60,
+                          max_evaluations=15,
                           num_elites=1,
                           pop_size=5,
                           maximize=False,
