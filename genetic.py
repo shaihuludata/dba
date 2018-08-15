@@ -13,7 +13,7 @@ if not os.path.isdir("./result"):
 
 result_dir = "./result/genetic/"
 result_file = result_dir + "genetic_data.json"
-GENE_SRV_PORT = 9091
+GENE_SRV_PORT = 9092
 
 
 def bin_list_to_int(lst):
