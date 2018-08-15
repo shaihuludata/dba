@@ -11,6 +11,7 @@ import logging
 
 result_dir = "./result/genetic/"
 result_file = result_dir + "genetic_data.json"
+GENE_SRV_PORT = 9091
 
 
 def bin_list_to_int(lst):
@@ -88,7 +89,7 @@ def rpyc_simulation(candidates, args):
 
     while not connected:
         try:
-            sock.connect(('localhost', 9090))
+            sock.connect(('localhost', GENE_SRV_PORT))
             connected = True
         except ConnectionRefusedError as e:
             print(e)

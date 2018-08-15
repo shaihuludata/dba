@@ -13,9 +13,10 @@ import time
 import logging
 
 
-MY_HOSTNAME = "10.22.252.100"
+MY_HOSTNAME = "localhost"  # ip_addr
 REGISTRY_PORT = 18811
 RPYC_PORT = 12345
+GENE_SRV_PORT = 9091
 TERMINAL_TIMEOUT = 500
 
 
@@ -110,7 +111,7 @@ class ReggaeSrv:
 
         while not socket_opened:
             try:
-                sock.bind(('', 9090))
+                sock.bind(('', GENE_SRV_PORT))
                 socket_opened = True
             except OSError:
                 logging.warning("SRV: Сокет занят. Ожидаю освобождения. ")

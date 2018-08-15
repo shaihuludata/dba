@@ -85,7 +85,7 @@ class MyService(rpyc.Service):
     #     print("Типа досимулировал")
     #     return random.random()
 
-MY_HOSTNAME = "192.168.0.15"
+MY_HOSTNAME = "localhost"  # ip_addr
 REGISTRY_PORT = 18811
 RPYC_PORT = 12345
 
@@ -133,7 +133,7 @@ class ReggaeCli:
     STATE_INITIAL = "Offline"
     STATE_REGISTERED = "Registered"
     STATE_WORKING = "Working"
-    REGGAE_HOSTNAME = "192.168.0.15"
+    REGGAE_HOSTNAME = "localhost"  # ip_addr
     SERVICE = "REMOTESIM"
     def __init__(self, registry=TCPRegistryClient, service=MyService):
         self.state = self.STATE_INITIAL
