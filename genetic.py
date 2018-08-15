@@ -8,6 +8,8 @@ import subprocess
 from memory_profiler import profile as mprofile
 import logging
 
+if not os.path.isdir("./result"):
+    os.mkdir("./result")
 
 result_dir = "./result/genetic/"
 result_file = result_dir + "genetic_data.json"
@@ -56,7 +58,14 @@ def gene_simulate(candidate, args):
     except:
         logging.critical("failed to simulate {}".format(candidate))
         tpi = float('Inf')  # 100500
-    f = open(result_file, "a")
+
+    if not os.path.isdir(result_dir):
+        os.mkdir(result_dir)
+        print("Creating directory for genetic_results")
+    if os.path.isfile(result_file):
+        f = open(result_file, "a")
+    else:
+        f = open(result_file, "w")
     f.writelines(str(bin_list_to_int(candidate)) + " {}\n".format(tpi))
     f.close()
     return tpi
@@ -67,6 +76,10 @@ def gene_simulate(candidate, args):
 def rpyc_simulation(candidates, args):
 
     conds = {bin_list_to_int(c): interpret_gene(c) for c in candidates}
+    if not os.path.isdir(result_dir):
+        print("Creating directory for genetic_results")
+        os.mkdir(result_dir)
+
     if not os.path.exists(result_file):
         f = open(result_file, "w")
         json.dump({}, f)
@@ -137,7 +150,7 @@ def rpyc_simulation(candidates, args):
             print(fitness_keys)
     sock.close()
 
-    f = open(result_file, "w")
+    f = open(result_file, "w")  # именно w!
     fitness_dict.update(fitness_results)
     json.dump(fitness_dict, f)
     f.close()
@@ -161,7 +174,7 @@ def genetic(mode):
                           generator=generate_binary,
                           max_evaluations=15,
                           num_elites=1,
-                          pop_size=5,
+                          pop_size=3,
                           maximize=False,
                           num_bits=72)
 
