@@ -9,6 +9,7 @@ from functools import wraps
 import json
 import time
 import random
+import sys
 import logging
 import subprocess
 
@@ -25,6 +26,27 @@ def sub_simulate(jargs):
     except:
         tpi = float('Inf')  # 100500
     return tpi
+
+
+def mpi_simulate(jargs):
+
+    from mpi4py import MPI
+
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    if rank == 0:
+        comm.send(jargs, dest=1, tag=11)
+        tpi = comm.recv(source=1, tag=12)
+        return tpi
+    elif rank == 1:
+        jargs = comm.recv(source=0, tag=11)
+        try:
+            tpi = sub_simulate(jargs)
+        except:
+            tpi = float('Inf')
+        comm.send(tpi, dest=0, tag=12)
+    else:
+        print(rank, "не озадачен")
 
 
 class Job(Thread):
@@ -51,8 +73,12 @@ class MyService(rpyc.Service):
         self.env, self.sim_config = create_simulation()
         return
 
+    @staticmethod
+    def simulate_method(jargs):
+        raise Exception("Method simulate_method NEED TO BE REORDERED")
+
     def simulate_async(self):
-        func = sub_simulate
+        func = self.simulate_method
         @wraps(func)
         def async_func(*args, **kwargs):
             func_hl = Job(target=func, name="Simulation_thread", args=args, kwargs=kwargs)
@@ -92,7 +118,6 @@ RPYC_PORT = 12345
 
 # переопределение класса, чтобы исправить утечку портов
 from rpyc.core import brine
-
 
 
 MAX_DGRAM_SIZE          = 1500
@@ -135,6 +160,7 @@ class ReggaeCli:
     STATE_WORKING = "Working"
     REGGAE_HOSTNAME = "localhost"  # ip_addr
     SERVICE = "REMOTESIM"
+
     def __init__(self, registry=TCPRegistryClient, service=MyService):
         self.state = self.STATE_INITIAL
         self.registry = registry(MY_HOSTNAME)
@@ -178,5 +204,9 @@ class ReggaeCli:
 
 
 if __name__ == "__main__":
-    reggy_cli = ReggaeCli()
+    SIM_TYPE = "MPI"  # "MPI" or "SUBPROCESS"
+    simulation_methods = {"MPI": mpi_simulate, "SUBPROCESS": sub_simulate}
+    MyService.simulate_method = simulation_methods[SIM_TYPE]
+
+    reggy_cli = ReggaeCli(service=MyService)
     reggy_cli.services_loop()

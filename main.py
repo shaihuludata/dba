@@ -74,7 +74,6 @@ def simulate(env, sim_config, jargs):
 
 
 if __name__ == '__main__':
-    print(sys.argv, len(sys.argv))
     if len(sys.argv) > 1:
         jargs = sys.argv[1]
     else:
