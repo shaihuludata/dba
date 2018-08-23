@@ -184,7 +184,7 @@ class ReggaeSrv:
                             elif s_host in service_states:
                                 if service_states[s_host] == self.S_STATE_REGISTERED:
                                     services_free.append(s_host)
-                        print(service_states)
+                        # print(service_states)
                         if len(services_free) == 0:
                             time.sleep(1)
                             logging.warning("SRV: Нет свободных сервисов")
