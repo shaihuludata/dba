@@ -16,6 +16,7 @@ from heapq import heappush, heappop
 class ProfiledEnv(Environment):
     def __init__(self, initial_time=0):
         Environment.__init__(self, initial_time=0)
+        self.end_flag = False
 
     def run(self, until=None):
         Environment.run(self, until)
@@ -35,7 +36,6 @@ def create_simulation():
     # обеспечивает общее время и планирование всех событий, происходящих в модели
     # при включенном дебаге работает профилирование
     env = ProfiledEnv()  # if sim_config["debug"] else Environment()
-    env.end_flag = False
     return env, sim_config
 
 
@@ -74,7 +74,6 @@ def simulate(env, sim_config, jargs):
 
 
 if __name__ == '__main__':
-    print(sys.argv, len(sys.argv))
     if len(sys.argv) > 1:
         jargs = sys.argv[1]
     else:

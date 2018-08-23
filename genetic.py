@@ -76,16 +76,18 @@ def gene_simulate(candidate, args):
 def rpyc_simulation(candidates, args):
 
     conds = {bin_list_to_int(c): interpret_gene(c) for c in candidates}
-    if not os.path.isdir(result_dir):
+    if not os.path.exists(result_dir):
         print("Creating directory for genetic_results")
         os.mkdir(result_dir)
 
-    if not os.path.exists(result_file):
+    if not os.path.isfile(result_file):
         f = open(result_file, "w")
-        json.dump({}, f)
+        f.write('{}')
         f.close()
 
-    fitness_results = json.load(open(result_file))
+    f = open(result_file)
+    fitness_results = json.load(f)
+    f.close()
     fitness_dict = {gene_id: fitness_results[gene_id]
                         for gene_id in conds
                             if gene_id in fitness_results}

@@ -9,6 +9,7 @@ from functools import wraps
 import json
 import time
 import random
+import sys
 import logging
 import subprocess
 
@@ -23,8 +24,29 @@ def sub_simulate(jargs):
         tpistr = str(tpistr.split("___")[1])
         tpi = float(tpistr.split("=")[1])
     except:
-        tpi = float('Inf')  # 100500
+        tpi = float('Inf')
     return tpi
+
+
+def mpi_simulate(jargs):
+
+    from mpi4py import MPI
+
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    if rank == 0:
+        print(rank, "я родился")
+        jargs = jargs.encode(encoding="utf_8")
+        comm.Send([jargs, len(jargs)], 1, tag=11)
+        tpi = comm.recv(source=1, tag=12)
+        return tpi
+    elif rank == 1:
+        print(rank, "я пытаюсь принимать")
+        jargs = comm.recv(source=0, tag=11)[0]
+        tpi = sub_simulate(jargs)
+        comm.send(tpi, dest=0, tag=12)
+    else:
+        print(rank, "не озадачен")
 
 
 class Job(Thread):
@@ -46,13 +68,14 @@ class MyService(rpyc.Service):
         self.env = None
         self.sim_config = None
         self.result_thread = None
+        self.simulate_method = None
 
     def exposed_create_simulation(self):
         self.env, self.sim_config = create_simulation()
         return
 
     def simulate_async(self):
-        func = sub_simulate
+        func = self.simulate_method
         @wraps(func)
         def async_func(*args, **kwargs):
             func_hl = Job(target=func, name="Simulation_thread", args=args, kwargs=kwargs)
@@ -92,7 +115,6 @@ RPYC_PORT = 12345
 
 # переопределение класса, чтобы исправить утечку портов
 from rpyc.core import brine
-
 
 
 MAX_DGRAM_SIZE          = 1500
@@ -135,11 +157,20 @@ class ReggaeCli:
     STATE_WORKING = "Working"
     REGGAE_HOSTNAME = "localhost"  # ip_addr
     SERVICE = "REMOTESIM"
+
     def __init__(self, registry=TCPRegistryClient, service=MyService):
         self.state = self.STATE_INITIAL
         self.registry = registry(MY_HOSTNAME)
         self.hostname = socket.gethostname()
-        self.rpc = ThreadedServer(service, port=RPYC_PORT)
+        self.rpc_enabled = False
+        for i in [1, 10, 20]:
+            try:
+                self.rpc = ThreadedServer(service, port=RPYC_PORT)
+                self.rpc_enabled = True
+                break
+            except OSError as e:
+                print(e, "on {} port ... waiting {} seconds".format(RPYC_PORT, i))
+                time.sleep(i)
 
     def rpyc_async(self):
         func = self.rpc.start
@@ -159,24 +190,35 @@ class ReggaeCli:
         reg_result = False
 
         while True:
-            time_current = time.time()
-            time_delta = time_current - time_start
-            if time_delta > self.registry.REREGISTER_INTERVAL:
-                logging.debug("Reregistering after {} sec".format(time_delta))
-                time_start = time_current
-                reg_result = self.registry.register(self.SERVICE, REGISTRY_PORT)
-            if reg_result:
-                self.state = self.STATE_REGISTERED
-                if not rpyc_th_alive:
-                    rpyc_th = self.rpyc_async()()
-                if rpyc_th is not False:
-                    rpyc_th_alive = rpyc_th.is_alive()
-                time.sleep(1)
+            if self.rpc_enabled:
+                time_current = time.time()
+                time_delta = time_current - time_start
+                if time_delta > self.registry.REREGISTER_INTERVAL:
+                    logging.debug("Reregistering after {} sec".format(time_delta))
+                    time_start = time_current
+                    reg_result = self.registry.register(self.SERVICE, REGISTRY_PORT)
+                if reg_result:
+                    self.state = self.STATE_REGISTERED
+                    if not rpyc_th_alive:
+                        rpyc_th = self.rpyc_async()()
+                    if rpyc_th is not False:
+                        rpyc_th_alive = rpyc_th.is_alive()
+                    time.sleep(1)
+                else:
+                    self.state = self.STATE_INITIAL
+                    time.sleep(5)
             else:
-                self.state = self.STATE_INITIAL
+                print("Waiting for RPC up")
                 time.sleep(5)
 
 
 if __name__ == "__main__":
-    reggy_cli = ReggaeCli()
+    SIM_TYPE = "MPI"  # "MPI" or "SUBPROCESS"
+    simulation_methods = {"MPI": mpi_simulate, "SUBPROCESS": sub_simulate}
+    class MSV(MyService):
+        def __init__(self):
+            MyService.__init__(self)
+            self.simulate_method = simulation_methods[SIM_TYPE]
+
+    reggy_cli = ReggaeCli(service=MSV)
     reggy_cli.services_loop()

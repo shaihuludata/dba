@@ -14,23 +14,8 @@ import logging
 
 
 MY_HOSTNAME = "localhost"  # ip_addr
-REGISTRY_PORT = 18811
-RPYC_PORT = 12345
 GENE_SRV_PORT = 9092
 TERMINAL_TIMEOUT = 500
-
-
-class TCPRegistryServer(tcp_rs):
-    # этот метод надо исправить
-    def cmd_register(self, host, names, port):
-        """implementation of the ``register`` command"""
-        self.logger.debug("registering %s:%s as %s", host, port, ", ".join(names))
-        if isinstance(names, str):
-            self._add_service(names.upper(), (host, port))
-        else:
-            for name in names:
-                self._add_service(name.upper(), (host, port))
-        return "OK"
 
 
 class ReggaeSrv:
@@ -39,34 +24,13 @@ class ReggaeSrv:
     S_STATE_WORKING = "Working"
     S_SERVICE = "REMOTESIM"
 
-    def __init__(self, registry=TCPRegistryServer):
-        for i in [1, 10, 20]:
-            try:
-                self.registry = registry()
-                break
-            except OSError as e:
-                print(e, " ... waiting {} seconds".format(i))
-                time.sleep(i)
+    def __init__(self):
         self.hostname = socket.gethostname()
 
-    def registry_async(self):
-        func = self.registry.start
-        @wraps(func)
-        def async_func(*args, **kwargs):
-            func_hl = Thread(target=func, args=args, kwargs=kwargs)
-            func_hl.start()
-            return func_hl
-        return async_func
-
-    def rpyc_connect_to_simulate(self, args):
+    def work_to_simulate(self, args):
         cond, s_host, sim_args = args
-        try:
-            conn = rpyc.connect(s_host, RPYC_PORT,
-                                config={'sync_request_timeout': TERMINAL_TIMEOUT})
-        except ConnectionRefusedError:
-            logging.critical("{} не отвечает".format(s_host))
-            tpi = False
-            return cond, s_host, tpi
+        conn = rpyc.connect(s_host, RPYC_PORT,
+                            config={'sync_request_timeout': TERMINAL_TIMEOUT})
         jargs = json.dumps(sim_args)
         # conn.root.create_simulation()
         start_time = time.time()
@@ -82,11 +46,7 @@ class ReggaeSrv:
             tpi = False
             return cond, s_host, tpi
         while time.time() - start_time < TERMINAL_TIMEOUT:
-            try:
-                result = conn.root.get_result()
-            except EOFError as e:
-                print(e, " Случилась вот такая беда")
-                result = False
+            result = conn.root.get_result()
             if result is not None:
                 tpi = result
                 return cond, s_host, tpi
@@ -96,20 +56,6 @@ class ReggaeSrv:
         print("SRV: ", s_host, "таймаут", reply)
         tpi = float("inf")
 
-        # try:
-        #     tpi = conn.root.simulate(jargs)
-        # except TimeoutError:
-        #     reply = conn.root.abort_simulation()
-        #     print(s_host, "таймаут ", reply)
-        #     tpi = 100500
-        # try:
-        #      conn = rpyc.connect(s_host, RPYC_PORT,
-        #                          config={'sync_request_timeout': TERMINAL_TIMEOUT})
-        #     jargs = json.dumps(sim_args)
-        #     tpi = conn.root.simulate(jargs)
-        # except Exception as e:
-        #     print(s_host, e)
-        #     tpi = False
         return cond, s_host, tpi
 
     def services_loop(self):
@@ -129,20 +75,19 @@ class ReggaeSrv:
                 sock.bind(('', GENE_SRV_PORT))
                 socket_opened = True
             except OSError:
-                logging.warning("SRV: Сокет порта {} занят. Ожидаю освобождения. "
-                                .format(GENE_SRV_PORT))
+                logging.warning("SRV: Сокет занят. Ожидаю освобождения. ")
                 time.sleep(10)
 
         sock.listen(1)
         try:
             while True:
-                logging.info("SRV: Waiting for client")
+                logging.info("SRV: Waiting for GENE's")
                 conn, addr = sock.accept()
                 logging.warning("SRV: Conditions source connected")
 
                 results = dict()
                 conds = {}
-                pool = list()
+                executor = MPIPool
 
                 while len(results) == 0 or len(results) < len(conds):
                     services = self.registry.services
@@ -184,12 +129,10 @@ class ReggaeSrv:
                             elif s_host in service_states:
                                 if service_states[s_host] == self.S_STATE_REGISTERED:
                                     services_free.append(s_host)
-                        print(service_states)
+                        # print(service_states)
                         if len(services_free) == 0:
                             time.sleep(1)
                             logging.warning("SRV: Нет свободных сервисов")
-                            self.registry.services = {}
-                            service_states = {}
                             continue
 
                         # словарь условий, которые ещё не были обслужены,
@@ -215,10 +158,9 @@ class ReggaeSrv:
                                     results[gene_id] = tpi
                                 else:
                                     service_states.pop(s_host)
-                                    service_states[s_host] = self.S_STATE_INITIAL
                                     results.pop(gene_id)
                         except ConnectionError as e:
-                            # TODO наверно тут надо работающие треды обрубить
+                            # наверно тут надо работающие треды обрубить
                             logging.error("SRV: Ошибка. Одна из станций не отвечает", e)
                             logging.info("SRV: Список станций: ", services)
                             pool.close()
