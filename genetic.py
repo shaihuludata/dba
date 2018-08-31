@@ -7,6 +7,8 @@ import os
 import subprocess
 from memory_profiler import profile as mprofile
 import logging
+from mpi4py import MPI
+
 
 if not os.path.isdir("./result"):
     os.mkdir("./result")
@@ -14,6 +16,22 @@ if not os.path.isdir("./result"):
 result_dir = "./result/genetic/"
 result_file = result_dir + "genetic_data.json"
 GENE_SRV_PORT = 9092
+
+
+def retrieve_result():
+    if not os.path.exists(result_dir):
+        print("Creating directory for genetic_results")
+        os.mkdir(result_dir)
+
+    if not os.path.isfile(result_file):
+        f = open(result_file, "w")
+        f.write('{}')
+        f.close()
+
+    f = open(result_file)
+    fitness_results = json.load(f)
+    f.close()
+    return fitness_results
 
 
 def bin_list_to_int(lst):
@@ -62,11 +80,17 @@ def gene_simulate(candidate, args):
     if not os.path.isdir(result_dir):
         os.mkdir(result_dir)
         print("Creating directory for genetic_results")
-    if os.path.isfile(result_file):
-        f = open(result_file, "a")
-    else:
-        f = open(result_file, "w")
-    f.writelines(str(bin_list_to_int(candidate)) + " {}\n".format(tpi))
+    # if os.path.isfile(result_file):
+    #     f = open(result_file, "a")
+    # else:
+    #     f = open(result_file, "w")
+    # f.writelines(str(bin_list_to_int(candidate)) + " {}\n".format(tpi))
+    # f.close()
+
+    fitness_dict = retrieve_result()
+    f = open(result_file, "w")  # именно w!
+    fitness_dict.update({bin_list_to_int(candidate): tpi})
+    json.dump(fitness_dict, f)
     f.close()
     return tpi
 
@@ -74,20 +98,8 @@ def gene_simulate(candidate, args):
 @timeit
 # @mprofile
 def rpyc_simulation(candidates, args):
-
+    fitness_results = retrieve_result()
     conds = {bin_list_to_int(c): interpret_gene(c) for c in candidates}
-    if not os.path.exists(result_dir):
-        print("Creating directory for genetic_results")
-        os.mkdir(result_dir)
-
-    if not os.path.isfile(result_file):
-        f = open(result_file, "w")
-        f.write('{}')
-        f.close()
-
-    f = open(result_file)
-    fitness_results = json.load(f)
-    f.close()
     fitness_dict = {gene_id: fitness_results[gene_id]
                         for gene_id in conds
                             if gene_id in fitness_results}
@@ -163,20 +175,84 @@ def rpyc_simulation(candidates, args):
     return fitness
 
 
+def subprocess_mpi_mapper(args):
+    candidate, args = args[0], args[1]
+    jargs = json.dumps(args)
+    try:
+        process = subprocess.Popen(["python3", "main.py", jargs], stdout=subprocess.PIPE)
+        # new_fitness_dict = json.loads(data.decode("utf-8"))
+        data = process.communicate(timeout=60)
+        logging.info("GENE: ", data)
+        stdout, stderr = data
+        tpistr = str(stdout)
+        tpistr = str(tpistr.split("___")[1])
+        tpi = float(tpistr.split("=")[1])
+    except:
+        logging.critical("failed to simulate {}".format(candidate))
+        tpi = float('Inf')  # 100500
+    return candidate, tpi
+
+
+# @mprofile
+def mpi_simulate(candidates, args):
+    time.sleep(1)
+    for i in candidates: print(i)
+
+    from mpi4py.futures import MPIPoolExecutor
+
+    fitness_results = retrieve_result()
+    conds = {bin_list_to_int(c): interpret_gene(c) for c in candidates}
+    # старые результаты симуляции могут содержать текущий ген. его можно восстановить
+    fitness_dict = {gene_id: fitness_results[gene_id]
+                    for gene_id in conds
+                    if gene_id in fitness_results}
+
+    results_valid = False
+
+    print(len(candidates))
+    while not results_valid:
+        with MPIPoolExecutor() as executor:
+            new_fitness = executor.map(subprocess_mpi_mapper, conds.items())
+
+        new_fitness_dict = {fit[0]: fit[1] for fit in new_fitness}
+        fitness_dict.update(new_fitness_dict)
+        # проверить, что все гены из conds есть в словаре результатов
+        conds_keys = [i for i in conds]; conds_keys.sort()
+        fitness_keys = [int(i) for i in fitness_dict]; fitness_keys.sort()
+        if conds_keys == fitness_keys:
+            print("ДАННЫЕ ВАЛИДНЫ!")
+            results_valid = True
+        else:
+            print("ДАННЫЕ НЕ ВАЛИДНЫ!")
+
+    if not os.path.isdir(result_dir):
+        os.mkdir(result_dir)
+        print("Creating directory for genetic_results")
+
+    f = open(result_file, "w")  # именно w!
+    fitness_dict.update(fitness_results)
+    json.dump(fitness_dict, f)
+    f.close()
+
+    fitness = list()
+    for gene in candidates:
+        gene = bin_list_to_int(gene)
+        fitness.append(fitness_dict[gene])
+    return fitness
+
+
 @timeit
-def genetic(mode):
+def genetic(evalr):
     rand = random.Random()
     rand.seed(int(time.time()))
     ga = inspyred.ec.GA(rand)
     ga.observer = inspyred.ec.observers.stats_observer
     ga.terminator = inspyred.ec.terminators.evaluation_termination
-    modes = {"network": rpyc_simulation, "single": gene_simulate}
-    evaluator = modes[mode]
-    final_pop = ga.evolve(evaluator=evaluator,
+    final_pop = ga.evolve(evaluator=evalr,
                           generator=generate_binary,
-                          max_evaluations=15,
+                          max_evaluations=50,
                           num_elites=1,
-                          pop_size=3,
+                          pop_size=5,
                           maximize=False,
                           num_bits=72)
 
@@ -209,16 +285,22 @@ def interpret_gene(gene: list):
 
 
 if __name__ == "__main__":
-    modes = ["single", "network"]
-    mode = "network"
+    modes = {"network": rpyc_simulation, "single": gene_simulate, "mpi": mpi_simulate}
+    mode = "mpi"
+    evaluator = modes[mode]
     # f = open(result_file, "w")
     # f.writelines("Simulation suite started {}\n".format(datetime.now(tz=None)))
     # f.close()
-    genetic(mode)
-    # dba_fair_multipliers = {0: {"bw": 1.0, "uti": 2},
-    #                         1: {"bw": 0.9, "uti": 3},
-    #                         2: {"bw": 0.8, "uti": 4},
-    #                         3: {"bw": 0.7, "uti": 5}}
-    # kwargs = {'DbaTMLinearFair_fair_multipliers': dba_fair_multipliers,
-    #           'dba_min_grant': 1}
-    # main(**kwargs)
+
+    if mode == "mpi":
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        if rank == 0:
+            print(rank, "выполняю")
+            genetic(evaluator)
+        else:
+            print(rank, "готов к работе")
+    elif mode in ["network", "single"]:
+        genetic(evaluator)
+    else:
+        raise Exception("Режим не определён")

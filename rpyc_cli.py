@@ -108,6 +108,7 @@ class MyService(rpyc.Service):
     #     print("Типа досимулировал")
     #     return random.random()
 
+
 MY_HOSTNAME = "localhost"  # ip_addr
 REGISTRY_PORT = 18811
 RPYC_PORT = 12345

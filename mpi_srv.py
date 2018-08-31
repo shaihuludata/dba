@@ -181,7 +181,6 @@ class ReggaeSrv:
                 del len_of_res_str
 
                 conn.send(res_str)
-
                 conn.close()
                 conds = {}
                 results = {}
