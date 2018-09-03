@@ -10,6 +10,7 @@ import logging
 from mpi4py import MPI
 
 
+
 if not os.path.isdir("./result"):
     os.mkdir("./result")
 
