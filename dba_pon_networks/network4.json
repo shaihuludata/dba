@@ -1,33 +1,44 @@
 {
-  "OLT":
+  "OLT0":
   {
-    "dba_type": "traffic_monitoring",
-    "possible_dba_types": [
-      "static", "static_allocs", "traffic_monitoring",
-      "status_report", "traffic_monitoring_extra"],
+    "dba_type": "tm_basic",
+    "possible_dba_types":[
+      "static",
+      "static_allocs",
+      "tm_basic",
+      "tm_linear_traftype_aware",
+      "tm_fair",
+      "sr_basic"
+    ],
     "maximum_ont_amount": "32",
     "upstream_interframe_interval": 100,
+    "sn_request_interval":3000,
+    "sn_quiet_interval":400,
     "transmitter_power": "1",
-    "sn_request_interval": 5000,
     "cycle_duration": 125,
     "transmitter_wavelength": "1550",
-    "transmitter_type": "1G",
+    "transmitter_type": "2G",
     "ports": {"0": "Fiber0::0"}
   },
   "Fiber0":
   {
     "length": "5",
     "type": "G657",
-    "ports": {"0": "OLT::0", "1": "Splitter1::0"}
+    "ports": {"0": "OLT0::0", "1": "Splitter1::0"}
   },
   "ONT1":
   {
     "ports": {"0": "Fiber1::0"},
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
-    "transmitter_type": "1G",
-    "activation_time": 0,
-    "Alloc": {"1": "type1", "2": "type1"}
+    "transmitter_type": "2G",
+    "traffic_activation_time":1,
+    "Alloc":{
+      "1":"type1",
+      "2":"type2",
+      "3":"type3",
+      "4":"type4"
+    }
   },
   "Fiber1":
   {
@@ -40,9 +51,15 @@
     "ports": {"0": "Fiber2::0"},
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
-    "transmitter_type": "1G",
+    "transmitter_type": "2G",
     "activation_time": 0,
-    "Alloc": {"1": "type2", "2": "type2"}
+    "traffic_activation_time":1,
+    "Alloc":{
+      "1":"type1",
+      "2":"type2",
+      "3":"type3",
+      "4":"type4"
+    }
   },
   "Fiber2":
   {
@@ -55,9 +72,15 @@
     "ports": {"0": "Fiber3::0"},
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
-    "transmitter_type": "1G",
+    "transmitter_type": "2G",
     "activation_time": 0,
-    "Alloc": {"1": "type3", "2": "type3"}
+    "traffic_activation_time":1,
+    "Alloc":{
+      "1":"type1",
+      "2":"type2",
+      "3":"type3",
+      "4":"type4"
+    }
   },
   "Fiber3":
   {
@@ -70,9 +93,15 @@
     "ports": {"0": "Fiber4::0"},
     "transmitter_power": "1",
     "transmitter_wavelength": "1310",
-    "transmitter_type": "1G",
+    "transmitter_type": "2G",
     "activation_time": 0,
-    "Alloc": {"1": "type3", "2": "type3"}
+    "traffic_activation_time":1,
+    "Alloc":{
+      "1":"type1",
+      "2":"type2",
+      "3":"type3",
+      "4":"type4"
+    }
   },
   "Fiber4":
   {

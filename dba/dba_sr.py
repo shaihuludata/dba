@@ -1,10 +1,19 @@
-from sympy import Interval
+from dba.dba import Dba
 
-Interval(0, 127)
-Interval(128, 255)
-Interval(256, 511)
-Interval(512, 1023)
-Interval(1024, 2047)
-Interval(2048, 4095)
-Interval(4096, 8191)
-1 > 8191
+
+class Dba_SR(Dba):
+    # минимальный размер гранта при утилизации 0
+    min_grant = 10
+
+    def __init__(self, env, config, snd_sig):
+        Dba.__init__(self, env, config, snd_sig)
+        self.mem_size = 10
+        # для хранения текущих значений утилизации
+        self.alloc_utilisation = dict()
+        # для хранения информации о выданных грантах
+        self.alloc_grants = dict()
+        # для хранения информации о размерах полученных пакетов
+        self.alloc_bandwidth = dict()
+        self.alloc_max_bandwidth = dict()
+        # для хранения информации о классах alloc"ов
+        self.alloc_class = dict()

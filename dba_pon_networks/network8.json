@@ -1,6 +1,6 @@
 {
   "OLT0":{
-    "dba_type":"tm_fair",
+    "dba_type":"tm_basic",
     "possible_dba_types":[
       "static",
       "static_allocs",

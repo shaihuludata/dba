@@ -2,24 +2,23 @@ import json
 import logging
 from simpy import Environment
 from dba_pon_networks.net_fabric import NetFabric
-from support.profiling import profile, timeit
 import sys
-import gc
-from memory_profiler import profile as mprofile
+import time
 
 
-from simpy.events import (AllOf, AnyOf, Event, Process, Timeout, URGENT, NORMAL)
-from simpy.core import StopSimulation, EmptySchedule
-from heapq import heappush, heappop
-
-
-class ProfiledEnv(Environment):
-    def __init__(self, initial_time=0):
-        Environment.__init__(self, initial_time=0)
-        self.end_flag = False
-
-    def run(self, until=None):
-        Environment.run(self, until)
+def timeit(method):
+    def timed(*args, **kw):
+        ts = time.time()
+        result = method(*args, **kw)
+        te = time.time()
+        if 'log_time' in kw:
+            name = kw.get('log_name', method.__name__.upper())
+            kw['log_time'][name] = int((te - ts) * 1000)
+        else:
+            print('%r  %2.2f ms' % \
+                  (method.__name__, (te - ts) * 1000))
+        return result
+    return timed
 
 
 def create_simulation():
@@ -35,7 +34,7 @@ def create_simulation():
     # env - общая среда выполнения симуляционного процесса.
     # обеспечивает общее время и планирование всех событий, происходящих в модели
     # при включенном дебаге работает профилирование
-    env = ProfiledEnv()  # if sim_config["debug"] else Environment()
+    env = Environment()
     return env, sim_config
 
 
@@ -45,7 +44,7 @@ def simulate(env, sim_config, jargs):
 
     # структуры сетей описаны в соответствующей директории
     # там описаны устройства, их параметры и их соединения друг с другом
-    net = json.load(open("./dba_pon_networks/network8.json"))
+    net = json.load(open("./dba_pon_networks/network9.json"))
     kwargs = json.loads(jargs)
     if "DbaTMLinearFair_fair_multipliers" in kwargs:
         net["OLT0"].update(kwargs)
@@ -82,16 +81,9 @@ if __name__ == '__main__':
                                                        2: {"bw": 0.8, "uti": 4},
                                                        3: {"bw": 0.7, "uti": 5}},
                   'dba_min_grant': 10}
-        # kwargs = {'DbaTMLinearFair_fair_multipliers': {0: {'bw': 7.8, 'uti': 5.6},
-        #                                                1: {'bw': 1.2, 'uti': 2.4},
-        #                                                2: {'bw': 4.9, 'uti': 9.8},
-        #                                                3: {'bw': 9.6, 'uti': 9.2}},
-        #           'dba_min_grant': 99}
         jargs = json.dumps(kwargs, ensure_ascii=False).encode("utf-8")
     env, sim_config = create_simulation()
-    try:
-        ret = simulate(env, sim_config, jargs)
-        print("___tpi={}___".format(ret))
-    except KeyboardInterrupt:
-        env.end_flag = True
+    ret = simulate(env, sim_config, jargs)
+    print("___tpi={}___".format(ret))
+
 

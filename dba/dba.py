@@ -4,7 +4,7 @@ class Dba:
 
     def __init__(self, env, config, snd_sig):
         self.env = env
-        self.global_bwmap = dict()  # {time: intra_cycle_bwmap}
+        self.global_bwmap = dict()
         self.next_cycle_start = 0
         self.ont_discovered = dict()
         self.cycle_duration = config["cycle_duration"]
@@ -28,9 +28,9 @@ class Dba:
 
     def sn_request(self):
         bwmap = list()
-        alloc_structure = {"Alloc-ID": "to_all",  # "Flags": 0,
+        alloc_structure = {"Alloc-ID": "to_all",
                            "StartTime": 0,
-                           "StopTime": self.maximum_allocation_start_time}  # , "CRC": None}
+                           "StopTime": self.maximum_allocation_start_time}
         bwmap.append(alloc_structure)
         self.global_bwmap[self.next_cycle_start] = bwmap
         self.global_bwmap[self.next_cycle_start + self.cycle_duration] = bwmap

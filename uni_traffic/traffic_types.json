@@ -17,53 +17,57 @@
       "size_of_packet": 4,
       "sigma_sop": 1,
       "size_of_packet_distribution": "deterministic",
-      "activity_interval": 100000,
+      "activity_interval": 10000,
       "activity_interval_distribution": "normal",
-      "silence_interval": 100000,
+      "silence_interval": 10000,
       "silence_interval_distribution": "poisson",
-      "average_bw": "160000"
+      "max_bw": "160000",
+      "average_bw": "64000"
     },
     "type2": {
       "class": 1,
       "service": "video",
-      "send_interval": 500,
+      "send_interval": 1000,
       "send_interval_distribution": "poisson",
-      "size_of_packet": 600,
-      "sigma_sop": 100,
+      "size_of_packet": 500,
+      "sigma_sop": 50,
       "size_of_packet_distribution": "normal",
       "activity_interval": 200000,
       "activity_interval_distribution": "deterministic",
       "silence_interval": 200000,
       "silence_interval_distribution": "deterministic",
-      "average_bw": "14650000"
+      "max_bw": "5400000",
+      "average_bw": "2100000"
     },
     "type3": {
       "class": 2,
       "service": "data",
       "send_interval": 250,
       "send_interval_distribution": "deterministic",
-      "size_of_packet": 1000,
+      "size_of_packet": 800,
       "size_of_packet_distribution": "deterministic",
-      "activity_interval": 200000,
+      "activity_interval": 20000,
       "activity_interval_distribution": "deterministic",
-      "silence_interval": 100000,
+      "silence_interval": 20000,
       "silence_interval_distribution": "deterministic",
-      "average_bw": "33000000"
+      "max_bw": "25600000",
+      "average_bw": "12800000"
     },
     "type4": {
       "class": 3,
       "service": "best_effort",
       "send_interval": 125,
       "send_interval_distribution": "deterministic",
-      "size_of_packet": 2500,
+      "size_of_packet": 2000,
       "size_of_packet_distribution": "deterministic",
-      "activity_interval": 10000,
-      "sigma_ai": 2000,
+      "activity_interval": 20000,
+      "sigma_ai": 3000,
       "activity_interval_distribution": "normal",
-      "silence_interval": 60000,
+      "silence_interval": 30000,
       "sigma_silence": 1000,
       "silence_interval_distribution": "normal",
-      "average_bw": "162000000"
+      "max_bw": "128000000",
+      "average_bw": "52000000"
     }
   },
   "ports": {
