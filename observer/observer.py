@@ -11,6 +11,7 @@ import collections
 import re
 import json
 import logging
+import os
 from memory_profiler import profile as mprofile
 
 
@@ -103,7 +104,7 @@ class Observer(Thread):
 
     def run(self):
         last_progress = -1
-        while not self.end_flag and not self.env.end_flag:
+        while not self.end_flag:
             self.ev_th_wait.clear()
             cur_time_in_msec = round(self.env.now // 1000)
             if cur_time_in_msec > self.cur_time:
@@ -126,9 +127,6 @@ class Observer(Thread):
                 self.new_data.remove(i)
             self.ev_wait.clear()  # clean event for future
             self.ev_th_wait.set()
-        if self.env.end_flag:
-            print("Остановлен по причине окончания работы среды")
-            self.env = None
 
     def notice(self, func):
         def wrapped(*args):
@@ -269,6 +267,9 @@ class Observer(Thread):
                     ax.plot(tup[0], tup[1], style)
                 subplot_index += 1
         fig.show()
+        if not os.path.exists(self.result_dir):
+            os.makedirs(self.result_dir)
+
         fig.savefig(self.result_dir + res_name + ".png", bbox_inches="tight")
         plt.close(fig)
 

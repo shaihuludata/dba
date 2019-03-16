@@ -44,7 +44,7 @@ def simulate(env, sim_config, jargs):
 
     # структуры сетей описаны в соответствующей директории
     # там описаны устройства, их параметры и их соединения друг с другом
-    net = json.load(open("./dba_pon_networks/network9.json"))
+    net = json.load(open("./dba_pon_networks/network4.json"))
     kwargs = json.loads(jargs)
     if "DbaTMLinearFair_fair_multipliers" in kwargs:
         net["OLT0"].update(kwargs)
@@ -53,7 +53,8 @@ def simulate(env, sim_config, jargs):
     # описание сети net используется фабрикой для порождения устройств,
     # их соединения друг с другом в едином пространстве env
     # devices содержит список инициализированных устройств
-    # obs - наблюдатель симуляции, накапливает информацию и обрабатывает, выдаёт графики
+    # obs - наблюдатель симуляции, накапливает информацию и
+    # обрабатывает, выдаёт графики
     devices, obs = NetFabric().net_fabric(net, env, sim_config)
 
     # запуск симуляции
@@ -67,7 +68,8 @@ def simulate(env, sim_config, jargs):
     # по окончанию отдельным потокам наблюдателя сообщить чтобы отключались
     obs.end_flag = True
     obs.ev_th_wait.wait()
-    # накопленные наблюдателем obs результаты визуализировать и сохранить в директорию result
+    # накопленные наблюдателем obs результаты визуализировать
+    # и сохранить в директорию result
     result = obs.make_results()
     return result
 
@@ -85,5 +87,3 @@ if __name__ == '__main__':
     env, sim_config = create_simulation()
     ret = simulate(env, sim_config, jargs)
     print("___tpi={}___".format(ret))
-
-
