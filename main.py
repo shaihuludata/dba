@@ -8,12 +8,6 @@ import gc
 from memory_profiler import profile as mprofile
 
 
-from simpy.events import (AllOf, AnyOf, Event, Process, Timeout, URGENT, NORMAL)
-from simpy.core import StopSimulation, EmptySchedule
-from heapq import heappush, heappop
-
-
-
 class ProfiledEnv(Environment):
     def __init__(self, initial_time=0):
         Environment.__init__(self, initial_time=0)
