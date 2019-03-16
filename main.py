@@ -5,6 +5,7 @@ from dba_pon_networks.net_fabric import NetFabric
 import sys
 import time
 
+# TODO: 1. переделать логгинг
 
 def timeit(method):
     def timed(*args, **kw):
@@ -44,7 +45,7 @@ def simulate(env, sim_config, jargs):
 
     # структуры сетей описаны в соответствующей директории
     # там описаны устройства, их параметры и их соединения друг с другом
-    net = json.load(open("./dba_pon_networks/network4.json"))
+    net = json.load(open("./dba_pon_networks/network9.json"))
     kwargs = json.loads(jargs)
     if "DbaTMLinearFair_fair_multipliers" in kwargs:
         net["OLT0"].update(kwargs)
@@ -75,15 +76,15 @@ def simulate(env, sim_config, jargs):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) > 1:
-        jargs = sys.argv[1]
-    else:
-        kwargs = {'DbaTMLinearFair_fair_multipliers': {0: {"bw": 1.0, "uti": 2},
-                                                       1: {"bw": 0.9, "uti": 3},
-                                                       2: {"bw": 0.8, "uti": 4},
-                                                       3: {"bw": 0.7, "uti": 5}},
-                  'dba_min_grant': 10}
-        jargs = json.dumps(kwargs, ensure_ascii=False).encode("utf-8")
+    # if len(sys.argv) > 1:
+    #     jargs = sys.argv[1]
+    # else:
+    kwargs = {'DbaTMLinearFair_fair_multipliers': {0: {"bw": 1.0, "uti": 2},
+                                                   1: {"bw": 0.9, "uti": 3},
+                                                   2: {"bw": 0.8, "uti": 4},
+                                                   3: {"bw": 0.7, "uti": 5}},
+              'dba_min_grant': 10}
+    jargs = json.dumps(kwargs, ensure_ascii=False).encode("utf-8")
     env, sim_config = create_simulation()
     ret = simulate(env, sim_config, jargs)
     print("___tpi={}___".format(ret))

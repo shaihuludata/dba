@@ -210,6 +210,12 @@ class DbaTrafficMonLinear(DbaTM):
 
 
 class DbaTMLinearFair(DbaTrafficMonLinear):
+
+    fair_multipliers = {0: {"bw": 1.0, "uti": 2},
+                        1: {"bw": 0.9, "uti": 3},
+                        2: {"bw": 0.8, "uti": 4},
+                        3: {"bw": 0.5, "uti": 5}}
+
     def run(self):
         while True:
             ont_alloc_dict = self.ont_discovered
@@ -269,11 +275,6 @@ class DbaTMLinearFair(DbaTrafficMonLinear):
             if self is None:
                 raise Exception("WTF?????")
             yield self.env.timeout(self.cycle_duration)
-
-    fair_multipliers = {0: {"bw": 1.0, "uti": 2},
-                        1: {"bw": 0.9, "uti": 3},
-                        2: {"bw": 0.8, "uti": 4},
-                        3: {"bw": 0.5, "uti": 5}}
 
     def generate_alloc_weight(self, bw, uti, alloc):
         al_class = self.alloc_class[alloc]
