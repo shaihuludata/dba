@@ -8,32 +8,6 @@ import gc
 from memory_profiler import profile as mprofile
 
 
-class ProfiledEnv(Environment):
-    def __init__(self, initial_time=0):
-        Environment.__init__(self, initial_time=0)
-
-    def run(self, until=None):
-        Environment.run(self, until)
-
-
-def create_simulation():
-    # исходные условия, описывающие контекст симуляции
-    # sim_config имеет настройки:
-    # "debug" - используется некоторыми классами для отображения отладочной информации
-    # "horizon" - горизонт моделирования в микросекундах (максимальное симуляционное время)
-    # "observers" - аспекты наблюдения классом observer за событиями модели
-    # сюда же будут помещаться всякие исследуемые аспекты сети
-    with open("./dba.json") as f:
-        sim_config = json.load(f)
-
-    # env - общая среда выполнения симуляционного процесса.
-    # обеспечивает общее время и планирование всех событий, происходящих в модели
-    # при включенном дебаге работает профилирование
-    env = ProfiledEnv()  # if sim_config["debug"] else Environment()
-    env.end_flag = False
-    return env, sim_config
-
-
 @timeit
 def simulate(env, sim_config, jargs):
     time_horizon = sim_config["horizon"] if "horizon" in sim_config else 1000
@@ -63,7 +37,8 @@ def simulate(env, sim_config, jargs):
     # по окончанию отдельным потокам наблюдателя сообщить чтобы отключались
     obs.end_flag = True
     obs.ev_th_wait.wait()
-    # накопленные наблюдателем obs результаты визуализировать и сохранить в директорию result
+    # накопленные наблюдателем obs результаты
+    # визуализировать и сохранить в директорию result
     result = obs.make_results()
     return result
 
@@ -73,18 +48,27 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         jargs = sys.argv[1]
     else:
-        kwargs = {'DbaTMLinearFair_fair_multipliers': {0: {"bw": 1.0, "uti": 2},
-                                                       1: {"bw": 0.9, "uti": 3},
-                                                       2: {"bw": 0.8, "uti": 4},
-                                                       3: {"bw": 0.7, "uti": 5}},
+        kwargs = {'DbaTMLinearFair_fair_multipliers':
+                      {0: {"bw": 1.0, "uti": 2}, 1: {"bw": 0.9, "uti": 3},
+                       2: {"bw": 0.8, "uti": 4}, 3: {"bw": 0.7, "uti": 5}},
                   'dba_min_grant': 10}
-        # kwargs = {'DbaTMLinearFair_fair_multipliers': {0: {'bw': 7.8, 'uti': 5.6},
-        #                                                1: {'bw': 1.2, 'uti': 2.4},
-        #                                                2: {'bw': 4.9, 'uti': 9.8},
-        #                                                3: {'bw': 9.6, 'uti': 9.2}},
-        #           'dba_min_grant': 99}
         jargs = json.dumps(kwargs, ensure_ascii=False).encode("utf-8")
-    env, sim_config = create_simulation()
+
+    # исходные условия, описывающие контекст симуляции
+    # sim_config имеет настройки:
+    # "debug" - используется некоторыми классами для отображения отладочной информации
+    # "horizon" - горизонт моделирования в микросекундах (максимальное симуляционное время)
+    # "observers" - аспекты наблюдения классом observer за событиями модели
+    # сюда же будут помещаться всякие исследуемые аспекты сети
+    with open("./dba.json") as f:
+        sim_config = json.load(f)
+
+    # env - общая среда выполнения симуляционного процесса.
+    # обеспечивает общее время и планирование всех событий, происходящих в модели
+    # при включенном дебаге работает профилирование
+    env = Environment()
+    env.end_flag = False
+
     try:
         ret = simulate(env, sim_config, jargs)
         print("___tpi={}___".format(ret))

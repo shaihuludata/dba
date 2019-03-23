@@ -284,14 +284,4 @@ class DbaTMLinearFair(DbaTrafficMonLinear):
         uti_weight = uti * self.fair_multipliers[str(al_class)]["uti"]
         weight = bw_weight + uti_weight
         return weight
-        # alloc_size = round(bw * uti * multi + 0.5)
-        # max_bw = self.alloc_max_bandwidth[alloc]
-        # for traf_type in ["voice", "video"]:
-        #     if self.alloc_class[alloc] == self.traf_classes[traf_type]:
-        #         alloc_size = 1.1 * max_bw if alloc_size > 1.1 * max_bw else alloc_size
-        # alloc_size = self.min_grant if alloc_size < self.min_grant else alloc_size
-        #
-        # if "ONT4" in alloc:
-        #     if bw > self.min_grant and alloc_size > bw:
-        #         self.empty()
-        # return alloc_size
+
