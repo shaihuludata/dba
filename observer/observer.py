@@ -22,12 +22,13 @@ class Observer(Thread):
     # flow FlowObserver, power PhysicsObserver, traffic ReceivedTrafficObserver
     # mass_traffic MassTrafficObserver, BufferObserver BufferObserver
 
-    def __init__(self, env, config):
+    def __init__(self, env, config):  # , daemon=True):
         Thread.__init__(self)
         self.env = env
-        self.ev_wait = ThEvent()
-        self.ev_th_wait = ThEvent()
-        self.end_flag = False
+
+        self.ev_read_data = ThEvent()
+        self.ev_end_work = ThEvent()
+        # current_time in msec
         self.cur_time = 0
         self.devices = None
 
@@ -60,8 +61,7 @@ class Observer(Thread):
         # показывает, какие из наблюдений актуальны в симуляции
         self.observers_active = dict()
 
-        for obs_name in obs_conf:
-            cur_obs_conf = obs_conf[obs_name]
+        for obs_name, cur_obs_conf in obs_conf.items():
             if cur_obs_conf["report"]:
                 self.observers_active[obs_name] = cur_obs_conf["output"]
             if cur_obs_conf["report"] and "time_ranges" in cur_obs_conf:
@@ -76,12 +76,7 @@ class Observer(Thread):
                 res_maker = observer_dict[obs_name][1]
                 self.result_makers.append(res_maker)
 
-        if len(self.time_ranges_to_show) > 0:
-            self.time_horizon = max(list(max(self.time_ranges_to_show[i].boundary)
-                                         for i in self.time_ranges_to_show))
-            self.time_horizon = max(config["horizon"], self.time_horizon)
-        else:
-            self.time_horizon = config["horizon"]
+        self.time_horizon = config["horizon"]
 
         # это буфер для новых данных,
         # потом обрабатываются в отдельном потоке и удаляются
@@ -101,19 +96,20 @@ class Observer(Thread):
         self.flow_class = dict()
         self.flow_distance = dict()
 
+    def show_progress(self):
+        cur_time_in_msec = self.env.now // 1000
+        if (cur_time_in_msec) > self.cur_time:
+            progress = round(self.env.now / self.time_horizon, 1) * 100
+            logging.info("Progress {}%, time {} ms".format(progress, cur_time_in_msec))
+            self.cur_time = cur_time_in_msec
+
     def run(self):
-        last_progress = -1
-        while not self.end_flag and not self.env.end_flag:
-            self.ev_th_wait.clear()
-            cur_time_in_msec = round(self.env.now // 1000)
-            if cur_time_in_msec > self.cur_time:
-                progress = round(self.env.now/self.time_horizon, 1) * 100
-                if last_progress < progress:
-                    last_progress = progress
-                    print("Progress {} %".format(progress))
-                logging.info("time {} ms".format(cur_time_in_msec))
-                self.cur_time = cur_time_in_msec
-            self.ev_wait.wait(timeout=5)  # wait for event
+        self.ev_end_work.clear()
+        while True:
+            self.show_progress()
+
+            # wait for new data
+            self.ev_read_data.wait(timeout=5)
             for i in self.new_data:
                 # r_end, cur_time, dev, sig, port = i
                 # defragmentation, cur_time, psink, pkt
@@ -124,11 +120,11 @@ class Observer(Thread):
                     except TypeError:
                         pass
                 self.new_data.remove(i)
-            self.ev_wait.clear()  # clean event for future
-            self.ev_th_wait.set()
-        if self.env.end_flag:
-            print("Остановлен по причине окончания работы среды")
-            self.env = None
+            # data processed ready for a new cycle
+            self.ev_read_data.clear()
+            if self.ev_end_work.is_set() and len(self.new_data) == 0:
+                break
+        logging.info("Observer finished")
 
     def notice(self, func):
         def wrapped(*args):
@@ -136,7 +132,8 @@ class Observer(Thread):
             data.insert(0, round(self.env.now, 3))
             data.insert(0, func.__name__)
             self.new_data.append(tuple(data))
-            self.ev_wait.set()
+            # new data should be processed in running thread
+            self.ev_read_data.set()
             return func(*args)
         return wrapped
 
@@ -269,8 +266,10 @@ class Observer(Thread):
                     ax.plot(tup[0], tup[1], style)
                 subplot_index += 1
         fig.show()
-        fig.savefig(self.result_dir + res_name + ".png", bbox_inches="tight")
+        out_filename = self.result_dir + res_name + ".png"
+        fig.savefig(out_filename, bbox_inches="tight")
         plt.close(fig)
+        logging.info("{} saved".format(out_filename))
 
     def export_data_to_json(self, res_name, data_to_plot):
         f = open(self.result_dir + res_name + ".json", "w")
@@ -477,7 +476,7 @@ class Observer(Thread):
             total_al = abs(np.trapz(np_al_result, time_result))
             total_utilization = round(total_bw / total_al, 1)
             if total_utilization < 0:
-                print('странно')
+                logging.critical('странно')
             total_utilization_dict[flow_name] = total_utilization
             # print("Утилизация в потоке", flow_name, round(total_utilization_dict[flow_name], 1))
 

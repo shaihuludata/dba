@@ -8,13 +8,16 @@ import gc
 from memory_profiler import profile as mprofile
 
 
+logging.basicConfig(level=logging.INFO)
+
+
 @timeit
 def simulate(env, sim_config, jargs):
     time_horizon = sim_config["horizon"] if "horizon" in sim_config else 1000
 
     # структуры сетей описаны в соответствующей директории
     # там описаны устройства, их параметры и их соединения друг с другом
-    net = json.load(open("./dba_pon_networks/network8.json"))
+    net = json.load(open("./dba_pon_networks/network7.json"))
     kwargs = json.loads(jargs)
     if "DbaTMLinearFair_fair_multipliers" in kwargs:
         net["OLT0"].update(kwargs)
@@ -31,12 +34,14 @@ def simulate(env, sim_config, jargs):
     env.run(until=time_horizon)
 
     # по окончанию симуляции показать общие результаты
-    logging.info("{} End of simulation ...".format(env.now),
-          "\n***Preparing results***".format())
+    logging.info("{} End of simulation ...".format(env.now))
+    logging.info("***Preparing results***")
 
-    # по окончанию отдельным потокам наблюдателя сообщить чтобы отключались
-    obs.end_flag = True
-    obs.ev_th_wait.wait()
+    # Tell observer to finish
+    obs.ev_end_work.set()
+    # Wait observer to finish
+    obs.join()
+
     # накопленные наблюдателем obs результаты
     # визуализировать и сохранить в директорию result
     result = obs.make_results()
@@ -67,11 +72,6 @@ if __name__ == '__main__':
     # обеспечивает общее время и планирование всех событий, происходящих в модели
     # при включенном дебаге работает профилирование
     env = Environment()
-    env.end_flag = False
 
-    try:
-        ret = simulate(env, sim_config, jargs)
-        print("___tpi={}___".format(ret))
-    except KeyboardInterrupt:
-        env.end_flag = True
-
+    ret = simulate(env, sim_config, jargs)
+    print("___tpi={}___".format(ret))

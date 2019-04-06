@@ -78,7 +78,7 @@ class Ont(ActiveDev):
                 allocs_acked = list(i for i in self.current_allocations.keys()
                                     if type(self.current_allocations[i]) is not int)
                 if len(allocs_acked) > 0:
-                    logging.info("{} Авторизация на OLT подтверждена, allocs: {}".format(self.name, allocs_acked))
+                    logging.debug("{} Авторизация на OLT подтверждена, allocs: {}".format(self.name, allocs_acked))
                 # Формально тут должно быть "SerialNumber"
                 # но без потери смысла для симуляции должно быть Ranging
                     self.STATE = "Ranging"

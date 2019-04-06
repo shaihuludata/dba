@@ -21,21 +21,19 @@ class DevObserverRealTime(Thread):
         self.traf_mon_raw_new_data = dict()
         self.traf_mon_flow_indexes = dict()
         self.ev_wait = ThEvent()
-        self.end_flag = False
 
     def run(self):
         fig = plt.figure(1, figsize=(15, 15))
         fig.show()
-        while not self.end_flag:
-            self.ev_wait.wait(timeout=5)  # wait for event
-            for i in self.new_data:
-                cur_time, sig, dev, operation = i
-                for matcher in self.match_conditions:
-                    matcher(*i)
-                for res_make in self.result_makers:
-                    res_make(fig)
-                self.new_data.remove(i)
-                self.ev_wait.clear()  # clean event for future
+        self.ev_wait.wait(timeout=5)  # wait for event
+        for i in self.new_data:
+            cur_time, sig, dev, operation = i
+            for matcher in self.match_conditions:
+                matcher(*i)
+            for res_make in self.result_makers:
+                res_make(fig)
+            self.new_data.remove(i)
+            self.ev_wait.clear()  # clean event for future
 
     def notice(self, func):
         def wrapped(dev, sig, port):

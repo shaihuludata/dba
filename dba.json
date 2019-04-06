@@ -1,6 +1,6 @@
 {
     "debug" : false,
-    "horizon" : 10000,
+    "horizon" : 5000,
     "observers" : {
         "flow": {
             "report": false,
@@ -12,22 +12,26 @@
         },
         "traffic_utilization": {
             "report": true,
-            "time_ranges": [[0, 1000000]]
+            "time_ranges": [[0, 1000000]],
+            "output": ["figure", "json"]
         },
         "packets": {
             "report": true,
-            "time_ranges": [[0, 1000000]]
+            "time_ranges": [[0, 1000000]],
+            "output": ["figure", "json"]
         },
         "mass_traffic": {
             "report": false,
-            "time_ranges": [[0, 60000]]
+            "time_ranges": [[0, 60000]],
+            "output": ["figure", "json"]
         },
         "BufferObserver": {
             "report": false,
             "time_ranges": [[0, 60000]]
         },
-        "total_per_flow_performance_result": {
-            "report": true
+        "total_per_flow_performance": {
+            "report": true,
+            "output": ["figure", "json"]
         }
     }
 }
