@@ -10,7 +10,7 @@ import logging
 
 
 result_dir = "./result/genetic/"
-result_file = result_dir + "genetic_data.json"
+# result_file = result_dir + "genetic_data.json"
 
 
 def bin_list_to_int(lst):
@@ -54,60 +54,25 @@ def gene_simulate(candidate, args):
         tpi = float(tpistr.split("=")[1])
     except:
         logging.critical("failed to simulate {}".format(candidate))
-        tpi = float('Inf')  # 100500
-    f = open(result_file, "a")
-    f.writelines(str(bin_list_to_int(candidate)) + " {}\n".format(tpi))
-    f.close()
+        tpi = float('Inf')
+    # f = open(result_file, "a")
+    # f.writelines(str(bin_list_to_int(candidate)) + " {}\n".format(tpi))
+    # f.close()
     return tpi
 
 
 @timeit
 # @mprofile
-def rpyc_simulation(candidates, args):
+def mpi_simulation(candidates, args):
 
     conds = {bin_list_to_int(c): interpret_gene(c) for c in candidates}
-    if not os.path.exists(result_file):
-        f = open(result_file, "w")
-        json.dump({}, f)
-        f.close()
-
-    fitness_results = json.load(open(result_file))
-    fitness_dict = {gene_id: fitness_results[gene_id]
-                        for gene_id in conds
-                            if gene_id in fitness_results}
 
     conds_str = json.dumps(conds, ensure_ascii=False).encode("utf-8")
+
     len_of_conds = str(len(conds_str)) + "\n"
     while len(len_of_conds) < 10:
         len_of_conds = "0" + len_of_conds
 
-    import socket
-    sock = socket.socket()
-    print("Waiting connection")
-    connected = False
-
-    while not connected:
-        try:
-            sock.connect(('localhost', 9090))
-            connected = True
-        except ConnectionRefusedError as e:
-            print(e)
-            time.sleep(3)
-    logging.info("GENE: Server connected. Sending meta-conditions")
-
-    sock.send(len_of_conds.encode("utf-8"))
-    # bytes_sent = 0
-    # while len(len_of_conds) < bytes_sent:
-    #     bytes_sent = sock.send(len_of_conds.encode("utf-8"), socket.MSG_DONTWAIT)
-    #     time.sleep(1)
-    # del len_of_conds
-
-    sock.send(conds_str)
-    data = sock.recv(10)
-    print("Server answered: {}".format(data.decode("utf-8")))
-    # del data
-
-    results_valid = False
     while not results_valid:
         data = sock.recv(10)
         print("Получены данные {}".format(data))
@@ -154,7 +119,7 @@ def genetic(mode):
     ga = inspyred.ec.GA(rand)
     ga.observer = inspyred.ec.observers.stats_observer
     ga.terminator = inspyred.ec.terminators.evaluation_termination
-    modes = {"network": rpyc_simulation, "single": gene_simulate}
+    modes = {"network": mpi_simulation, "single": gene_simulate}
     evaluator = modes[mode]
     final_pop = ga.evolve(evaluator=evaluator,
                           generator=generate_binary,
