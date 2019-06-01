@@ -266,10 +266,10 @@ class Observer(Thread):
                     ax.plot(tup[0], tup[1], style)
                 subplot_index += 1
         fig.show()
-        out_filename = self.result_dir + res_name + ".png"
+        out_filename = f"{self.result_dir}{res_name}.png"
         fig.savefig(out_filename, bbox_inches="tight")
         plt.close(fig)
-        logging.info("{} saved".format(out_filename))
+        logging.info(f"{out_filename} saved")
 
     def export_data_to_json(self, res_name, data_to_plot):
         f = open(self.result_dir + res_name + ".json", "w")

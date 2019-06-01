@@ -7,7 +7,11 @@ import os
 import subprocess
 from memory_profiler import profile as mprofile
 import logging
+from mpi4py import MPI
 
+
+if not os.path.isdir("./result"):
+    os.mkdir("./result")
 
 result_dir = "./result/genetic/"
 # result_file = result_dir + "genetic_data.json"
@@ -55,71 +59,122 @@ def gene_simulate(candidate, args):
     except:
         logging.critical("failed to simulate {}".format(candidate))
         tpi = float('Inf')
-    # f = open(result_file, "a")
-    # f.writelines(str(bin_list_to_int(candidate)) + " {}\n".format(tpi))
-    # f.close()
     return tpi
 
+def subprocess_mpi_mapper(args):
+    candidate, args = args[0], args[1]
+    jargs = json.dumps(args)
+    try:
+        process = subprocess.Popen(["./venv/bin/python3", "main.py", jargs], stdout=subprocess.PIPE)
+        # new_fitness_dict = json.loads(data.decode("utf-8"))
+        data = process.communicate(timeout=180)
+        logging.info("GENE: ", data)
+        stdout, stderr = data
+        tpistr = str(stdout)
+        tpistr = str(tpistr.split("___")[1])
+        tpi = float(tpistr.split("=")[1])
+    except:
+        logging.critical("failed to simulate {}".format(candidate))
+        tpi = float('Inf')  # 100500
+    return candidate, tpi
 
-@timeit
 # @mprofile
-def mpi_simulation(candidates, args):
+@timeit
+def mpi_simulate(candidates, args):
+    time.sleep(1)
+    for i in candidates: print(i)
+
+    from mpi4py.futures import MPIPoolExecutor
 
     conds = {bin_list_to_int(c): interpret_gene(c) for c in candidates}
+    fitness_dict = {}
 
-    conds_str = json.dumps(conds, ensure_ascii=False).encode("utf-8")
-
-    len_of_conds = str(len(conds_str)) + "\n"
-    while len(len_of_conds) < 10:
-        len_of_conds = "0" + len_of_conds
-
+    results_valid = False
     while not results_valid:
-        data = sock.recv(10)
-        print("Получены данные {}".format(data))
-        if not data:
-            time.sleep(5)
-            continue
-        size_of_result = int(data.decode())
-        data = sock.recv(size_of_result)
-        print("Получены результаты {}".format(data))
-        try:
-            new_fitness_dict = json.loads(data.decode("utf-8"))
-            fitness_dict.update(new_fitness_dict)
-        except Exception as e:
-            print("No valid data from server: ", e)
-            time.sleep(5)
+        with MPIPoolExecutor() as executor:
+            new_fitness = executor.map(subprocess_mpi_mapper, conds.items())
+
+        new_fitness_dict = {fit[0]: fit[1] for fit in new_fitness}
+        fitness_dict.update(new_fitness_dict)
         # проверить, что все гены из conds есть в словаре результатов
-        conds_keys = [i for i in conds]
-        conds_keys.sort()
-        fitness_keys = [int(i) for i in fitness_dict]
-        fitness_keys.sort()
+        conds_keys = [i for i in conds]; conds_keys.sort()
+        fitness_keys = [int(i) for i in fitness_dict]; fitness_keys.sort()
         if conds_keys == fitness_keys:
+            print("ДАННЫЕ ВАЛИДНЫ!")
             results_valid = True
         else:
             print("ДАННЫЕ НЕ ВАЛИДНЫ!")
-            print(conds_keys)
-            print(fitness_keys)
-    sock.close()
 
-    f = open(result_file, "w")
-    fitness_dict.update(fitness_results)
-    json.dump(fitness_dict, f)
-    f.close()
+    if not os.path.isdir(result_dir):
+        os.mkdir(result_dir)
+        print("Creating directory for genetic_results")
 
-    # для всех генов из списка кандидатов
-    # фитнес-функция в виде списка соответствует генам кандидатов
-    fitness = [fitness_dict[str(bin_list_to_int(gene))] for gene in candidates]
+    fitness = list()
+    for gene in candidates:
+        gene = bin_list_to_int(gene)
+        fitness.append(fitness_dict[gene])
     return fitness
+
+
+# @timeit
+# # @mprofile
+# def mpi_simulation(candidates, args):
+#     conds = {bin_list_to_int(c): interpret_gene(c) for c in candidates}
+#     conds_str = json.dumps(conds, ensure_ascii=False).encode("utf-8")
+#
+#     len_of_conds = str(len(conds_str)) + "\n"
+#     while len(len_of_conds) < 10:
+#         len_of_conds = "0" + len_of_conds
+#
+#     while not results_valid:
+#         data = sock.recv(10)
+#         print("Получены данные {}".format(data))
+#         if not data:
+#             time.sleep(5)
+#             continue
+#         size_of_result = int(data.decode())
+#         data = sock.recv(size_of_result)
+#         print("Получены результаты {}".format(data))
+#         try:
+#             new_fitness_dict = json.loads(data.decode("utf-8"))
+#             fitness_dict.update(new_fitness_dict)
+#         except Exception as e:
+#             print("No valid data from server: ", e)
+#             time.sleep(5)
+#         # проверить, что все гены из conds есть в словаре результатов
+#         conds_keys = [i for i in conds]
+#         conds_keys.sort()
+#         fitness_keys = [int(i) for i in fitness_dict]
+#         fitness_keys.sort()
+#         if conds_keys == fitness_keys:
+#             results_valid = True
+#         else:
+#             print("ДАННЫЕ НЕ ВАЛИДНЫ!")
+#             print(conds_keys)
+#             print(fitness_keys)
+#     sock.close()
+#
+#     f = open(result_file, "w")
+#     fitness_dict.update(fitness_results)
+#     json.dump(fitness_dict, f)
+#     f.close()
+#
+#     # для всех генов из списка кандидатов
+#     # фитнес-функция в виде списка соответствует генам кандидатов
+#     fitness = [fitness_dict[str(bin_list_to_int(gene))] for gene in candidates]
+#     return fitness
 
 
 @timeit
 def genetic(mode):
     rand = random.Random()
     rand.seed(int(time.time()))
+
     ga = inspyred.ec.GA(rand)
     ga.observer = inspyred.ec.observers.stats_observer
     ga.terminator = inspyred.ec.terminators.evaluation_termination
-    modes = {"network": mpi_simulation, "single": gene_simulate}
+
+    modes = {"mpi": mpi_simulate, "single": gene_simulate}
     evaluator = modes[mode]
     final_pop = ga.evolve(evaluator=evaluator,
                           generator=generate_binary,
@@ -158,16 +213,18 @@ def interpret_gene(gene: list):
 
 
 if __name__ == "__main__":
-    modes = ["single", "network"]
-    mode = "network"
-    # f = open(result_file, "w")
-    # f.writelines("Simulation suite started {}\n".format(datetime.now(tz=None)))
-    # f.close()
-    genetic(mode)
-    # dba_fair_multipliers = {0: {"bw": 1.0, "uti": 2},
-    #                         1: {"bw": 0.9, "uti": 3},
-    #                         2: {"bw": 0.8, "uti": 4},
-    #                         3: {"bw": 0.7, "uti": 5}}
-    # kwargs = {'DbaTMLinearFair_fair_multipliers': dba_fair_multipliers,
-    #           'dba_min_grant': 1}
-    # main(**kwargs)
+    modes = ["single", "mpi"]
+    mode = "single"
+
+    if mode == "mpi":
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        if rank == 0:
+            print(rank, "выполняю")
+            genetic(mode)
+        else:
+            print(rank, "готов к работе")
+    elif mode in ["network", "single"]:
+        genetic(mode)
+    else:
+        raise Exception("Режим не определён")

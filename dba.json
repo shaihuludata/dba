@@ -13,17 +13,17 @@
         "traffic_utilization": {
             "report": true,
             "time_ranges": [[0, 1000000]],
-            "output": ["figure", "json"]
+            "output": ["json"]
         },
         "packets": {
             "report": true,
             "time_ranges": [[0, 1000000]],
-            "output": ["figure", "json"]
+            "output": ["json"]
         },
         "mass_traffic": {
             "report": false,
             "time_ranges": [[0, 60000]],
-            "output": ["figure", "json"]
+            "output": ["json"]
         },
         "BufferObserver": {
             "report": false,
@@ -31,7 +31,7 @@
         },
         "total_per_flow_performance": {
             "report": true,
-            "output": ["figure", "json"]
+            "output": ["json"]
         }
     }
 }
