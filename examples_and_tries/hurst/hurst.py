@@ -181,7 +181,7 @@ def random_walk(length, proba=0.5, min_lookback=1, max_lookback=100):
     return series
 
 
-MAX_SIZE = 999999
+MAX_SIZE = 99999
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
@@ -193,7 +193,7 @@ if __name__ == '__main__':
                               np.random.poisson(1, MAX_SIZE),
             np.cumsum(np.random.pareto(1, MAX_SIZE) + np.random.standard_cauchy(MAX_SIZE) + np.random.lognormal(0, 10, MAX_SIZE)),
                               np.random.pareto(1, MAX_SIZE),
-                              np.random.lognormal(0, 1, MAX_SIZE),
+                            (np.random.lognormal(10, 10, MAX_SIZE))**4,
                               np.random.lognormal(10, 10, MAX_SIZE),
                               # np.random.lognormal(0, 80, MAX_SIZE),
                               np.random.weibull(1, MAX_SIZE),

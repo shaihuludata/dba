@@ -64,6 +64,38 @@
       "sigma_silence": 1000,
       "silence_interval_distribution": "normal",
       "average_bw": "162000000"
+    },
+    "h_voice": {
+      "class": 0,
+      "model_gen": 2,
+      "service": "voice",
+      "act_distribution": "deterministic",
+      "act_interval_mean": 1250000000,
+      "act_interval_distribution": "exponential",
+      "act_size_of_packet": 33,
+      "act_size_of_packet_distribution": "deterministic",
+      "pas_interval_mean": 160000,
+      "pas_interval_distribution": "exponential",
+      "pas_size_of_packet": 7,
+      "pas_size_of_packet_distribution": "deterministic",
+      "average_bw": "12200"
+    },
+    "h_video_1080_BV1": {
+      "class": 1,
+      "service": "buffered video",
+      "send_interval": 250,
+      "sigma_si": 50,
+      "send_interval_distribution": "normal",
+      "sop_multiplier": 300,
+      "size_of_packet_distribution": "weibull",
+      "lam_sop": 6950,
+      "loc_sop": 0,
+      "k_sop": 0.8099,
+      "activity_interval": 2000000,
+      "activity_interval_distribution": "deterministic",
+      "silence_interval": 100000,
+      "silence_interval_distribution": "deterministic",
+      "average_bw": "9600000"
     }
   },
   "ports": {

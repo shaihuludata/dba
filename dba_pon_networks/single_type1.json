@@ -1,7 +1,7 @@
 {
   "ONT1":{
     "transmitter_wavelength":"1310",
-    "Alloc":{"1":"type4"},
+    "Alloc":{"1":"h_voice"},
     "activation_time":0,
     "transmitter_type":"2G",
     "ports":{},

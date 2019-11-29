@@ -74,6 +74,77 @@ class PacketGenerator(object):
         return 0
 
 
+class PacketGeneratorGen2(object):
+    """ Generates packets with given inter-arrival time distribution.
+        Set the "out" member variable to the entity to receive the packet.
+        Parameters
+        ----------
+        env : simpy.Environment
+            the simulation environment
+        adist : function
+            a no parameter function that returns the successive inter-arrival times of the packets
+        sdist : function
+            a no parameter function that returns the successive sizes of the packets
+        initial_delay : number
+            Starts generation after an initial delay. Default = 0
+        finish : number
+            Stops generation at the finish time. Default is infinite
+    """
+
+    def __init__(self, env, id,
+                 active_dist=None, active_sdist=None, active_idist=None,
+                 passive_dist=None, passive_sdist=None, passive_idist=None,
+                 initial_delay=0, finish=float("inf"), flow_id=0,
+                 cos=0, service=None):
+        self.id = id
+        self.env = env
+        self.adist = active_dist
+        self.asdist = active_sdist
+        self.aidist = active_idist
+        self.pdist = passive_dist
+        self.psdist = passive_sdist
+        self.pidist = passive_idist
+        self.initial_delay = initial_delay
+        self.finish = finish
+        self.out = None
+        self.action = env.process(self.run())
+        self.flow_id = flow_id
+        self.service = service
+        self.cos = cos
+        self.p_counters = PacketCounters()
+
+    def run(self):
+        yield self.env.timeout(self.initial_delay)
+        state = "act"
+        while self.env.now < self.finish:
+            if state is "act":
+                activity_time = self.env.now + self.adist()
+                while self.env.now < activity_time:
+                    # wait for next transmission
+                    send_interval = self.aidist()
+                    yield self.env.timeout(send_interval)
+                    self.p_counters.packets_sent += 1
+                    pkt_id = "{}_{}".format(self.id, self.env.now)
+                    p = Packet(self.env.now, round(self.asdist()), pkt_id, src=self.id,
+                               flow_id=self.flow_id, cos_class=self.cos,
+                               packet_num=self.p_counters.packets_sent)
+                    self.out.put(p)
+                state = "pas"
+            else:
+                passivity_time = self.env.now + self.pdist()
+                while self.env.now < passivity_time:
+                    # wait for next transmission
+                    send_interval = self.pidist()
+                    yield self.env.timeout(send_interval)
+                    self.p_counters.packets_sent += 1
+                    pkt_id = "{}_{}".format(self.id, self.env.now)
+                    p = Packet(self.env.now, round(self.psdist()), pkt_id, src=self.id,
+                               flow_id=self.flow_id, cos_class=self.cos,
+                               packet_num=self.p_counters.packets_sent)
+                    self.out.put(p)
+                state = "act"
+
+
 class PacketSink(object):
     """ Receives packets and collects delay information into the
         waits list. You can then use this list to look at delay statistics.
@@ -109,6 +180,7 @@ class PacketSink(object):
         self.last_arrival = 0.0
         self.packets_to_defragment = dict()
         self.p_counters = PacketCounters()
+        self.total_kbits = 0
 
     def put(self, pkt):
         if not self.selector or self.selector(pkt):
@@ -154,8 +226,9 @@ class PacketSink(object):
     def check_dfg_pkt(self, dfg):
         if self.debug:
             print(round(self.env.now, 3), dfg)
-            if "ONT4" in dfg.flow_id:
-                print(dfg.flow_id, dfg.num, dfg.size)
+            self.total_kbits += 8 * dfg.size
+            # if "ONT4" in dfg.flow_id:
+            #     print(dfg.flow_id, dfg.num, dfg.size)
 
 
 class UniPort(object):
